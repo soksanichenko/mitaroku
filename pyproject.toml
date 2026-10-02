@@ -1,0 +1,12 @@
+[project]
+name = "REPLACE_ME"
+version = "0.1.0"
+description = "REPLACE_ME"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["sources"]
+
+[tool.ruff.format]
+quote-style = "single"
