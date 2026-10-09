@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/styles.css">
+<script src="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/_ds_bundle.js"></script>
+<script src="mitaroku-data.js"></script>
+</helmet>
+<main style="max-width:960px;margin:0 auto;padding:40px 16px 64px;color:var(--color-text);font-family:var(--font-body)">
+  <form onSubmit="{{ onSubmit }}" novalidate="{{ true }}" aria-labelledby="lg-h" style="max-width:380px;display:grid;gap:16px;border-top:2px solid var(--color-text);padding-top:20px">
+    <div style="display:grid;gap:6px">
+      <h1 id="lg-h" style="margin:0;font-size:32px">Sign in</h1>
+      <p style="margin:0;font-size:14px;line-height:1.5;color:var(--mt-muted)">Local account. Use this when the home portal sign-in isn’t available.</p>
+    </div>
+    <sc-if value="{{ hasError }}" hint-placeholder-val="{{ false }}">
+      <div role="alert" style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:2px solid var(--color-accent-700);font-size:14px;line-height:1.45">
+        <svg viewBox="0 0 24 24" aria-hidden="true" style="flex:none;width:18px;height:18px;margin-top:1px;fill:none;stroke:var(--color-accent-700);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4M12 16h.01"></path></svg>
+        <span>{{ error }}</span>
+      </div>
+    </sc-if>
+    <div class="field" style="display:grid;gap:6px">
+      <label for="lg-u">Username</label>
+      <input id="lg-u" class="input" autocomplete="username" value="{{ user }}" onChange="{{ onUser }}" aria-invalid="{{ invalid }}" style="min-height:44px;border-color:{{ fieldBorder }}">
+    </div>
+    <div class="field" style="display:grid;gap:6px">
+      <label for="lg-p">Password</label>
+      <div style="display:flex">
+        <input id="lg-p" class="input" type="{{ pwType }}" autocomplete="current-password" value="{{ pw }}" onChange="{{ onPw }}" aria-invalid="{{ invalid }}" style="flex:1;min-width:0;min-height:44px;border-color:{{ fieldBorder }}">
+        <button type="button" aria-pressed="{{ showPw }}" onClick="{{ togglePw }}" style="flex:none;min-width:64px;min-height:44px;padding:0 12px;background:transparent;border:1px solid var(--color-divider);border-left:0;color:var(--color-text);font-size:13px;font-weight:600;cursor:pointer;text-align:left" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent)">{{ pwToggle }}</button>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary btn-block" disabled="{{ busy }}" style="min-height:48px;justify-content:flex-start;color:var(--color-neutral-100);background:var(--color-accent-700)" style-hover="background:var(--color-accent-800)" style-active="background:var(--color-accent-900)">{{ submitLabel }}</button>
+    <span style="font-size:12px;line-height:1.5;color:var(--mt-muted)">Forgot your password? Ask the administrator of this server to reset it. Demo: any username with the password “mitaroku”.</span>
+  </form>
+</main>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;viewState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;live&quot;,&quot;error&quot;],&quot;default&quot;:&quot;live&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = { user: '', pw: '', showPw: false, error: '', busy: false };
+  componentWillUnmount() { clearTimeout(this._t); }
+  componentDidMount() { if (this.props.viewState === 'error') this.setState({ user: 'kmori', error: 'Incorrect username or password. Check both and try again.' }); }
+  componentDidUpdate(pp) { if (pp.viewState !== this.props.viewState && this.props.viewState === 'error') this.setState({ error: 'Incorrect username or password. Check both and try again.' }); }
+  submit(e) {
+    e.preventDefault();
+    const { user, pw } = this.state;
+    if (!user.trim() || !pw) { this.setState({ error: 'Enter your username and password.' }); return; }
+    this.setState({ busy: true, error: '' });
+    clearTimeout(this._t);
+    this._t = setTimeout(() => {
+      if (pw === 'mitaroku') { this.setState({ busy: false }); location.hash = '#/library'; }
+      else this.setState({ busy: false, error: 'Incorrect username or password. Check both and try again.', pw: '' });
+    }, 800);
+  }
+  renderVals() {
+    const st = this.state, err = !!st.error;
+    return {
+      user: st.user, pw: st.pw, onUser: e => this.setState({ user: e.target.value }), onPw: e => this.setState({ pw: e.target.value }),
+      hasError: err, error: st.error, invalid: err ? 'true' : 'false', fieldBorder: err ? 'var(--color-accent-700)' : 'var(--color-divider)',
+      pwType: st.showPw ? 'text' : 'password', showPw: st.showPw ? 'true' : 'false', pwToggle: st.showPw ? 'Hide' : 'Show',
+      togglePw: () => this.setState(s => ({ showPw: !s.showPw })),
+      busy: st.busy, submitLabel: st.busy ? 'Signing in…' : 'Sign in',
+      onSubmit: e => this.submit(e),
+    };
+  }
+}
+</script>
+</body>
+</html>

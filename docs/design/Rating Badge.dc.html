@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/styles.css">
+<script src="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/_ds_bundle.js"></script>
+<script src="mitaroku-data.js"></script>
+</helmet>
+<sc-if value="{{ lg }}" hint-placeholder-val="{{ true }}">
+  <span role="img" aria-label="{{ label }}" title="{{ tip }}" style="display:inline-flex;align-items:stretch;border:2px solid var(--color-text);background:var(--color-bg);color:var(--color-text);cursor:help">
+    <span style="padding:4px 8px;font-weight:800;font-size:16px;line-height:1.15;font-variant-numeric:tabular-nums">{{ value }}</span>
+    <span style="display:flex;align-items:center;padding:0 6px;background:var(--color-text);color:var(--color-bg);font-size:10px;font-weight:800;letter-spacing:0.04em">{{ source }}</span>
+  </span>
+</sc-if>
+<sc-if value="{{ sm }}" hint-placeholder-val="{{ false }}">
+  <span role="img" aria-label="{{ label }}" title="{{ tip }}" style="display:inline-flex;align-items:stretch;border:1px solid var(--color-text);background:var(--color-bg);color:var(--color-text);cursor:help">
+    <span style="padding:2px 5px;font-weight:800;font-size:12px;line-height:1.2;font-variant-numeric:tabular-nums">{{ value }}</span>
+    <span style="display:flex;align-items:center;padding:0 4px;background:var(--color-text);color:var(--color-bg);font-size:10px;font-weight:800;letter-spacing:0.03em">{{ source }}</span>
+  </span>
+</sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:120,&quot;height&quot;:48},&quot;source&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;TMDB&quot;,&quot;MAL&quot;,&quot;IMDb&quot;],&quot;default&quot;:&quot;TMDB&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;value&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;7.9&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;size&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;sm&quot;,&quot;lg&quot;],&quot;default&quot;:&quot;lg&quot;,&quot;tsType&quot;:&quot;'sm'|'lg'&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const src = this.props.source || 'TMDB';
+    const value = this.props.value == null || this.props.value === '' ? '–' : String(this.props.value);
+    const b = window.MT ? MT.badge(src, value) : { tip: src, label: src + ' ' + value };
+    const lg = this.props.size === 'lg';
+    return { lg, sm: !lg, source: src, value, tip: b.tip, label: b.label };
+  }
+}
+</script>
+</body>
+</html>

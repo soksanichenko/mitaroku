@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/styles.css">
+<script src="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/_ds_bundle.js"></script>
+<script src="mitaroku-data.js"></script>
+</helmet>
+<main style="max-width:960px;margin:0 auto;padding:0 16px 48px;color:var(--color-text);font-family:var(--font-body)">
+  <div style="padding:22px 0 0;display:grid;gap:14px">
+    <h1 style="margin:0;font-size:clamp(28px, 6vw, 40px)">Import and export</h1>
+    <nav aria-label="Import or export" style="display:flex;gap:2px;border-bottom:2px solid var(--color-divider)">
+      <a href="#/import" aria-current="{{ impCurrent }}" style="min-height:44px;display:flex;align-items:center;padding:0 14px;margin-bottom:-2px;border-bottom:2px solid {{ impLine }};color:var(--color-text);font-size:15px;font-weight:{{ impWeight }};text-decoration:none">Import</a>
+      <a href="#/export" aria-current="{{ expCurrent }}" style="min-height:44px;display:flex;align-items:center;padding:0 14px;margin-bottom:-2px;border-bottom:2px solid {{ expLine }};color:var(--color-text);font-size:15px;font-weight:{{ expWeight }};text-decoration:none">Export</a>
+    </nav>
+  </div>
+
+  <sc-if value="{{ isImport }}" hint-placeholder-val="{{ true }}">
+    <ol aria-label="Import steps" style="list-style:none;margin:16px 0 0;padding:0;display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));border-bottom:1px solid var(--color-divider)">
+      <sc-for list="{{ steps }}" as="s" hint-placeholder-count="3">
+        <li aria-current="{{ s.current }}" style="display:flex;align-items:center;gap:8px;padding:10px 8px 10px 0;border-top:3px solid {{ s.line }};font-size:13px;font-weight:{{ s.weight }};color:{{ s.color }};min-width:0">
+          <span style="flex:none;width:22px;height:22px;display:grid;place-items:center;border:2px solid currentColor;font-size:11px;font-weight:800">{{ s.mark }}</span><span style="min-width:0;overflow-wrap:break-word">{{ s.label }}</span>
+        </li>
+      </sc-for>
+    </ol>
+
+    <sc-if value="{{ step1 }}" hint-placeholder-val="{{ true }}">
+      <section aria-labelledby="im-src" style="padding:20px 0;display:grid;gap:16px">
+        <fieldset style="border:0;margin:0;padding:0;display:grid;gap:8px">
+          <legend id="im-src" style="font-size:18px;font-weight:800;margin-bottom:8px;padding:0">1. Choose a source</legend>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:8px">
+            <sc-for list="{{ sources }}" as="o" hint-placeholder-count="3">
+              <label style="display:grid;grid-template-columns:20px minmax(0, 1fr);gap:4px 10px;padding:12px;border:{{ o.border }};cursor:pointer;min-height:44px" style-hover="border-color:var(--color-text)">
+                <input type="radio" name="im-source" checked="{{ o.checked }}" onChange="{{ o.onPick }}" style="margin:3px 0 0;width:18px;height:18px;accent-color:var(--color-text)">
+                <strong style="font-size:15px">{{ o.label }}</strong>
+                <span style="grid-column:2;font-size:13px;line-height:1.45;color:var(--mt-muted)">{{ o.note }}</span>
+              </label>
+            </sc-for>
+          </div>
+        </fieldset>
+
+        <div style="display:grid;gap:8px">
+          <h2 style="margin:0;font-size:18px">2. Upload the file</h2>
+          <sc-if value="{{ noFile }}" hint-placeholder-val="{{ true }}">
+            <label onDragOver="{{ onDragOver }}" onDragLeave="{{ onDragLeave }}" onDrop="{{ onDrop }}" style="display:grid;gap:8px;justify-items:start;padding:24px 20px;border:2px dashed {{ dropBorder }};background:{{ dropBg }};cursor:pointer" style-hover="border-color:var(--color-text)">
+              <svg viewBox="0 0 24 24" aria-hidden="true" style="width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" x2="12" y1="3" y2="15"></line></svg>
+              <span style="font-size:15px;font-weight:700">Drag a CSV file here, or <span style="color:var(--mt-link);text-decoration:underline">choose a file</span></span>
+              <span style="font-size:13px;color:var(--mt-muted)">{{ hint }}</span>
+              <input type="file" accept=".csv,text/csv" onChange="{{ onFile }}" style="position:absolute;width:1px;height:1px;opacity:0">
+            </label>
+            <button type="button" onClick="{{ useSample }}" style="justify-self:start;min-height:44px;padding:0;background:none;border:0;color:var(--mt-link);font-size:14px;font-weight:600;cursor:pointer" style-hover="text-decoration:underline">Use a sample file</button>
+          </sc-if>
+          <sc-if value="{{ hasFile }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 6px 10px 12px;border:1px solid var(--color-text)">
+              <svg viewBox="0 0 24 24" aria-hidden="true" style="flex:none;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path></svg>
+              <span style="flex:1;min-width:0;display:grid;line-height:1.3"><strong style="font-size:14px;overflow-wrap:anywhere">{{ fileName }}</strong><span style="font-size:12px;color:var(--mt-muted)">{{ fileSize }}</span></span>
+              <button type="button" aria-label="Remove file" title="Remove file" onClick="{{ removeFile }}" style="flex:none;width:44px;height:44px;display:grid;place-items:center;padding:0;background:none;border:0;color:var(--color-text);cursor:pointer" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+            </div>
+          </sc-if>
+          <sc-if value="{{ hasFileError }}" hint-placeholder-val="{{ false }}"><p role="alert" style="margin:0;font-size:14px;font-weight:600;color:var(--color-accent-700)">{{ fileError }}</p></sc-if>
+        </div>
+
+        <label style="display:grid;grid-template-columns:20px minmax(0, 1fr);gap:2px 10px;align-items:start;cursor:pointer;max-width:620px">
+          <input type="checkbox" checked="{{ overwrite }}" onChange="{{ toggleOverwrite }}" style="margin:2px 0 0;width:18px;height:18px;accent-color:var(--color-text)">
+          <strong style="font-size:15px">Overwrite existing data</strong>
+          <span style="grid-column:2;font-size:13px;line-height:1.45;color:var(--mt-muted)">{{ overwriteNote }}</span>
+        </label>
+
+        <button type="button" class="btn btn-primary" disabled="{{ cantStart }}" onClick="{{ start }}" style="justify-self:start;min-height:48px;gap:8px;color:var(--color-neutral-100);background:var(--color-accent-700)" style-hover="background:var(--color-accent-800)" style-active="background:var(--color-accent-900)">Start import<svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"><path d="M5 12h14M12 5l7 7-7 7"></path></svg></button>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{ step2 }}" hint-placeholder-val="{{ false }}">
+      <section aria-labelledby="im-prog" style="padding:24px 0;display:grid;gap:14px;max-width:620px">
+        <h2 id="im-prog" style="margin:0;font-size:20px">Importing {{ fileName }}</h2>
+        <div style="display:grid;gap:6px">
+          <div style="display:flex;justify-content:space-between;gap:12px;font-size:14px"><span role="status" style="font-weight:700">{{ progLabel }}</span><span style="font-variant-numeric:tabular-nums;color:var(--mt-muted)">{{ progPct }}</span></div>
+          <div role="progressbar" aria-label="Import progress" aria-valuemin="0" aria-valuemax="841" aria-valuenow="{{ done }}" style="height:6px;background:color-mix(in srgb, var(--color-text) 14%, transparent)"><div style="height:100%;width:{{ progPct }};background:var(--color-text)"></div></div>
+        </div>
+        <ul style="list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:14px">
+          <li style="display:flex;gap:8px;align-items:center"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round"><path d="M20 6 9 17l-5-5"></path></svg>Read 841 rows from the file</li>
+          <li style="display:flex;gap:8px;align-items:center;font-weight:700"><span aria-hidden="true" style="width:16px;text-align:center">…</span>Matching titles with TMDB and MyAnimeList</li>
+          <li style="display:flex;gap:8px;align-items:center;color:var(--mt-muted)"><span aria-hidden="true" style="width:16px;text-align:center">·</span>Write statuses, progress and ratings</li>
+        </ul>
+        <span style="font-size:13px;color:var(--mt-muted)">You can leave this page. The import keeps running and you’ll get a notification when it’s done.</span>
+        <button type="button" class="btn btn-secondary" onClick="{{ cancel }}" style="justify-self:start;min-height:44px">Cancel import</button>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{ step3 }}" hint-placeholder-val="{{ false }}">
+      <section aria-labelledby="im-rep" style="padding:20px 0;display:grid;gap:20px">
+        <div style="display:grid;gap:4px">
+          <h2 id="im-rep" style="margin:0;font-size:20px">Import report</h2>
+          <span style="font-size:14px;color:var(--mt-muted)">{{ fileName }} · {{ sourceLabel }} · Oct 8, 2026</span>
+        </div>
+        <dl style="margin:0;display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));border-top:2px solid var(--color-text)">
+          <sc-for list="{{ counts }}" as="c" hint-placeholder-count="4">
+            <div style="display:grid;gap:2px;padding:12px 12px 12px 0;border-bottom:1px solid var(--color-divider)"><dt style="font-size:13px;color:var(--mt-muted)">{{ c.label }}</dt><dd style="margin:0;font-size:30px;font-weight:800;font-variant-numeric:tabular-nums">{{ c.n }}</dd></div>
+          </sc-for>
+        </dl>
+
+        <sc-if value="{{ hasReview }}" hint-placeholder-val="{{ true }}">
+          <div style="display:grid;gap:10px">
+            <h3 style="margin:0;font-size:17px">Needs review<span style="font-size:12px;font-weight:600;vertical-align:super;line-height:0;margin-left:3px;color:var(--mt-muted)">{{ reviewCount }}</span></h3>
+            <p style="margin:0;font-size:14px;color:var(--mt-muted)">These rows matched more than one title. Pick the right one, or skip the row.</p>
+            <sc-for list="{{ review }}" as="r">
+              <fieldset style="margin:0;padding:12px 0;border:0;border-top:1px solid var(--color-divider);display:grid;gap:8px">
+                <legend style="padding:0;font-size:14px;float:left;width:100%"><span style="color:var(--mt-muted)">From file:</span> <strong>{{ r.imported }}</strong></legend>
+                <div style="clear:both;display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:6px">
+                  <sc-for list="{{ r.cands }}" as="c">
+                    <label style="display:grid;grid-template-columns:20px 32px minmax(0, 1fr);gap:10px;align-items:center;padding:8px;border:{{ c.border }};cursor:pointer;min-height:44px" style-hover="border-color:var(--color-text)">
+                      <input type="radio" name="{{ r.name }}" checked="{{ c.checked }}" onChange="{{ c.onPick }}" style="margin:0;width:18px;height:18px;accent-color:var(--color-text)">
+                      <span aria-hidden="true" class="grayscale" style="aspect-ratio:2/3;background-color:{{ c.tint }}"></span>
+                      <span style="display:grid;line-height:1.3;min-width:0"><strong style="font-size:14px;overflow-wrap:break-word">{{ c.title }}</strong><span style="font-size:12px;color:var(--mt-muted)">{{ c.meta }}</span></span>
+                    </label>
+                  </sc-for>
+                  <label style="display:flex;gap:10px;align-items:center;padding:8px;border:{{ r.skipBorder }};cursor:pointer;min-height:44px" style-hover="border-color:var(--color-text)">
+                    <input type="radio" name="{{ r.name }}" checked="{{ r.skipChecked }}" onChange="{{ r.onSkip }}" style="margin:0;width:18px;height:18px;accent-color:var(--color-text)"><span style="font-size:14px;font-weight:700">Skip this row</span>
+                  </label>
+                </div>
+              </fieldset>
+            </sc-for>
+            <button type="button" class="btn btn-primary" disabled="{{ cantApply }}" onClick="{{ apply }}" style="justify-self:start;min-height:44px;color:var(--color-neutral-100);background:var(--color-accent-700)" style-hover="background:var(--color-accent-800)">{{ applyLabel }}</button>
+          </div>
+        </sc-if>
+        <sc-if value="{{ reviewDone }}" hint-placeholder-val="{{ false }}"><p role="status" style="margin:0;font-size:14px;font-weight:700">Review applied: {{ reviewSummary }}</p></sc-if>
+
+        <div style="display:grid;gap:10px">
+          <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px">
+            <h3 style="margin:0;font-size:17px">Not found<span style="font-size:12px;font-weight:600;vertical-align:super;line-height:0;margin-left:3px;color:var(--mt-muted)">41</span></h3>
+            <button type="button" class="btn btn-secondary" onClick="{{ downloadNotFound }}" style="min-height:44px;gap:8px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>Download as CSV</button>
+          </div>
+          <ul style="list-style:none;margin:0;padding:0;border-top:1px solid var(--color-divider);font-size:14px">
+            <sc-for list="{{ notFound }}" as="n"><li style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-divider)"><span>{{ n.t }}</span><span style="color:var(--mt-muted);font-size:13px">{{ n.why }}</span></li></sc-for>
+          </ul>
+          <span style="font-size:13px;color:var(--mt-muted)">And 36 more in the CSV.</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <a href="#/library" class="btn btn-secondary" style="min-height:44px;text-decoration:none" style-hover="text-decoration:none">Go to library</a>
+          <button type="button" class="btn btn-ghost" onClick="{{ restart }}" style="min-height:44px">Import another file</button>
+        </div>
+      </section>
+    </sc-if>
+
+    <section aria-labelledby="im-hist" style="border-top:2px solid var(--color-divider);padding:20px 0 0;display:grid;gap:10px">
+      <h2 id="im-hist" style="margin:0;font-size:18px">Import history</h2>
+      <sc-if value="{{ histLoading }}" hint-placeholder-val="{{ false }}"><div aria-busy="true" aria-label="Loading history" style="display:grid;gap:8px"><sc-for list="{{ skel }}" as="k"><div style="height:36px;background:color-mix(in srgb, var(--color-text) 9%, transparent)"></div></sc-for></div></sc-if>
+      <sc-if value="{{ histError }}" hint-placeholder-val="{{ false }}"><div role="alert" style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;font-size:14px"><span>Couldn’t load import history.</span><button type="button" class="btn btn-secondary" onClick="{{ retry }}" style="min-height:44px">Try again</button></div></sc-if>
+      <sc-if value="{{ histEmpty }}" hint-placeholder-val="{{ false }}"><p style="margin:0;font-size:14px;color:var(--mt-muted)">No imports yet. Files you import appear here with their results.</p></sc-if>
+      <sc-if value="{{ histLive }}" hint-placeholder-val="{{ true }}">
+        <ul style="list-style:none;margin:0;padding:0;border-top:1px solid var(--color-divider)">
+          <sc-for list="{{ history }}" as="h" hint-placeholder-count="3">
+            <li style="display:grid;grid-template-columns:{{ histCols }};gap:2px 16px;padding:10px 0;border-bottom:1px solid var(--color-divider);font-size:14px;align-items:baseline">
+              <span style="font-variant-numeric:tabular-nums;color:var(--mt-muted)">{{ h.date }}</span>
+              <strong>{{ h.source }}</strong>
+              <span>{{ h.result }}</span>
+            </li>
+          </sc-for>
+        </ul>
+      </sc-if>
+    </section>
+  </sc-if>
+
+  <sc-if value="{{ isExport }}" hint-placeholder-val="{{ false }}">
+    <section aria-labelledby="ex-h" style="padding:20px 0;display:grid;gap:18px">
+      <sc-if value="{{ exLoading }}" hint-placeholder-val="{{ false }}"><div aria-busy="true" aria-label="Loading" style="display:grid;gap:8px"><div style="height:90px;background:color-mix(in srgb, var(--color-text) 9%, transparent)"></div><div style="height:90px;background:color-mix(in srgb, var(--color-text) 9%, transparent)"></div></div></sc-if>
+      <sc-if value="{{ exReady }}" hint-placeholder-val="{{ true }}">
+        <fieldset style="border:0;margin:0;padding:0;display:grid;gap:8px">
+          <legend id="ex-h" style="font-size:18px;font-weight:800;margin-bottom:8px;padding:0">Choose a format</legend>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:8px">
+            <sc-for list="{{ formats }}" as="o" hint-placeholder-count="2">
+              <label style="display:grid;grid-template-columns:20px minmax(0, 1fr);gap:4px 10px;padding:14px;border:{{ o.border }};cursor:pointer" style-hover="border-color:var(--color-text)">
+                <input type="radio" name="ex-format" checked="{{ o.checked }}" onChange="{{ o.onPick }}" style="margin:3px 0 0;width:18px;height:18px;accent-color:var(--color-text)">
+                <span style="display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px"><strong style="font-size:15px">{{ o.label }}</strong><span style="font-size:12px;color:var(--mt-muted)">{{ o.ext }}</span></span>
+                <span style="grid-column:2;font-size:13px;line-height:1.45;color:var(--mt-muted)">{{ o.note }}</span>
+              </label>
+            </sc-for>
+          </div>
+        </fieldset>
+
+        <sc-if value="{{ hasLoss }}" hint-placeholder-val="{{ false }}">
+          <div role="note" style="display:grid;gap:8px;padding:14px;border:2px solid var(--color-text);max-width:640px">
+            <strong style="display:flex;align-items:center;gap:8px;font-size:15px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4M12 17h.01"></path></svg>Not included in Yamtrack CSV</strong>
+            <ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.6">
+              <sc-for list="{{ losses }}" as="l"><li>{{ l }}</li></sc-for>
+            </ul>
+            <span style="font-size:13px;color:var(--mt-muted)">Choose JSON backup to keep everything.</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{ noLoss }}" hint-placeholder-val="{{ true }}">
+          <p role="note" style="margin:0;padding:12px 14px;border:1px solid var(--color-divider);font-size:14px;line-height:1.5;max-width:640px">Nothing is lost. JSON backups can only be restored into mitaroku.</p>
+        </sc-if>
+
+        <sc-if value="{{ exEmpty }}" hint-placeholder-val="{{ false }}"><p style="margin:0;font-size:14px;color:var(--mt-muted)">Your library is empty, so there’s nothing to export yet.</p></sc-if>
+        <sc-if value="{{ exError }}" hint-placeholder-val="{{ false }}"><p role="alert" style="margin:0;font-size:14px;font-weight:600;color:var(--color-accent-700)">The export failed on the server. Try again; if it keeps failing, ask your administrator.</p></sc-if>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px">
+          <button type="button" class="btn btn-primary" disabled="{{ cantDownload }}" onClick="{{ download }}" style="min-height:48px;gap:8px;color:var(--color-neutral-100);background:var(--color-accent-700)" style-hover="background:var(--color-accent-800)" style-active="background:var(--color-accent-900)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>{{ downloadLabel }}</button>
+          <span role="status" style="font-size:14px">{{ exStatus }}</span>
+        </div>
+      </sc-if>
+    </section>
+  </sc-if>
+</main>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;mode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;import&quot;,&quot;export&quot;],&quot;default&quot;:&quot;import&quot;,&quot;tsType&quot;:&quot;'import'|'export'&quot;},&quot;viewState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;live&quot;,&quot;loading&quot;,&quot;empty&quot;,&quot;error&quot;],&quot;default&quot;:&quot;live&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;vw&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:390,&quot;tsType&quot;:&quot;number&quot;}}">
+const SRC = [
+  ['yamtrack', 'Yamtrack CSV', 'Statuses, progress, ratings and dates from a Yamtrack export.', 'Yamtrack: Settings → Export. CSV, up to 20 MB.'],
+  ['imdb', 'IMDb CSV', 'Your ratings or watchlist. Everything is imported as Completed or Plan.', 'IMDb: Your ratings → ⋯ → Export. CSV, up to 20 MB.'],
+  ['letterboxd', 'Letterboxd CSV', 'Films only: diary, ratings and watchlist.', 'Letterboxd: Settings → Data → Export your data, then pick diary.csv. CSV, up to 20 MB.'],
+];
+const REVIEW = [
+  ['r1', 'Harbour Lights (2021)', [['Harbor Lights', '2021 · Series · Norway · TMDB 7.8', 200], ['Harbour Lights', '2019 · Film · United Kingdom · TMDB 6.4', 20], ['Harbor Lights: Winter', '2023 · Film · Norway · TMDB 6.9', 210]]],
+  ['r2', 'Meridian (2026)', [['The Quiet Meridian', '2026 · Film · France · TMDB 7.4', 60], ['Meridian', '2024 · Series · Canada · TMDB 7.0', 150], ['Meridian Line', '2026 · Film · Spain · TMDB 6.1', 90]]],
+  ['r3', 'Starway (2020)', [['Starway', '2020 · Anime · Japan · MAL 6.8', 290], ['Starway', '2020 · Film · South Korea · TMDB 6.5', 260], ['Star Way Home', '2018 · Film · Japan · TMDB 6.2', 310]]],
+];
+const NOT_FOUND = [['Glasshouse Weather (2017)', 'No match'], ['The Long Ferry (2015)', 'No match'], ['Untitled Fjord Project (2024)', 'Not released'], ['Cold Archive (2012)', 'No match'], ['Ninth Signal (2020)', 'Missing year in file']];
+const HISTORY = [['Sep 12, 2026', 'IMDb CSV', '212 added · 3 not found'], ['Jun 3, 2026', 'Yamtrack CSV', '1,204 added · 18 skipped'], ['Mar 2, 2025', 'Letterboxd CSV', '96 added']];
+class Component extends DCLogic {
+  state = { source: 'letterboxd', file: null, fileError: '', drag: false, overwrite: false, step: 1, done: 0, picks: {}, applied: null, histRows: HISTORY.slice(), format: 'json', ex: 'idle', retry: null };
+  componentWillUnmount() { clearInterval(this._i); clearTimeout(this._x); clearTimeout(this._r); }
+  componentDidUpdate(pp) { if (pp.viewState !== this.props.viewState && this.state.retry) this.setState({ retry: null }); }
+  retry() { this.setState({ retry: 'loading' }); clearTimeout(this._r); this._r = setTimeout(() => this.setState({ retry: 'live' }), 700); }
+  takeFile(f) {
+    if (!f) return;
+    if (!/\.csv$/i.test(f.name)) { this.setState({ fileError: f.name + ' is not a CSV file.', drag: false }); return; }
+    if (f.size > 20 * 1024 * 1024) { this.setState({ fileError: f.name + ' is ' + (f.size / 1048576).toFixed(1) + ' MB. The limit is 20 MB.', drag: false }); return; }
+    this.setState({ file: { name: f.name, size: f.size }, fileError: '', drag: false });
+  }
+  start() {
+    this.setState({ step: 2, done: 0 });
+    clearInterval(this._i);
+    this._i = setInterval(() => this.setState(s => {
+      const d = Math.min(841, s.done + 19);
+      if (d >= 841) { clearInterval(this._i); return { done: 841, step: 3, histRows: [['Oct 8, 2026', SRC.find(x => x[0] === s.source)[1], '773 added · 24 skipped · 3 to review · 41 not found']].concat(s.histRows) }; }
+      return { done: d };
+    }), 45);
+  }
+  downloadNotFound() {
+    const csv = 'title,year,reason\n' + NOT_FOUND.map(n => { const m = n[0].match(/^(.*) \((\d{4})\)$/); return '"' + m[1] + '",' + m[2] + ',' + n[1]; }).join('\n') + '\n';
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'mitaroku-not-found.csv'; document.body.appendChild(a); a.click(); a.remove();
+  }
+  download() {
+    this.setState({ ex: 'preparing' });
+    clearTimeout(this._x);
+    this._x = setTimeout(() => {
+      const json = this.state.format === 'json';
+      const MT = window.MT;
+      const body = json ? JSON.stringify({ app: 'mitaroku', exported: '2026-10-08', library: MT ? MT.state.status : {}, progress: MT ? MT.state.progress : {} }, null, 2)
+        : 'media_id,source,media_type,title,status,progress\n' + (MT ? Object.keys(MT.state.status).map(id => { const t = MT.title(id); return [id, t.rating.source.toLowerCase(), t.type, '"' + t.title + '"', MT.state.status[id], MT.progress(id)].join(','); }).join('\n') : '');
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([body], { type: json ? 'application/json' : 'text/csv' })); a.download = json ? 'mitaroku-backup-2026-10-08.json' : 'mitaroku-yamtrack-2026-10-08.csv'; document.body.appendChild(a); a.click(); a.remove();
+      this.setState({ ex: 'done' });
+    }, 900);
+  }
+  renderVals() {
+    const st = this.state, MT = window.MT;
+    const vs = st.retry || this.props.viewState || 'live';
+    const mode = this.props.mode === 'export' ? 'export' : 'import';
+    const vw = this.props.vw || 390;
+    const dark = this.props.theme === 'dark';
+    const tint = h => MT ? MT.tint(h, dark) : '#ccc';
+    const src = SRC.find(x => x[0] === st.source);
+    const stepLabels = ['Upload', 'Matching', 'Report'];
+    const review = REVIEW.map(([id, imported, cands]) => {
+      const pick = st.picks[id];
+      return {
+        name: 'rv-' + id, imported,
+        cands: cands.map((c, i) => ({ title: c[0], meta: c[1], tint: tint(c[2]), checked: pick === i, border: pick === i ? '2px solid var(--color-text)' : '1px solid var(--color-divider)', onPick: () => this.setState(s => ({ picks: Object.assign({}, s.picks, { [id]: i }) })) })),
+        skipChecked: pick === 'skip', skipBorder: pick === 'skip' ? '2px solid var(--color-text)' : '1px solid var(--color-divider)',
+        onSkip: () => this.setState(s => ({ picks: Object.assign({}, s.picks, { [id]: 'skip' }) })),
+      };
+    });
+    const picked = REVIEW.filter(r => st.picks[r[0]] !== undefined).length;
+    const ap = st.applied;
+    const added = 773 + (ap ? ap.added : 0), skipped = 24 + (ap ? ap.skipped : 0);
+    const FORMATS = [
+      ['json', 'JSON backup', '.json', 'Everything: library, statuses, episode progress, ratings, private notes, rewatches, watch dates and import history. Restores into mitaroku.'],
+      ['yamtrack', 'Yamtrack CSV', '.csv', 'Titles, statuses, episode progress and title ratings. Opens in Yamtrack and in spreadsheets.'],
+    ];
+    const live = vs !== 'loading' && vs !== 'error';
+    return {
+      isImport: mode === 'import', isExport: mode === 'export',
+      impCurrent: mode === 'import' ? 'page' : 'false', expCurrent: mode === 'export' ? 'page' : 'false',
+      impLine: mode === 'import' ? 'var(--color-text)' : 'transparent', expLine: mode === 'export' ? 'var(--color-text)' : 'transparent',
+      impWeight: mode === 'import' ? '800' : '500', expWeight: mode === 'export' ? '800' : '500',
+      steps: stepLabels.map((l, i) => { const n = i + 1, cur = st.step === n, past = st.step > n; return { label: l, mark: past ? '✓' : String(n), current: cur ? 'step' : 'false', line: cur || past ? 'var(--color-text)' : 'var(--color-divider)', weight: cur ? '800' : '500', color: cur || past ? 'var(--color-text)' : 'var(--mt-muted)' }; }),
+      step1: st.step === 1, step2: st.step === 2, step3: st.step === 3,
+      sources: SRC.map(s => ({ label: s[1], note: s[2], checked: st.source === s[0], border: st.source === s[0] ? '2px solid var(--color-text)' : '1px solid var(--color-divider)', onPick: () => this.setState({ source: s[0] }) })),
+      sourceLabel: src[1], hint: src[3],
+      noFile: !st.file, hasFile: !!st.file, fileName: st.file ? st.file.name : '', fileSize: st.file ? (st.file.size / 1024).toFixed(0) + ' KB · 841 rows' : '',
+      hasFileError: !!st.fileError, fileError: st.fileError,
+      dropBorder: st.drag ? 'var(--color-text)' : 'var(--color-divider)', dropBg: st.drag ? 'color-mix(in srgb, var(--color-text) 6%, transparent)' : 'transparent',
+      onDragOver: e => { e.preventDefault(); if (!st.drag) this.setState({ drag: true }); },
+      onDragLeave: () => this.setState({ drag: false }),
+      onDrop: e => { e.preventDefault(); this.takeFile(e.dataTransfer && e.dataTransfer.files[0]); },
+      onFile: e => this.takeFile(e.target.files && e.target.files[0]),
+      useSample: () => this.setState({ file: { name: st.source + '-export.csv', size: 318 * 1024 }, fileError: '' }),
+      removeFile: () => this.setState({ file: null }),
+      overwrite: st.overwrite, toggleOverwrite: () => this.setState(s => ({ overwrite: !s.overwrite })),
+      overwriteNote: st.overwrite ? 'Statuses, ratings and watch dates already in your library will be replaced by the values in the file.' : 'Off: titles already in your library keep their current status, ratings and dates. Only new titles are added.',
+      cantStart: !st.file, start: () => this.start(),
+      done: st.done, progLabel: 'Matching titles… ' + st.done + ' / 841', progPct: Math.round(st.done / 841 * 100) + '%',
+      cancel: () => { clearInterval(this._i); this.setState({ step: 1, done: 0 }); },
+      counts: [['Added', added], ['Skipped', skipped], ['Needs review', ap ? 0 : 3], ['Not found', 41]].map(c => ({ label: c[0], n: c[1] })),
+      hasReview: !ap, reviewDone: !!ap, reviewCount: 3, review,
+      reviewSummary: ap ? ap.added + ' added, ' + ap.skipped + ' skipped.' : '',
+      cantApply: picked < REVIEW.length, applyLabel: picked < REVIEW.length ? 'Apply choices (' + picked + ' of 3 decided)' : 'Apply choices',
+      apply: () => { const sk = REVIEW.filter(r => st.picks[r[0]] === 'skip').length; this.setState({ applied: { added: 3 - sk, skipped: sk } }); },
+      notFound: NOT_FOUND.map(n => ({ t: n[0], why: n[1] })),
+      downloadNotFound: () => this.downloadNotFound(),
+      restart: () => this.setState({ step: 1, file: null, done: 0, picks: {}, applied: null }),
+      skel: [1, 2, 3], retry: () => this.retry(),
+      histLoading: vs === 'loading', histError: vs === 'error', histEmpty: live && (vs === 'empty' && st.histRows.length === HISTORY.length), histLive: live && !(vs === 'empty' && st.histRows.length === HISTORY.length),
+      history: (vs === 'empty' ? st.histRows.slice(0, st.histRows.length - HISTORY.length) : st.histRows).map(h => ({ date: h[0], source: h[1], result: h[2] })),
+      histCols: vw >= 600 ? '120px 140px minmax(0, 1fr)' : 'minmax(0, 1fr)',
+      exLoading: vs === 'loading', exReady: vs !== 'loading',
+      formats: FORMATS.map(f => ({ label: f[1], ext: f[2], note: f[3], checked: st.format === f[0], border: st.format === f[0] ? '2px solid var(--color-text)' : '1px solid var(--color-divider)', onPick: () => this.setState({ format: f[0], ex: 'idle' }) })),
+      hasLoss: st.format === 'yamtrack', noLoss: st.format === 'json',
+      losses: ['Private notes', 'Per-episode ratings (title ratings are kept)', 'Rewatch counts', 'Watch dates of individual episodes', 'Import history'],
+      exEmpty: vs === 'empty', exError: vs === 'error' || st.ex === 'error',
+      cantDownload: vs === 'empty' || st.ex === 'preparing',
+      downloadLabel: st.ex === 'preparing' ? 'Preparing file…' : 'Download',
+      exStatus: st.ex === 'done' ? (st.format === 'json' ? 'Downloaded mitaroku-backup-2026-10-08.json' : 'Downloaded mitaroku-yamtrack-2026-10-08.csv') : '',
+      download: () => this.download(),
+    };
+  }
+}
+</script>
+</body>
+</html>

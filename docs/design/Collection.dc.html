@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/styles.css">
+<script src="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/_ds_bundle.js"></script>
+<script src="mitaroku-data.js"></script>
+</helmet>
+<main style="max-width:960px;margin:0 auto;padding:0 16px 48px;color:var(--color-text);font-family:var(--font-body)">
+  <sc-if value="{{ isMissing }}" hint-placeholder-val="{{ false }}">
+    <div role="alert" style="display:grid;gap:10px;justify-items:start;padding:40px 0">
+      <h1 style="margin:0;font-size:28px">Collection not found</h1>
+      <p style="margin:0;font-size:14px;color:var(--mt-muted)">It may have been renamed or removed.</p>
+      <a href="#/library" class="btn btn-secondary" style="min-height:44px;text-decoration:none" style-hover="text-decoration:none">Back to library</a>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ found }}" hint-placeholder-val="{{ true }}">
+    <div style="padding:22px 0 16px;display:grid;gap:10px">
+      <span style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--mt-muted)">Collection</span>
+      <h1 style="margin:0;font-size:clamp(28px, 6vw, 40px);text-wrap:balance">{{ c.title }}</h1>
+      <p style="margin:0;font-size:15px;line-height:1.55;max-width:60ch">{{ c.desc }}</p>
+      <span style="font-size:14px;color:var(--mt-muted)">{{ c.countText }}</span>
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;margin-top:4px">
+        <div style="flex:1 1 220px;max-width:420px;display:grid;gap:6px">
+          <span style="font-size:14px;font-weight:800;font-variant-numeric:tabular-nums">{{ progressText }}</span>
+          <div role="progressbar" aria-label="Collection progress" aria-valuemin="0" aria-valuemax="{{ total }}" aria-valuenow="{{ watched }}" style="height:3px;background:color-mix(in srgb, var(--color-text) 14%, transparent)"><div style="height:100%;width:{{ pct }};background:var(--color-text)"></div></div>
+        </div>
+        <button type="button" class="btn btn-secondary" disabled="{{ allDone }}" aria-expanded="{{ confirmExpanded }}" onClick="{{ askConfirm }}" style="min-height:44px;gap:8px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"><path d="M18 6 7 17l-5-5"></path><path d="m22 10-7.5 7.5L13 16"></path></svg>Mark all as watched</button>
+      </div>
+      <sc-if value="{{ confirming }}" hint-placeholder-val="{{ false }}">
+        <div role="alertdialog" aria-labelledby="cl-cf" aria-describedby="cl-cfd" style="display:grid;gap:10px;padding:14px;border:2px solid var(--color-text);max-width:560px">
+          <strong id="cl-cf" style="font-size:16px">Mark {{ remaining }} titles as watched?</strong>
+          <span id="cl-cfd" style="font-size:14px;line-height:1.5">{{ confirmText }}</span>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <button type="button" class="btn btn-primary" onClick="{{ markAll }}" style="min-height:44px;color:var(--color-neutral-100);background:var(--color-accent-700)" style-hover="background:var(--color-accent-800)" style-active="background:var(--color-accent-900)">Mark all as watched</button>
+            <button type="button" class="btn btn-secondary" onClick="{{ cancelConfirm }}" style="min-height:44px">Cancel</button>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ hasUndo }}" hint-placeholder-val="{{ false }}">
+        <p role="status" style="margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:14px">{{ undoText }}<button type="button" onClick="{{ undo }}" style="min-height:44px;padding:0 4px;background:none;border:0;color:var(--mt-link);font-size:14px;font-weight:700;cursor:pointer;text-decoration:underline">Undo</button></p>
+      </sc-if>
+    </div>
+
+    <sc-if value="{{ isLoading }}" hint-placeholder-val="{{ false }}">
+      <div aria-busy="true" aria-label="Loading titles" style="display:grid;gap:10px;border-top:2px solid var(--color-divider);padding-top:16px"><sc-for list="{{ skel }}" as="k"><div style="height:86px;background:color-mix(in srgb, var(--color-text) 9%, transparent)"></div></sc-for></div>
+    </sc-if>
+    <sc-if value="{{ isError }}" hint-placeholder-val="{{ false }}">
+      <div role="alert" style="display:grid;gap:10px;justify-items:start;padding:24px 0;border-top:2px solid var(--color-text)"><h2 style="margin:0;font-size:20px">Couldn’t load this collection</h2><button type="button" class="btn btn-secondary" onClick="{{ retry }}" style="min-height:44px">Try again</button></div>
+    </sc-if>
+    <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;gap:8px;padding:24px 0;border-top:2px solid var(--color-text)"><h2 style="margin:0;font-size:20px">This collection is empty</h2><p style="margin:0;font-size:14px;color:var(--mt-muted)">Titles appear here when TMDB adds them to the collection.</p></div>
+    </sc-if>
+
+    <sc-if value="{{ isLive }}" hint-placeholder-val="{{ true }}">
+      <ol style="list-style:none;margin:0;padding:0;border-top:2px solid var(--color-divider)">
+        <sc-for list="{{ rows }}" as="r" hint-placeholder-count="5">
+          <li style="display:grid;grid-template-columns:{{ rowCols }};grid-template-areas:{{ rowAreas }};gap:6px 14px;align-items:center;padding:10px 0;border-bottom:1px solid var(--color-divider)">
+            <span style="grid-area:num;font-size:13px;font-weight:700;color:var(--mt-muted);font-variant-numeric:tabular-nums">{{ r.n }}</span>
+            <a href="{{ r.href }}" aria-hidden="true" tabindex="-1" class="grayscale" style="grid-area:img;display:block;width:48px;aspect-ratio:2/3;background-color:{{ r.tint }};background-image:repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-text) 10%, transparent) 0 1px, transparent 1px 7px);transition:filter .2s" style-hover="filter:none"></a>
+            <div style="grid-area:body;display:grid;gap:2px;min-width:0;line-height:1.35">
+              <a href="{{ r.href }}" style="font-size:15px;font-weight:800;color:{{ r.titleColor }};overflow-wrap:break-word">{{ r.title }}</a>
+              <span style="font-size:13px;color:var(--mt-muted)">{{ r.meta }}</span>
+            </div>
+            <div style="grid-area:status;width:{{ statusW }}"><dc-import name="Status Picker" title-id="{{ r.id }}" align="right" hint-size="100%,44px"></dc-import></div>
+            <button type="button" aria-pressed="{{ r.pressed }}" aria-label="{{ r.checkLabel }}" title="{{ r.checkLabel }}" onClick="{{ r.onCheck }}" style="grid-area:check;width:44px;height:44px;display:grid;place-items:center;padding:0;background:transparent;border:0;cursor:pointer;color:var(--color-bg)" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent)">
+              <span style="width:26px;height:26px;border-radius:50%;border:2px solid {{ r.ckBorder }};background:{{ r.ckBg }};display:grid;place-items:center"><sc-if value="{{ r.watched }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round"><path d="M20 6 9 17l-5-5"></path></svg></sc-if></span>
+            </button>
+          </li>
+        </sc-for>
+      </ol>
+    </sc-if>
+  </sc-if>
+</main>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;collectionId&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;french-mysteries&quot;,&quot;slow-cinema&quot;,&quot;nordic-noir&quot;,&quot;lighthouses&quot;,&quot;radio-mysteries&quot;,&quot;sports-anime&quot;,&quot;space-stars&quot;,&quot;original-anime&quot;],&quot;default&quot;:&quot;french-mysteries&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;viewState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;live&quot;,&quot;loading&quot;,&quot;empty&quot;,&quot;error&quot;],&quot;default&quot;:&quot;live&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;vw&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:390,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  state = { confirming: false, undo: null, retry: null };
+  componentDidMount() { this._u = window.MT ? MT.sub(() => this.forceUpdate()) : null; }
+  componentWillUnmount() { this._u && this._u(); clearTimeout(this._r); }
+  componentDidUpdate(pp) {
+    if (pp.collectionId !== this.props.collectionId) this.setState({ confirming: false, undo: null });
+    if (pp.viewState !== this.props.viewState && this.state.retry) this.setState({ retry: null });
+  }
+  retry() { this.setState({ retry: 'loading' }); clearTimeout(this._r); this._r = setTimeout(() => this.setState({ retry: 'live' }), 700); }
+  renderVals() {
+    const MT = window.MT;
+    if (!MT) return { found: false, rows: [] };
+    const st = this.state;
+    const vs = st.retry || this.props.viewState || 'live';
+    const col = MT.collection(this.props.collectionId || 'french-mysteries');
+    if (!col) return { isMissing: true, found: false, rows: [] };
+    const dark = this.props.theme === 'dark';
+    const vw = this.props.vw || 390, wide = vw >= 600;
+    const items = vs === 'empty' ? [] : col.items;
+    const isW = id => MT.statusOf(id) === 'completed';
+    const watched = items.filter(isW).length, total = items.length;
+    const notW = items.filter(id => !isW(id));
+    const changing = notW.filter(id => MT.statusOf(id));
+    const live = vs !== 'loading' && vs !== 'error';
+    return {
+      found: true, isMissing: false,
+      c: { title: col.title, desc: col.desc, countText: col.items.length + ' titles · ' + col.counts },
+      progressText: watched + ' of ' + total + ' watched', pct: total ? Math.round(watched / total * 100) + '%' : '0%', total, watched,
+      allDone: total === 0 || watched === total, remaining: notW.length,
+      confirming: st.confirming, confirmExpanded: st.confirming ? 'true' : 'false',
+      confirmText: 'Their status becomes Completed' + (changing.length ? ', including ' + changing.length + ' you’ve marked Watching, Plan or Dropped' : '') + '. You can undo this right after.',
+      askConfirm: () => this.setState({ confirming: true }), cancelConfirm: () => this.setState({ confirming: false }),
+      markAll: () => {
+        const prev = {}; notW.forEach(id => { prev[id] = MT.statusOf(id); });
+        const s = Object.assign({}, MT.state.status), p = Object.assign({}, MT.state.progress);
+        notW.forEach(id => { s[id] = 'completed'; p[id] = MT.title(id).eps; });
+        MT.set({ status: s, progress: p });
+        this.setState({ confirming: false, undo: prev });
+      },
+      hasUndo: !!st.undo, undoText: st.undo ? Object.keys(st.undo).length + ' titles marked as watched.' : '',
+      undo: () => { const s = Object.assign({}, MT.state.status); Object.keys(st.undo).forEach(id => { if (st.undo[id]) s[id] = st.undo[id]; else delete s[id]; }); MT.set({ status: s }); this.setState({ undo: null }); },
+      isLoading: vs === 'loading', isError: vs === 'error', isEmpty: live && total === 0, isLive: live && total > 0,
+      skel: [1, 2, 3, 4], retry: () => this.retry(),
+      rowCols: wide ? '24px 48px minmax(0, 1fr) 160px 44px' : '20px 48px minmax(0, 1fr) 44px',
+      rowAreas: wide ? '"num img body status check"' : '"num img body check" "num img status check"',
+      statusW: wide ? '160px' : 'min(100%, 170px)',
+      rows: items.map((id, i) => {
+        const t = MT.title(id), w = isW(id), film = t.type === 'film';
+        return {
+          id, n: i + 1, title: t.title, href: MT.hrefFor(t), tint: MT.tint(t.hue, dark),
+          meta: t.year + ' · ' + MT.TYPE_LABEL[t.type] + ' · ' + (film ? t.runtime : t.eps + ' episodes · ' + t.runtime),
+          watched: w, pressed: w ? 'true' : 'false',
+          titleColor: w ? 'var(--mt-muted)' : 'var(--color-text)',
+          ckBorder: w ? 'var(--color-text)' : 'var(--color-neutral-600)', ckBg: w ? 'var(--color-text)' : 'transparent',
+          checkLabel: (w ? 'Mark as not watched: ' : 'Mark as watched: ') + t.title,
+          onCheck: () => MT.setStatus(id, w ? 'plan' : 'completed'),
+        };
+      }),
+    };
+  }
+}
+</script>
+</body>
+</html>

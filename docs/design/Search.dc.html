@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/styles.css">
+<script src="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/_ds_bundle.js"></script>
+<script src="mitaroku-data.js"></script>
+</helmet>
+<main style="max-width:960px;margin:0 auto;padding:0 16px 48px;color:var(--color-text);font-family:var(--font-body)">
+  <div style="padding:22px 0 14px;display:grid;gap:12px">
+    <h1 style="margin:0;font-size:clamp(28px, 6vw, 40px)">Search and add</h1>
+    <form role="search" onSubmit="{{ onSubmit }}" style="position:relative;display:flex;max-width:640px">
+      <label for="mt-q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search shows, anime and movies</label>
+      <svg viewBox="0 0 24 24" aria-hidden="true" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;pointer-events:none"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+      <input id="mt-q" type="search" class="input" autocomplete="off" placeholder="Title, original title or genre" value="{{ q }}" onChange="{{ onQ }}" style="width:100%;min-height:52px;padding-left:44px;font-size:17px;border-width:2px">
+    </form>
+    <span style="font-size:13px;color:var(--mt-muted)">Results from TMDB (shows and movies) and MyAnimeList (anime).</span>
+  </div>
+
+  <sc-if value="{{ isIdle }}" hint-placeholder-val="{{ true }}">
+    <div style="border-top:2px solid var(--color-divider);padding-top:16px;display:grid;gap:10px">
+      <h2 style="margin:0;font-size:16px">Try</h2>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <sc-for list="{{ suggestions }}" as="s"><button type="button" onClick="{{ s.onClick }}" style="min-height:44px;padding:0 14px;border:1px solid var(--color-divider);background:transparent;color:var(--color-text);font-size:14px;font-weight:600;cursor:pointer" style-hover="border-color:var(--color-text)">{{ s.label }}</button></sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isTyping }}" hint-placeholder-val="{{ false }}">
+    <p style="margin:0;border-top:2px solid var(--color-divider);padding-top:16px;font-size:14px;color:var(--mt-muted)">Keep typing: at least 2 characters.</p>
+  </sc-if>
+
+  <sc-if value="{{ isLoading }}" hint-placeholder-val="{{ false }}">
+    <div aria-busy="true" aria-label="Searching" style="display:grid;gap:14px;border-top:2px solid var(--color-divider);padding-top:16px">
+      <span role="status" style="font-size:13px;color:var(--mt-muted)">Searching for “{{ q }}”…</span>
+      <sc-for list="{{ skel }}" as="k"><div style="display:grid;grid-template-columns:64px minmax(0, 1fr);gap:14px"><div style="aspect-ratio:2/3;background:color-mix(in srgb, var(--color-text) 9%, transparent)"></div><div style="display:grid;gap:8px;align-content:start;padding-top:4px"><div style="height:16px;width:50%;background:color-mix(in srgb, var(--color-text) 9%, transparent)"></div><div style="height:12px;width:30%;background:color-mix(in srgb, var(--color-text) 9%, transparent)"></div><div style="height:12px;width:85%;background:color-mix(in srgb, var(--color-text) 9%, transparent)"></div></div></div></sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isError }}" hint-placeholder-val="{{ false }}">
+    <div role="alert" style="display:grid;gap:10px;justify-items:start;padding:24px 0;border-top:2px solid var(--color-text)">
+      <svg viewBox="0 0 24 24" aria-hidden="true" style="width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4M12 17h.01"></path></svg>
+      <h2 style="margin:0;font-size:20px">TMDB didn’t respond</h2>
+      <p style="margin:0;font-size:14px;line-height:1.5;color:var(--mt-muted);max-width:52ch">The metadata provider is unavailable right now, so we can’t search. Titles already in your library still work.</p>
+      <button type="button" class="btn btn-secondary" onClick="{{ retry }}" style="min-height:44px">Try again</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isNone }}" hint-placeholder-val="{{ false }}">
+    <div style="display:grid;gap:10px;justify-items:start;padding:24px 0;border-top:2px solid var(--color-text)">
+      <h2 style="margin:0;font-size:20px">No results for “{{ q }}”</h2>
+      <ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.6;color:var(--mt-muted)">
+        <li>Check the spelling, or try the original title.</li>
+        <li>Search by genre or country, for example “mystery” or “Iceland”.</li>
+      </ul>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <sc-for list="{{ suggestions }}" as="s"><button type="button" onClick="{{ s.onClick }}" style="min-height:44px;padding:0 14px;border:1px solid var(--color-divider);background:transparent;color:var(--color-text);font-size:14px;font-weight:600;cursor:pointer" style-hover="border-color:var(--color-text)">{{ s.label }}</button></sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isResults }}" hint-placeholder-val="{{ false }}">
+    <p role="status" style="margin:0 0 4px;font-size:13px;color:var(--mt-muted)">{{ resultText }}</p>
+    <sc-for list="{{ groups }}" as="g">
+      <section aria-labelledby="{{ g.hid }}" style="border-top:2px solid var(--color-divider);padding:16px 0 8px">
+        <h2 id="{{ g.hid }}" style="font-size:20px;margin:0 0 6px">{{ g.title }}<span style="font-size:12px;font-weight:600;vertical-align:super;line-height:0;margin-left:3px;color:var(--mt-muted)">{{ g.count }}</span></h2>
+        <ul style="list-style:none;margin:0;padding:0">
+          <sc-for list="{{ g.items }}" as="r">
+            <li style="display:grid;grid-template-columns:{{ cols }};grid-template-areas:{{ areas }};gap:6px 14px;padding:12px 0;border-bottom:1px solid var(--color-divider)">
+              <a href="{{ r.href }}" aria-hidden="true" tabindex="-1" class="grayscale" style="grid-area:img;display:block;aspect-ratio:2/3;background-color:{{ r.tint }};background-image:repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-text) 10%, transparent) 0 1px, transparent 1px 8px);transition:filter .2s" style-hover="filter:none"></a>
+              <div style="grid-area:body;display:grid;gap:3px;min-width:0;line-height:1.35">
+                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px">
+                  <a href="{{ r.href }}" style="font-size:16px;font-weight:800;color:var(--color-text);overflow-wrap:break-word">{{ r.title }}</a>
+                  <dc-import name="Rating Badge" source="{{ r.src }}" value="{{ r.val }}" size="sm" hint-size="52px,22px"></dc-import>
+                </div>
+                <sc-if value="{{ r.hasOrig }}"><span style="font-size:13px;color:var(--mt-muted)">{{ r.orig }}</span></sc-if>
+                <span style="font-size:13px;color:var(--mt-muted)">{{ r.meta }}</span>
+                <p style="margin:2px 0 0;font-size:14px;line-height:1.45;max-width:60ch;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden">{{ r.desc }}</p>
+              </div>
+              <div style="grid-area:act;width:{{ actW }};align-self:start"><dc-import name="Status Picker" title-id="{{ r.id }}" align="right" hint-size="100%,44px"></dc-import></div>
+            </li>
+          </sc-for>
+        </ul>
+        <sc-if value="{{ g.hasMore }}"><button type="button" onClick="{{ g.onMore }}" style="margin-top:8px;min-height:44px;padding:0;background:none;border:0;color:var(--mt-link);font-size:14px;font-weight:600;cursor:pointer" style-hover="text-decoration:underline">{{ g.moreLabel }}</button></sc-if>
+      </section>
+    </sc-for>
+  </sc-if>
+</main>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;query&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;viewState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;live&quot;,&quot;loading&quot;,&quot;empty&quot;,&quot;error&quot;],&quot;default&quot;:&quot;live&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;vw&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:390,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  state = { q: this.props.query || '', phase: (this.props.query || '').trim().length >= 2 ? 'loading' : 'idle', more: {}, retry: null };
+  componentDidMount() {
+    this._u = window.MT ? MT.sub(() => this.forceUpdate()) : null;
+    if (this.state.phase === 'loading') this.kick();
+  }
+  componentWillUnmount() { this._u && this._u(); clearTimeout(this._d); clearTimeout(this._r); }
+  componentDidUpdate(pp) {
+    if (pp.query !== this.props.query && (this.props.query || '') !== this.state.q) this.setQ(this.props.query || '');
+    if (pp.viewState !== this.props.viewState && this.state.retry) this.setState({ retry: null });
+  }
+  kick() { clearTimeout(this._d); this._d = setTimeout(() => this.setState({ phase: 'done' }), 650); }
+  setQ(q) {
+    const len = q.trim().length;
+    this.setState({ q, more: {}, phase: len === 0 ? 'idle' : len < 2 ? 'typing' : 'loading' });
+    if (len >= 2) this.kick(); else clearTimeout(this._d);
+  }
+  retry() { this.setState({ retry: 'loading' }); clearTimeout(this._r); this._r = setTimeout(() => this.setState({ retry: 'live' }), 700); }
+  renderVals() {
+    const MT = window.MT;
+    const st = this.state;
+    const vw = this.props.vw || 390, wide = vw >= 600;
+    const dark = this.props.theme === 'dark';
+    const forced = st.retry || this.props.viewState || 'live';
+    let phase = st.phase;
+    if (forced === 'loading') phase = 'loading';
+    if (forced === 'error' && phase !== 'idle' && phase !== 'typing' && st.retry !== 'live') phase = 'error';
+    if (st.q.trim().toLowerCase() === 'error' && phase === 'done') phase = 'error';
+    const res = MT && phase === 'done' && forced !== 'empty' ? MT.search(st.q) : [];
+    if (phase === 'done' && !res.length) phase = 'none';
+    const G = [['series', 'Shows'], ['anime', 'Anime'], ['film', 'Movies']];
+    const groups = G.map(([tp, title]) => {
+      const all = res.filter(t => t.type === tp), lim = st.more[tp] ? all.length : 5;
+      return {
+        hid: 'sr-' + tp, title, count: all.length,
+        items: all.slice(0, lim).map(t => ({ id: t.id, title: t.title, orig: t.orig, hasOrig: !!t.orig, href: MT.hrefFor(t), tint: MT.tint(t.hue, dark), src: t.rating.source, val: t.rating.value, meta: t.year + ' · ' + MT.TYPE_LABEL[t.type] + ' · ' + t.country + ' · ' + t.genres.join(', '), desc: t.desc })),
+        hasMore: all.length > lim, moreLabel: 'Show all ' + all.length + ' ' + title.toLowerCase(),
+        onMore: () => this.setState(s => ({ more: Object.assign({}, s.more, { [tp]: true }) })),
+      };
+    }).filter(g => g.count);
+    const sug = ['relay', 'harbor', 'mystery', 'Iceland'];
+    return {
+      q: st.q, onQ: e => this.setQ(e.target.value),
+      onSubmit: e => { e.preventDefault(); if (st.q.trim().length >= 2) { this.setState({ phase: 'loading' }); this.kick(); } },
+      isIdle: phase === 'idle', isTyping: phase === 'typing', isLoading: phase === 'loading', isError: phase === 'error', isNone: phase === 'none', isResults: phase === 'done',
+      skel: [1, 2, 3], retry: () => { this.retry(); this.setState({ phase: 'loading' }); this.kick(); },
+      suggestions: sug.map(s => ({ label: s, onClick: () => this.setQ(s) })),
+      groups, resultText: res.length + (res.length === 1 ? ' result' : ' results') + ' for “' + st.q.trim() + '”',
+      cols: wide ? '64px minmax(0, 1fr) auto' : '64px minmax(0, 1fr)',
+      areas: wide ? '"img body act"' : '"img body" "img act"', actW: wide ? '150px' : 'min(100%, 180px)',
+    };
+  }
+}
+</script>
+</body>
+</html>

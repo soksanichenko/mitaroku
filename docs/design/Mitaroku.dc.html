@@ -10,6 +10,7 @@
 <helmet>
 <link rel="stylesheet" href="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/styles.css">
 <script src="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/_ds_bundle.js"></script>
+<script src="mitaroku-data.js"></script>
 <style>
 html{--mt-link:var(--color-text);--mt-muted:color-mix(in srgb,var(--color-text) 72%,transparent)}
 html:has([data-mt-links="blue"]){--mt-link:oklch(0.46 0.11 255)}
@@ -23,382 +24,90 @@ button:disabled{cursor:default!important}
 [data-mt-scroller]::-webkit-scrollbar{display:none}
 </style>
 </helmet>
-<div data-mt-theme="{{ theme }}" data-mt-links="{{ links }}" style="min-height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body)">
+<div data-mt-theme="{{ theme }}" data-mt-links="{{ links }}" style="min-height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);padding-bottom:{{ bottomPad }}">
 
 <header style="border-bottom:2px solid var(--color-divider)">
-  <div style="max-width:960px;margin:0 auto;padding:6px 16px;display:flex;align-items:center;gap:12px">
-    <div style="flex:none;display:flex;align-items:baseline;gap:8px;margin-right:auto;white-space:nowrap">
-      <span style="font-weight:800;font-size:18px;letter-spacing:-0.01em;white-space:nowrap">見た録</span>
-      <sc-if value="{{ showWordmark }}" hint-placeholder-val="{{ true }}"><span style="font-weight:600;font-size:13px;color:var(--mt-muted)">mitaroku</span></sc-if>
-    </div>
-    <nav aria-label="Library" style="display:flex;gap:2px;flex:none">
-      <sc-for list="{{ navScreens }}" as="n" hint-placeholder-count="3">
-        <button type="button" aria-current="{{ n.current }}" onClick="{{ n.onClick }}" style="min-height:44px;padding:0 10px;background:none;border:0;border-bottom:2px solid {{ n.line }};color:var(--color-text);font-size:14px;font-weight:{{ n.weight }};cursor:pointer;white-space:nowrap" style-hover="border-bottom-color:var(--color-text)">{{ n.label }}</button>
-      </sc-for>
-    </nav>
-    <button type="button" class="btn btn-icon btn-secondary" aria-label="{{ themeLabel }}" title="{{ themeLabel }}" onClick="{{ toggleTheme }}" style="flex:none">
+  <div style="max-width:960px;margin:0 auto;padding:6px 16px;display:flex;align-items:center;gap:8px">
+    <a href="#/library" aria-label="mitaroku, go to library" style="flex:none;min-height:44px;display:flex;align-items:center;gap:8px;margin-right:12px;white-space:nowrap;color:var(--color-text);text-decoration:none" style-hover="text-decoration:none;color:var(--color-text)">
+      <span style="font-weight:800;font-size:18px;letter-spacing:-0.01em">見た録</span>
+      <sc-if value="{{ wide }}" hint-placeholder-val="{{ false }}"><span style="font-weight:600;font-size:13px;color:var(--mt-muted)">mitaroku</span></sc-if>
+    </a>
+    <sc-if value="{{ wideNav }}" hint-placeholder-val="{{ false }}">
+      <nav aria-label="Main" style="display:flex;gap:2px;flex:none">
+        <sc-for list="{{ mainNav }}" as="n" hint-placeholder-count="2">
+          <a href="{{ n.href }}" aria-current="{{ n.current }}" style="min-height:44px;display:flex;align-items:center;padding:0 10px;border-bottom:2px solid {{ n.line }};color:var(--color-text);font-size:14px;font-weight:{{ n.weight }};white-space:nowrap;text-decoration:none" style-hover="border-bottom-color:var(--color-text);text-decoration:none;color:var(--color-text)">{{ n.label }}</a>
+        </sc-for>
+      </nav>
+      <form role="search" onSubmit="{{ onSearchSubmit }}" style="flex:1 1 auto;min-width:120px;max-width:360px;margin-left:auto;position:relative;display:flex">
+        <svg viewBox="0 0 24 24" aria-hidden="true" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;fill:none;stroke:var(--mt-muted);stroke-width:2.5;stroke-linecap:round;pointer-events:none"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+        <input type="search" class="input" aria-label="{{ t.searchLabel }}" placeholder="{{ t.searchPlaceholder }}" value="{{ draft }}" onChange="{{ onDraft }}" style="width:100%;min-height:40px;padding-left:34px;font-size:14px">
+      </form>
+      <a href="#/notifications" aria-label="{{ bellLabel }}" title="{{ bellLabel }}" aria-current="{{ bellCurrent }}" style="flex:none;position:relative;width:44px;height:44px;display:grid;place-items:center;color:var(--color-text)" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent);color:var(--color-text)">
+        <svg viewBox="0 0 24 24" aria-hidden="true" style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
+        <sc-if value="{{ hasUnread }}" hint-placeholder-val="{{ true }}"><span aria-hidden="true" style="position:absolute;top:4px;right:2px;min-width:18px;height:18px;padding:0 4px;display:grid;place-items:center;background:var(--color-accent-700);color:var(--color-neutral-100);font-size:11px;font-weight:800;line-height:1">{{ unread }}</span></sc-if>
+      </a>
+    </sc-if>
+    <sc-if value="{{ narrowNav }}" hint-placeholder-val="{{ true }}">
+      <span style="flex:1"></span>
+      <a href="#/search" aria-label="{{ t.search }}" title="{{ t.search }}" style="flex:none;width:44px;height:44px;display:grid;place-items:center;color:var(--color-text)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.25;stroke-linecap:round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg></a>
+    </sc-if>
+    <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ false }}"><span style="flex:1"></span></sc-if>
+    <button type="button" class="btn btn-icon btn-secondary" aria-label="{{ themeLabel }}" title="{{ themeLabel }}" onClick="{{ toggleTheme }}" style="flex:none;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;display:grid;place-items:center">
       <sc-if value="{{ isDark }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg></sc-if>
       <sc-if value="{{ isLight }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg></sc-if>
     </button>
+    <sc-if value="{{ wideNav }}" hint-placeholder-val="{{ false }}">
+      <div data-mt-user="1" style="position:relative;flex:none">
+        <button type="button" aria-haspopup="menu" aria-expanded="{{ userExpanded }}" aria-label="{{ t.account }}" title="{{ t.account }}" onClick="{{ toggleUser }}" style="height:44px;display:flex;align-items:center;gap:4px;padding:0 4px;background:none;border:0;color:var(--color-text);cursor:pointer" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent)">
+          <span aria-hidden="true" style="width:32px;height:32px;display:grid;place-items:center;background:var(--color-text);color:var(--color-bg);font-size:12px;font-weight:800">KM</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"><path d="m6 9 6 6 6-6"></path></svg>
+        </button>
+        <sc-if value="{{ userOpen }}" hint-placeholder-val="{{ false }}">
+          <div role="menu" aria-label="{{ t.account }}" style="position:absolute;right:0;top:calc(100% + 6px);z-index:60;width:240px;background:var(--color-bg);border:1px solid var(--color-text);box-shadow:var(--shadow-md);display:grid;padding:4px 0">
+            <div style="padding:10px 14px;display:grid;gap:2px;border-bottom:1px solid var(--color-divider)"><strong style="font-size:14px">Kira Mori</strong><span style="font-size:12px;color:var(--mt-muted);overflow-wrap:anywhere">kira.mori@home-portal.example</span></div>
+            <a href="#/settings" role="menuitem" onClick="{{ closeUser }}" style="min-height:44px;display:flex;align-items:center;padding:0 14px;font-size:14px;color:var(--color-text);text-decoration:none" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent);color:var(--color-text);text-decoration:none">{{ t.profileSettings }}</a>
+            <a href="#/import" role="menuitem" onClick="{{ closeUser }}" style="min-height:44px;display:flex;align-items:center;padding:0 14px;font-size:14px;color:var(--color-text);text-decoration:none" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent);color:var(--color-text);text-decoration:none">{{ t.importExport }}</a>
+            <div role="group" aria-label="{{ t.language }}" style="display:flex;align-items:center;gap:8px;padding:6px 14px;border-top:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider)">
+              <span style="flex:1;font-size:14px">{{ t.language }}</span>
+              <div style="display:flex;border:1px solid var(--color-divider)">
+                <sc-for list="{{ langs }}" as="l"><button type="button" role="menuitemradio" aria-checked="{{ l.checked }}" lang="{{ l.code }}" onClick="{{ l.onClick }}" style="min-width:44px;height:36px;padding:0 8px;border:0;background:{{ l.bg }};color:{{ l.fg }};font-size:13px;font-weight:700;cursor:pointer">{{ l.label }}</button></sc-for>
+              </div>
+            </div>
+            <a href="#/login" role="menuitem" onClick="{{ closeUser }}" style="min-height:44px;display:flex;align-items:center;gap:8px;padding:0 14px;font-size:14px;color:var(--color-text);text-decoration:none" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent);color:var(--color-text);text-decoration:none"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>{{ t.logout }}</a>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
   </div>
 </header>
 
-<main style="max-width:960px;margin:0 auto;padding:0 16px 48px">
-
-  <div style="padding:22px 0 14px;display:grid;gap:4px">
-    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px">
-      <h1 style="margin:0;font-size:clamp(28px, 6vw, 40px);text-wrap:balance">{{ page.title }}<sc-if value="{{ page.hasYear }}" hint-placeholder-val="{{ false }}"><span style="font-weight:400;color:var(--mt-muted)"> ({{ page.year }})</span></sc-if></h1>
-      <sc-if value="{{ page.hasStatus }}" hint-placeholder-val="{{ true }}"><span style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:3px 7px;background:color-mix(in srgb, var(--color-text) 9%, transparent);color:var(--mt-muted)">{{ page.status }}</span></sc-if>
-    </div>
-    <p lang="{{ page.lang }}" style="margin:0;font-size:15px;color:var(--mt-muted)">{{ page.original }}</p>
-  </div>
-
-  <nav aria-label="Page sections" style="position:sticky;top:0;z-index:20;background:var(--color-bg);border-bottom:2px solid var(--color-divider);margin:0 -16px;padding:6px 16px;display:flex;align-items:center;gap:6px">
-    <div style="position:relative;flex:1 1 auto;min-width:0">
-      <div data-mt-scroller="nav" onScroll="{{ onScrollerScroll }}" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;scroll-snap-type:x proximity;scroll-padding-left:3px;padding:3px {{ navPadR }} 3px 3px;margin-left:-3px">
-        <sc-for list="{{ navChips }}" as="c" hint-placeholder-count="4">
-          <button type="button" aria-current="{{ c.current }}" onClick="{{ c.onClick }}" style="flex:none;scroll-snap-align:start;min-height:36px;padding:6px {{ chipPad }};border:1px solid {{ c.border }};background:{{ c.bg }};color:{{ c.fg }};font-size:13px;font-weight:600;line-height:1.2;cursor:pointer;white-space:nowrap" style-hover="border-color:var(--color-text)">{{ c.label }}</button>
-        </sc-for>
-      </div>
-      <div aria-hidden="true" style="position:absolute;top:0;right:0;bottom:0;width:44px;pointer-events:none;background:linear-gradient(to right, color-mix(in srgb, var(--color-bg) 0%, transparent), var(--color-bg) 80%);opacity:{{ fade.nav }}"></div>
-    </div>
-    <div data-mt-more="1" style="position:relative;flex:none">
-      <button type="button" aria-label="More sections" title="More sections" aria-haspopup="menu" aria-expanded="{{ moreExpanded }}" onClick="{{ toggleMore }}" style="min-height:36px;padding:6px {{ morePad }};border:1px solid {{ more.border }};background:{{ more.bg }};color:{{ more.fg }};font-size:13px;font-weight:600;line-height:1.2;cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap" style-hover="border-color:var(--color-text)"><sc-if value="{{ moreText }}" hint-placeholder-val="{{ true }}"><span>More</span></sc-if><svg viewBox="0 0 24 24" aria-hidden="true" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"><path d="m6 9 6 6 6-6"></path></svg></button>
-      <sc-if value="{{ moreOpen }}" hint-placeholder-val="{{ false }}">
-        <div role="menu" style="position:absolute;right:0;top:calc(100% + 6px);min-width:180px;background:var(--color-bg);border:1px solid var(--color-text);box-shadow:var(--shadow-md);display:grid;padding:4px 0;z-index:30">
-          <sc-for list="{{ moreItems }}" as="m">
-            <button type="button" role="menuitem" onClick="{{ m.onClick }}" style="min-height:44px;padding:0 14px;background:none;border:0;text-align:left;font-size:14px;color:var(--color-text);cursor:pointer" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent)">{{ m.label }}</button>
-          </sc-for>
-        </div>
-      </sc-if>
-    </div>
-  </nav>
-
-  <div id="sec-top" style="padding-top:16px;display:grid;gap:16px 24px;align-items:start;grid-template-columns:{{ hero.cols }};grid-template-areas:{{ hero.areas }};grid-template-rows:{{ hero.rows }}">
-
-    <sc-if value="{{ isShow }}" hint-placeholder-val="{{ true }}">
-      <div style="grid-area:media;position:relative;aspect-ratio:16/9;max-height:280px;width:100%;overflow:hidden">
-        <div style="position:absolute;inset:0;background-color:{{ page.tint }};background-image:repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-text) 10%, transparent) 0 1px, transparent 1px 10px)"></div>
-        <span style="position:absolute;left:12px;bottom:12px;font:500 11px/1 ui-monospace, Menlo, monospace;color:var(--color-text)">backdrop · 16:9 · active item, in color</span>
-        <button type="button" aria-pressed="{{ bookmark.pressed }}" aria-label="{{ bookmark.label }}" title="{{ bookmark.label }}" onClick="{{ bookmark.onClick }}" style="position:absolute;top:10px;left:10px;width:44px;height:44px;display:grid;place-items:center;padding:0;background:var(--color-bg);border:1px solid var(--color-divider);color:var(--color-text);cursor:pointer" style-hover="border-color:var(--color-text)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:20px;height:20px;fill:{{ bookmark.fill }};stroke:currentColor;stroke-width:2;stroke-linejoin:round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg></button>
-        <button type="button" aria-expanded="{{ info.expanded }}" aria-label="Image info" title="Image info" onClick="{{ info.onClick }}" style="position:absolute;top:10px;right:10px;width:44px;height:44px;display:grid;place-items:center;padding:0;background:var(--color-bg);border:1px solid var(--color-divider);color:var(--color-text);cursor:pointer" style-hover="border-color:var(--color-text)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4M12 8h.01"></path></svg></button>
-        <sc-if value="{{ info.open }}" hint-placeholder-val="{{ false }}">
-          <div style="position:absolute;left:0;right:0;bottom:0;padding:10px 12px;background:var(--color-bg);border-top:2px solid var(--color-text);font-size:13px">{{ page.heroCaption }}</div>
-        </sc-if>
-      </div>
-    </sc-if>
-
-    <sc-if value="{{ isMovie }}" hint-placeholder-val="{{ false }}">
-      <div style="grid-area:media;position:relative;aspect-ratio:2/3;width:100%;overflow:hidden">
-        <div style="position:absolute;inset:0;background-color:{{ page.tint }};background-image:repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-text) 10%, transparent) 0 1px, transparent 1px 10px)"></div>
-        <span style="position:absolute;left:10px;bottom:10px;font:500 11px/1 ui-monospace, Menlo, monospace;color:var(--color-text)">poster · 2:3</span>
-        <button type="button" aria-pressed="{{ bookmark.pressed }}" aria-label="{{ bookmark.label }}" title="{{ bookmark.label }}" onClick="{{ bookmark.onClick }}" style="position:absolute;top:6px;left:6px;width:40px;height:40px;display:grid;place-items:center;padding:0;background:var(--color-bg);border:1px solid var(--color-divider);color:var(--color-text);cursor:pointer" style-hover="border-color:var(--color-text)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:{{ bookmark.fill }};stroke:currentColor;stroke-width:2;stroke-linejoin:round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg></button>
-        <button type="button" aria-expanded="{{ info.expanded }}" aria-label="Image info" title="Image info" onClick="{{ info.onClick }}" style="position:absolute;top:6px;right:6px;width:40px;height:40px;display:grid;place-items:center;padding:0;background:var(--color-bg);border:1px solid var(--color-divider);color:var(--color-text);cursor:pointer" style-hover="border-color:var(--color-text)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4M12 8h.01"></path></svg></button>
-        <sc-if value="{{ info.open }}" hint-placeholder-val="{{ false }}">
-          <div style="position:absolute;left:0;right:0;bottom:0;padding:8px 10px;background:var(--color-bg);border-top:2px solid var(--color-text);font-size:12px;line-height:1.35">{{ page.heroCaption }}</div>
-        </sc-if>
-      </div>
-    </sc-if>
-
-    <div style="grid-area:status;display:grid;gap:12px;min-width:0">
-      <div class="seg" role="radiogroup" aria-label="Watch status" style="display:flex;width:100%">
-        <sc-for list="{{ statusOpts }}" as="o" hint-placeholder-count="4">
-          <label class="seg-opt" title="{{ o.full }}" style="flex:1 1 auto;min-width:0;min-height:44px;padding:8px {{ segPad }};gap:6px;font-size:13px;line-height:1.2;white-space:nowrap;font-weight:{{ o.weight }};color:{{ o.color }};background:{{ o.bg }}" style-hover="background:{{ o.hoverBg }}">
-            <input type="radio" name="{{ o.name }}" aria-label="{{ o.full }}" checked="{{ o.checked }}" onChange="{{ o.onSelect }}">
-            <sc-if value="{{ o.showIcon }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="flex:none;width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round"><path d="M20 6 9 17l-5-5"></path></svg></sc-if>
-            <span>{{ o.label }}</span>
-          </label>
-        </sc-for>
-      </div>
-      <sc-if value="{{ watchedMeta.show }}" hint-placeholder-val="{{ false }}">
-        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px;font-size:14px">
-          <label style="display:flex;align-items:center;gap:8px"><span style="color:var(--mt-muted)">Watched on</span><input type="date" class="input" value="{{ watchedMeta.date }}" onChange="{{ watchedMeta.onDate }}" style="width:auto;min-height:40px"></label>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span id="mt-rewatch" style="color:var(--mt-muted)">Rewatches</span>
-            <div role="group" aria-labelledby="mt-rewatch" style="display:flex;align-items:center;border:1px solid var(--color-divider)">
-              <button type="button" aria-label="One fewer rewatch" disabled="{{ watchedMeta.minDisabled }}" onClick="{{ watchedMeta.dec }}" style="width:40px;height:40px;display:grid;place-items:center;padding:0;background:none;border:0;color:var(--color-text);cursor:pointer;opacity:{{ watchedMeta.minOpacity }}" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round"><path d="M5 12h14"></path></svg></button>
-              <output aria-live="polite" style="min-width:28px;font-weight:800;font-variant-numeric:tabular-nums;text-align:center">{{ watchedMeta.count }}</output>
-              <button type="button" aria-label="One more rewatch" onClick="{{ watchedMeta.inc }}" style="width:40px;height:40px;display:grid;place-items:center;padding:0;background:none;border:0;color:var(--color-text);cursor:pointer" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round"><path d="M5 12h14M12 5v14"></path></svg></button>
-            </div>
-          </div>
-        </div>
-      </sc-if>
-    </div>
-
-    <div style="grid-area:rating;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 16px;min-width:0">
-      <div style="display:grid;gap:0">
-        <span style="font-size:13px;font-weight:600;color:var(--mt-muted)"><span style="color:var(--color-text);font-weight:800">My rating</span> · {{ myRatingText }}</span>
-        <div role="group" aria-label="My rating" style="display:flex;margin-left:-6px">
-          <sc-for list="{{ myStars }}" as="s" hint-placeholder-count="5">
-            <button type="button" aria-label="{{ s.label }}" aria-pressed="{{ s.pressed }}" onClick="{{ s.onClick }}" style="width:36px;height:44px;display:grid;place-items:center;padding:0;background:none;border:0;color:{{ s.color }};cursor:pointer" style-hover="color:var(--color-text)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:24px;height:24px;fill:{{ s.fill }};stroke:currentColor;stroke-width:1.75;stroke-linejoin:round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></button>
-          </sc-for>
-        </div>
-      </div>
-      <div role="img" aria-label="{{ ext.label }}" title="{{ ext.label }}" style="display:flex;align-items:stretch;border:2px solid var(--color-text);margin-bottom:6px">
-        <span style="padding:4px 8px;font-weight:800;font-size:16px;line-height:1.15;font-variant-numeric:tabular-nums">{{ ext.value }}</span>
-        <span style="display:flex;align-items:center;padding:0 6px;background:var(--color-text);color:var(--color-bg);font-size:10px;font-weight:800;letter-spacing:0.04em">{{ ext.source }}</span>
-      </div>
-    </div>
-
-    <dl style="grid-area:facts;display:grid;grid-template-columns:{{ factsCols }};gap:8px 20px;margin:0;font-size:14px;line-height:1.4;border-top:1px solid var(--color-divider);padding-top:14px;min-width:0">
-      <sc-for list="{{ page.facts }}" as="f" hint-placeholder-count="6">
-        <div style="display:contents">
-          <dt style="color:var(--mt-muted);font-size:{{ dtSize }}">{{ f.k }}</dt>
-          <dd style="margin:0 0 {{ ddGap }};display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;min-width:0;overflow-wrap:anywhere">
-            <span><sc-for list="{{ f.v }}" as="p"><span style="display:{{ p.display }}"><sc-if value="{{ p.isLink }}"><a href="{{ p.href }}">{{ p.t }}</a></sc-if><sc-if value="{{ p.isText }}">{{ p.t }}</sc-if>{{ p.sep }}</span></sc-for></span>
-            <sc-if value="{{ f.today }}" hint-placeholder-val="{{ false }}"><span style="background:var(--color-accent-700);color:var(--color-neutral-100);font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;line-height:1.3">Today</span></sc-if>
-          </dd>
-        </div>
-      </sc-for>
-    </dl>
-  </div>
-
-  <section id="sec-desc" style="margin-top:24px;padding:24px 0;border-top:2px solid var(--color-divider);display:grid;gap:8px;justify-items:start">
-    <h2 style="font-size:22px;margin:0 0 4px">Description</h2>
-    <p style="margin:0;font-size:15px;line-height:1.6;max-width:68ch;text-wrap:pretty;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:{{ descClamp }};overflow:hidden">{{ page.description }}</p>
-    <sc-if value="{{ hasDescToggle }}" hint-placeholder-val="{{ false }}">
-      <button type="button" aria-expanded="{{ descExpanded }}" onClick="{{ toggleDesc }}" style="display:block;min-height:36px;padding:0;background:none;border:0;color:var(--mt-link);font-size:14px;font-weight:600;cursor:pointer" style-hover="text-decoration:underline">{{ descToggleLabel }}</button>
-    </sc-if>
-    <a href="#/report" style="display:flex;align-items:center;gap:6px;min-height:32px;font-size:13px;color:var(--mt-muted)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"></path></svg>Found an error? Report it</a>
-  </section>
-
-  <section id="sec-seealso" style="padding:24px 0;border-top:2px solid var(--color-divider)">
-    <h2 style="font-size:22px;margin:0 0 14px">See also</h2>
-    <ul style="list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:10px 24px">
-      <sc-for list="{{ page.seeAlso }}" as="l" hint-placeholder-count="6">
-        <li style="display:flex;gap:10px;align-items:baseline;font-size:14px;line-height:1.35;min-width:0"><span aria-hidden="true" style="flex:none;width:6px;height:6px;background:var(--color-text);transform:translateY(-2px)"></span><a href="{{ l.href }}">{{ l.t }}</a></li>
-      </sc-for>
-    </ul>
-  </section>
-
-  <section id="sec-cast" style="padding:24px 0;border-top:2px solid var(--color-divider)">
-    <h2 style="font-size:22px;margin:0 0 14px">{{ page.castHeading }}<span style="font-size:12px;font-weight:600;vertical-align:super;line-height:0;margin-left:3px;color:var(--mt-muted)">{{ page.castCount }}</span></h2>
-    <ul style="list-style:none;margin:0;padding:0;display:grid;grid-template-columns:{{ castCols }};gap:14px 16px">
-      <sc-for list="{{ page.cast }}" as="p" hint-placeholder-count="6">
-        <li style="display:flex;align-items:center;gap:{{ castGap }};min-width:0">
-          <span aria-hidden="true" style="flex:none;position:relative;width:{{ avatarSize }};height:{{ avatarSize }};display:grid;place-items:center;background:color-mix(in srgb, var(--color-text) 9%, transparent);font-size:15px;font-weight:800;color:var(--mt-muted);overflow:hidden">
-            <sc-if value="{{ p.photo }}"><span class="grayscale" style="position:absolute;inset:0;background-color:{{ p.tint }};background-image:repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-text) 14%, transparent) 0 1px, transparent 1px 6px);transition:filter .2s" style-hover="filter:none"></span></sc-if>
-            <sc-if value="{{ p.noPhoto }}">{{ p.initials }}</sc-if>
-          </span>
-          <span style="display:grid;min-width:0;line-height:1.3">
-            <a href="{{ p.href }}" style="font-size:{{ castNameSize }};font-weight:800;color:var(--color-text);overflow-wrap:break-word;hyphens:manual">{{ p.name }}</a>
-            <span style="font-size:13px;color:var(--mt-muted);overflow-wrap:break-word;hyphens:manual">{{ p.role }}</span>
-          </span>
-        </li>
-      </sc-for>
-    </ul>
-    <sc-if value="{{ page.castHasMore }}" hint-placeholder-val="{{ true }}">
-      <button type="button" aria-expanded="{{ castExpanded }}" onClick="{{ toggleCast }}" style="margin-top:14px;min-height:36px;padding:0;background:none;border:0;color:var(--mt-link);font-size:14px;font-weight:600;cursor:pointer" style-hover="text-decoration:underline">{{ castToggleLabel }}</button>
-    </sc-if>
-  </section>
-
-  <sc-if value="{{ isShow }}" hint-placeholder-val="{{ true }}">
-    <section id="sec-episodes" style="padding:24px 0;border-top:2px solid var(--color-divider)">
-      <div>
-        <div style="display:flex;align-items:center;gap:12px">
-          <h2 style="flex:1;min-width:0;font-size:22px;margin:0">Air dates and episode titles</h2>
-          <button type="button" aria-pressed="{{ ep.check.pressed }}" aria-label="{{ ep.check.label }}" title="{{ ep.check.label }}" onClick="{{ ep.check.onClick }}" style="flex:none;width:44px;height:44px;display:grid;place-items:center;padding:0;background:transparent;border:0;cursor:pointer;color:var(--color-bg)" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent)">
-            <span style="width:28px;height:28px;border-radius:50%;border:2px solid {{ ep.check.border }};background:{{ ep.check.bg }};display:grid;place-items:center">
-              <sc-if value="{{ ep.check.showCheck }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round"><path d="M20 6 9 17l-5-5"></path></svg></sc-if>
-            </span>
-          </button>
-        </div>
-
-        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:12px">
-          <sc-if value="{{ ep.cont.hasNext }}" hint-placeholder-val="{{ true }}">
-            <button type="button" class="btn btn-primary" onClick="{{ ep.cont.onClick }}" style="min-height:44px;max-width:100%;justify-content:flex-start;text-align:left;gap:8px;color:var(--color-neutral-100);background:var(--color-accent-700)" style-hover="background:var(--color-accent-800)" style-active="background:var(--color-accent-900)"><svg viewBox="0 0 24 24" aria-hidden="true" style="flex:none;width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round"><path d="M20 6 9 17l-5-5"></path></svg><span>{{ ep.cont.label }}</span></button>
-          </sc-if>
-          <sc-if value="{{ ep.cont.hasUpcoming }}" hint-placeholder-val="{{ false }}">
-            <span class="btn btn-secondary" aria-disabled="true" style="min-height:44px;cursor:default;font-weight:600">{{ ep.cont.upLabel }}</span>
-          </sc-if>
-          <sc-if value="{{ ep.cont.caughtUp }}" hint-placeholder-val="{{ false }}">
-            <span style="font-size:14px;font-weight:800">All caught up</span>
-          </sc-if>
-          <span style="font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--mt-muted)">{{ ep.watchedText }}</span>
-        </div>
-
-        <sc-if value="{{ ep.hint }}" hint-placeholder-val="{{ false }}">
-          <div role="status" style="display:flex;align-items:center;gap:12px;margin-top:12px;padding:8px 8px 8px 12px;border:1px solid var(--color-text);font-size:13px;line-height:1.4">
-            <span style="flex:1;min-width:0">Tip: to mark everything up to an episode, long-press its row, right-click it, or open its ⋯ menu.</span>
-            <button type="button" class="btn btn-secondary" onClick="{{ dismissHint }}" style="flex:none;min-height:36px">Got it</button>
-          </div>
-        </sc-if>
-
-        <sc-if value="{{ ep.showChipRow }}" hint-placeholder-val="{{ false }}">
-          <div style="position:relative;margin:14px -16px 2px -3px">
-          <div data-mt-scroller="franchise" onScroll="{{ onScrollerScroll }}" role="{{ ep.chipRole }}" aria-label="{{ ep.chipRowLabel }}" style="display:flex;gap:6px;overflow-x:auto;padding:3px 92px 3px 3px;scrollbar-width:none;scroll-snap-type:x proximity;scroll-padding-left:3px">
-            <sc-for list="{{ ep.chips }}" as="c">
-              <button type="button" role="{{ c.role }}" aria-selected="{{ c.selected }}" onClick="{{ c.onClick }}" style="flex:none;scroll-snap-align:start;min-height:36px;padding:6px 12px;border:1px solid {{ c.border }};background:{{ c.bg }};color:{{ c.fg }};font-size:13px;font-weight:600;line-height:1.2;cursor:pointer;white-space:nowrap;display:flex;align-items:baseline;gap:6px" style-hover="border-color:var(--color-text)">{{ c.label }}<span style="font-size:11px;font-weight:700;font-variant-numeric:tabular-nums">{{ c.count }}</span></button>
-            </sc-for>
-          </div>
-          <div aria-hidden="true" style="position:absolute;top:0;left:0;bottom:0;width:24px;pointer-events:none;background:linear-gradient(to left, color-mix(in srgb, var(--color-bg) 0%, transparent), var(--color-bg));opacity:{{ fade.franchiseL }}"></div>
-          <div aria-hidden="true" style="position:absolute;top:0;right:0;bottom:0;width:84px;pointer-events:none;display:flex;align-items:center;justify-content:flex-end;padding-right:12px;background:linear-gradient(to right, color-mix(in srgb, var(--color-bg) 0%, transparent), var(--color-bg) 55%);opacity:{{ fade.franchise }};visibility:{{ fade.franchiseVis }}">
-            <button type="button" tabindex="-1" onClick="{{ scrollFranchise }}" style="pointer-events:auto;width:32px;height:36px;display:grid;place-items:center;padding:0;background:var(--color-bg);border:1px solid var(--color-text);color:var(--color-text);cursor:pointer" style-hover="background:color-mix(in srgb, var(--color-text) 8%, var(--color-bg))"><svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"><path d="m9 18 6-6-6-6"></path></svg></button>
-          </div>
-          </div>
-        </sc-if>
-
-        <sc-for list="{{ ep.groups }}" as="g" hint-placeholder-count="2">
-          <div id="grp-{{ g.id }}" style="border-top:1px solid var(--color-divider);margin-top:10px">
-            <sc-if value="{{ g.multi }}" hint-placeholder-val="{{ true }}">
-              <div style="display:flex;align-items:center;gap:8px;padding-top:2px">
-                <button type="button" aria-expanded="{{ g.expanded }}" onClick="{{ g.onCollapse }}" style="flex:1;min-width:0;min-height:44px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:0;background:none;border:0;text-align:left;color:inherit;cursor:{{ g.cursor }}">
-                  <span style="font-size:17px;font-weight:800;color:var(--mt-link);white-space:nowrap">{{ g.title }}</span>
-                  <sc-if value="{{ g.showTag }}" hint-placeholder-val="{{ false }}"><span style="font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:1px 5px;border:1px solid var(--color-divider);color:var(--mt-muted)">{{ g.tag }}</span></sc-if>
-                  <span style="font-size:13px;font-weight:800;font-variant-numeric:tabular-nums">{{ g.progressText }}</span>
-                  <span style="font-size:13px;color:var(--mt-muted)">{{ g.sub }}</span>
-                  <sc-if value="{{ g.showChevron }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;transform:{{ g.chevron }}"><path d="m6 9 6 6 6-6"></path></svg></sc-if>
-                </button>
-                <button type="button" aria-pressed="{{ g.check.pressed }}" aria-label="{{ g.check.label }}" title="{{ g.check.label }}" onClick="{{ g.check.onClick }}" style="flex:none;width:44px;height:44px;display:grid;place-items:center;padding:0;background:transparent;border:0;cursor:pointer;color:var(--color-bg)" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent)">
-                  <span style="width:26px;height:26px;border-radius:50%;border:2px solid {{ g.check.border }};background:{{ g.check.bg }};display:grid;place-items:center">
-                    <sc-if value="{{ g.check.showCheck }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round"><path d="M20 6 9 17l-5-5"></path></svg></sc-if>
-                  </span>
-                </button>
-              </div>
-              <div role="progressbar" aria-label="{{ g.title }} progress" aria-valuemin="0" aria-valuemax="{{ g.total }}" aria-valuenow="{{ g.watched }}" style="height:3px;margin:0 52px 8px 0;background:color-mix(in srgb, var(--color-text) 14%, transparent)"><div style="height:100%;width:{{ g.pct }};background:var(--color-text)"></div></div>
-            </sc-if>
-            <div role="list">
-              <sc-for list="{{ g.eps }}" as="row" hint-placeholder-count="4">
-                <div role="listitem" onPointerDown="{{ row.onDown }}" onPointerUp="{{ row.onUp }}" onPointerLeave="{{ row.onUp }}" onContextMenu="{{ row.onContext }}" style="position:relative;display:grid;grid-template-columns:{{ row.cols }};align-items:center;column-gap:{{ row.colGap }};min-height:44px;padding-left:6px;background:{{ row.bg }}">
-                  <span style="display:flex;flex-direction:{{ row.numDir }};align-items:baseline;gap:0 4px;font-size:13px;font-weight:600;line-height:1.2;font-variant-numeric:tabular-nums;color:var(--mt-muted);white-space:nowrap"><span>{{ row.num }}</span><sc-if value="{{ row.hasNum2 }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px">{{ row.num2 }}</span></sc-if></span>
-                  <div style="display:{{ row.mainDisplay }};grid-template-columns:minmax(0, 1fr);row-gap:2px;padding:8px 0;min-width:0">
-                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;min-width:0;padding:{{ row.titlePad }}">
-                      <sc-if value="{{ row.showTag }}" hint-placeholder-val="{{ false }}"><span style="font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:1px 5px;border:1px solid var(--color-divider);color:var(--mt-muted)">{{ row.tag }}</span></sc-if>
-                      <a href="{{ row.href }}" style="min-width:0;font-size:{{ row.titleSize }};font-weight:{{ row.titleWeight }};line-height:1.35;color:{{ row.titleColor }};overflow-wrap:anywhere">{{ row.t }}</a>
-                      <sc-if value="{{ row.todayInTitle }}" hint-placeholder-val="{{ false }}"><span style="flex:none;background:var(--color-accent-700);color:var(--color-neutral-100);font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;line-height:1.3">Today</span></sc-if>
-                      <sc-if value="{{ row.relInTitle }}" hint-placeholder-val="{{ false }}"><span style="flex:none;font-size:12px;font-style:italic;color:var(--mt-muted);white-space:nowrap">{{ row.relText }}</span></sc-if>
-                    </div>
-                    <div style="display:{{ row.metaDisplay }};flex-wrap:wrap;align-items:center;gap:2px 10px;min-width:0">
-                      <span style="flex:none;min-width:84px;font-size:12px;font-variant-numeric:tabular-nums;color:var(--mt-muted);font-style:{{ row.dateStyle }}">{{ row.dateText }}</span>
-                      <span role="group" aria-label="Rate {{ row.code }}" style="display:flex;flex:none">
-                        <sc-for list="{{ row.stars }}" as="st">
-                          <button type="button" aria-label="{{ st.label }}" aria-pressed="{{ st.pressed }}" disabled="{{ row.future }}" onClick="{{ st.onClick }}" style="width:19px;height:28px;display:grid;place-items:center;padding:0;background:none;border:0;color:{{ st.color }};cursor:pointer;opacity:{{ row.starOpacity }}" style-hover="color:var(--color-text)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:14px;height:14px;fill:{{ st.fill }};stroke:currentColor;stroke-width:2;stroke-linejoin:round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></button>
-                        </sc-for>
-                      </span>
-                      <span style="display:flex;align-items:center;gap:8px;min-width:0"><sc-if value="{{ row.todayInMeta }}" hint-placeholder-val="{{ false }}"><span style="background:var(--color-accent-700);color:var(--color-neutral-100);font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;line-height:1.3">Today</span></sc-if>
-                      <sc-if value="{{ row.relInMeta }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;font-style:italic;color:var(--mt-muted);white-space:nowrap">{{ row.relText }}</span></sc-if></span>
-                    </div>
-                  </div>
-                  <button type="button" data-mt-menu="1" aria-label="More actions for {{ row.code }}" aria-haspopup="menu" aria-expanded="{{ row.menuExpanded }}" onClick="{{ row.onMenu }}" style="width:36px;height:44px;display:grid;place-items:center;padding:0;background:none;border:0;color:var(--mt-muted);cursor:pointer" style-hover="color:var(--color-text);background:color-mix(in srgb, var(--color-text) 7%, transparent)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:currentColor"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg></button>
-                  <button type="button" aria-pressed="{{ row.check.pressed }}" aria-label="{{ row.check.label }}" title="{{ row.check.label }}" disabled="{{ row.future }}" onClick="{{ row.check.onClick }}" style="width:44px;height:44px;display:grid;place-items:center;padding:0;background:transparent;border:0;cursor:pointer;color:var(--color-bg);opacity:{{ row.checkOpacity }}" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent)">
-                    <span style="width:24px;height:24px;border-radius:50%;border:2px solid {{ row.check.border }};background:{{ row.check.bg }};display:grid;place-items:center">
-                      <sc-if value="{{ row.check.showCheck }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round"><path d="M20 6 9 17l-5-5"></path></svg></sc-if>
-                    </span>
-                  </button>
-                  <sc-if value="{{ row.menuOpen }}" hint-placeholder-val="{{ false }}">
-                    <div data-mt-menu="1" role="menu" style="position:absolute;right:40px;top:calc(100% - 4px);z-index:15;min-width:210px;background:var(--color-bg);border:1px solid var(--color-text);box-shadow:var(--shadow-md);display:grid;padding:4px 0">
-                      <button type="button" role="menuitem" disabled="{{ row.future }}" onClick="{{ row.onUpTo }}" style="min-height:44px;padding:0 14px;background:none;border:0;text-align:left;font-size:14px;color:var(--color-text);cursor:pointer;opacity:{{ row.checkOpacity }}" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent)">Mark all up to here</button>
-                      <button type="button" role="menuitem" disabled="{{ row.future }}" onClick="{{ row.check.onClick }}" style="min-height:44px;padding:0 14px;background:none;border:0;text-align:left;font-size:14px;color:var(--color-text);cursor:pointer;opacity:{{ row.checkOpacity }}" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent)">{{ row.toggleLabel }}</button>
-                    </div>
-                  </sc-if>
-                </div>
-              </sc-for>
-            </div>
-          </div>
-        </sc-for>
-      </div>
-    </section>
-  </sc-if>
-
-  <sc-if value="{{ isMovie }}" hint-placeholder-val="{{ false }}">
-    <section id="sec-trailers" style="padding:24px 0;border-top:2px solid var(--color-divider)">
-      <h2 style="font-size:22px;margin:0 0 14px">Trailers<span style="font-size:12px;font-weight:600;vertical-align:super;line-height:0;margin-left:3px;color:var(--mt-muted)">{{ trailerCount }}</span></h2>
-      <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
-        <figure style="flex:3 1 420px;min-width:0;margin:0">
-          <div style="position:relative;aspect-ratio:16/9;overflow:hidden">
-            <div style="position:absolute;inset:0;background-color:{{ trailer.tint }};background-image:repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-text) 10%, transparent) 0 1px, transparent 1px 10px)"></div>
-            <span style="position:absolute;right:12px;top:12px;font:500 11px/1 ui-monospace, Menlo, monospace;color:var(--color-text)">video embed · 16:9</span>
-            <sc-if value="{{ notPlaying }}" hint-placeholder-val="{{ true }}">
-              <button type="button" aria-label="Play {{ trailer.title }}" onClick="{{ playTrailer }}" style="position:absolute;left:16px;bottom:16px;height:56px;padding:0 18px 0 14px;display:flex;align-items:center;gap:10px;background:var(--color-text);color:var(--color-bg);border:0;font-size:14px;font-weight:800;cursor:pointer" style-hover="background:var(--color-neutral-800);color:var(--color-neutral-100)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:22px;height:22px;fill:currentColor"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>Play · {{ trailer.dur }}</button>
-            </sc-if>
-            <sc-if value="{{ playing }}" hint-placeholder-val="{{ false }}">
-              <div style="position:absolute;left:0;right:0;bottom:0;padding:12px 16px;background:var(--color-bg);border-top:2px solid var(--color-text);font-size:13px;display:flex;justify-content:space-between;gap:12px">Embedded player loads here<button type="button" onClick="{{ stopTrailer }}" style="background:none;border:0;padding:0;color:var(--mt-link);font-weight:600;font-size:13px;cursor:pointer">Stop</button></div>
-            </sc-if>
-          </div>
-          <figcaption style="display:flex;justify-content:space-between;gap:12px;margin-top:8px;font-size:14px;color:var(--color-text)"><span style="font-weight:800">{{ trailer.title }}</span><span style="color:var(--mt-muted);font-variant-numeric:tabular-nums">{{ trailer.dur }}</span></figcaption>
-        </figure>
-        <ul style="flex:1 1 220px;list-style:none;margin:0;padding:0;display:grid;border-top:1px solid var(--color-divider)">
-          <sc-for list="{{ trailerList }}" as="t" hint-placeholder-count="3">
-            <li style="border-bottom:1px solid var(--color-divider)">
-              <button type="button" aria-current="{{ t.current }}" onClick="{{ t.onClick }}" style="width:100%;display:flex;align-items:center;gap:12px;padding:8px 6px 8px 0;background:{{ t.bg }};border:0;text-align:left;color:var(--color-text);cursor:pointer" style-hover="background:color-mix(in srgb, var(--color-text) 6%, transparent)">
-                <span class="{{ t.imgClass }}" aria-hidden="true" style="flex:none;position:relative;width:96px;aspect-ratio:16/9;background-color:{{ t.tint }};background-image:repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-text) 12%, transparent) 0 1px, transparent 1px 7px);display:grid;place-items:center;transition:filter .2s" style-hover="filter:none"><svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:var(--color-text)"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg></span>
-                <span style="display:grid;line-height:1.3;min-width:0"><span style="font-size:14px;font-weight:{{ t.weight }}">{{ t.title }}</span><span style="font-size:12px;color:var(--mt-muted);font-variant-numeric:tabular-nums">{{ t.meta }}</span></span>
-              </button>
-            </li>
-          </sc-for>
-        </ul>
-      </div>
-    </section>
-  </sc-if>
-
-  <section id="sec-collections" style="padding:24px 0;border-top:2px solid var(--color-divider)">
-    <h2 style="font-size:22px;margin:0 0 18px">Collections<span style="font-size:12px;font-weight:600;vertical-align:super;line-height:0;margin-left:3px;color:var(--mt-muted)">{{ page.collectionCount }}</span></h2>
-    <ul style="list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:28px">
-      <sc-for list="{{ page.collections }}" as="c" hint-placeholder-count="3">
-        <li style="display:grid;gap:10px;align-content:start;min-width:0">
-          <a href="{{ c.href }}" aria-label="{{ c.title }}" style="position:relative;display:block;aspect-ratio:16/10;margin:12px 12px 0 0;border:1px solid var(--color-divider);background:var(--color-bg);box-shadow:6px -6px 0 -1px var(--color-bg), 6px -6px 0 0 var(--color-divider), 12px -12px 0 -1px var(--color-bg), 12px -12px 0 0 var(--color-divider)">
-            <span class="grayscale" style="position:absolute;inset:0;background-color:{{ c.tint }};background-image:repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-text) 10%, transparent) 0 1px, transparent 1px 10px);transition:filter .2s" style-hover="filter:none"></span>
-            <span style="position:absolute;left:0;bottom:0;padding:5px 8px;background:var(--color-text);color:var(--color-bg);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums">{{ c.counts }}</span>
-          </a>
-          <div style="display:grid;gap:2px">
-            <a href="{{ c.href }}" style="font-size:16px;font-weight:800;color:var(--color-text)">{{ c.title }}</a>
-            <p style="margin:0;font-size:13px;line-height:1.45;color:var(--mt-muted)">{{ c.desc }}</p>
-          </div>
-        </li>
-      </sc-for>
-    </ul>
-  </section>
-
-  <section id="sec-similar" style="padding:24px 0;border-top:2px solid var(--color-divider)">
-    <h2 style="font-size:22px;margin:0 0 14px">Similar<span style="font-size:12px;font-weight:600;vertical-align:super;line-height:0;margin-left:3px;color:var(--mt-muted)">{{ page.similarCount }}</span></h2>
-    <ul style="list-style:none;margin:0 -16px;padding:0 16px 8px;display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding:0 16px">
-      <sc-for list="{{ page.similar }}" as="s" hint-placeholder-count="5">
-        <li style="flex:none;width:138px;scroll-snap-align:start;display:grid;gap:6px;align-content:start">
-          <a href="{{ s.href }}" aria-label="{{ s.title }}" class="grayscale" style="position:relative;display:block;aspect-ratio:2/3;overflow:hidden;transition:filter .2s" style-hover="filter:none" style-focus="filter:none">
-            <span style="position:absolute;inset:0;background-color:{{ s.tint }};background-image:repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-text) 10%, transparent) 0 1px, transparent 1px 9px)"></span>
-            <span style="position:absolute;left:0;top:0;display:flex;align-items:center;gap:3px;padding:4px 6px;background:var(--color-text);color:var(--color-bg);font-size:12px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:11px;height:11px;fill:currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>{{ s.rating }}</span>
-            <span style="position:absolute;left:6px;bottom:6px;font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 5px;background:var(--color-bg);color:var(--color-text)">{{ s.status }}</span>
-          </a>
-          <div style="display:grid;line-height:1.3">
-            <a href="{{ s.href }}" style="font-size:14px;font-weight:800;color:var(--color-text)">{{ s.title }}</a>
-            <span style="font-size:12px;color:var(--mt-muted)">{{ s.orig }}</span>
-          </div>
-        </li>
-      </sc-for>
-    </ul>
-  </section>
-
-  <sc-if value="{{ isMovie }}" hint-placeholder-val="{{ false }}">
-    <footer style="padding:24px 0 0;border-top:2px solid var(--color-divider);display:grid;gap:12px">
-      <sc-if value="{{ note.showButton }}" hint-placeholder-val="{{ true }}">
-        <button type="button" class="btn btn-secondary" onClick="{{ note.open }}" style="justify-self:start;min-height:44px;gap:8px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 20h9"></path><path d="M16.38 3.62a1 1 0 0 1 3 3L7.37 18.64a2 2 0 0 1-.86.5l-2.87.84a.5.5 0 0 1-.62-.62l.84-2.87a2 2 0 0 1 .5-.86z"></path></svg>{{ note.buttonLabel }}</button>
-      </sc-if>
-      <sc-if value="{{ note.hasNote }}" hint-placeholder-val="{{ false }}">
-        <div style="display:grid;gap:4px;max-width:68ch">
-          <span style="font-size:12px;font-weight:600;color:var(--mt-muted)">My note · private</span>
-          <p style="margin:0;font-size:15px;white-space:pre-wrap">{{ note.text }}</p>
-        </div>
-      </sc-if>
-      <sc-if value="{{ note.editing }}" hint-placeholder-val="{{ false }}">
-        <div class="field" style="display:grid;gap:8px;max-width:68ch">
-          <label for="mt-note">Private note — only you can see this</label>
-          <textarea id="mt-note" class="input" value="{{ note.draft }}" onChange="{{ note.onDraft }}" placeholder="What stayed with you?"></textarea>
-          <div style="display:flex;gap:8px">
-            <button type="button" class="btn btn-primary" onClick="{{ note.save }}" style="min-height:40px;color:var(--color-neutral-100);background:var(--color-accent-700)" style-hover="background:var(--color-accent-800)" style-active="background:var(--color-accent-900)">Save note</button>
-            <button type="button" class="btn btn-secondary" onClick="{{ note.cancel }}" style="min-height:40px">Cancel</button>
-          </div>
-        </div>
-      </sc-if>
-    </footer>
-  </sc-if>
-
-</main>
+<sc-if value="{{ r.library }}" hint-placeholder-val="{{ true }}"><dc-import name="Library" theme="{{ theme }}" vw="{{ vw }}" view-state="{{ demo }}" hint-size="100%,1200px"></dc-import></sc-if>
+<sc-if value="{{ r.upcoming }}" hint-placeholder-val="{{ false }}"><dc-import name="Upcoming" theme="{{ theme }}" view-state="{{ demo }}" hint-size="100%,900px"></dc-import></sc-if>
+<sc-if value="{{ r.search }}" hint-placeholder-val="{{ false }}"><dc-import name="Search" theme="{{ theme }}" vw="{{ vw }}" query="{{ query }}" view-state="{{ demo }}" hint-size="100%,700px"></dc-import></sc-if>
+<sc-if value="{{ r.notifications }}" hint-placeholder-val="{{ false }}"><dc-import name="Notifications" view-state="{{ demo }}" hint-size="100%,900px"></dc-import></sc-if>
+<sc-if value="{{ r.settings }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings" vw="{{ vw }}" role="{{ role }}" telegram-state="{{ tgState }}" tg-simulate="{{ tgSimulate }}" view-state="{{ demo }}" hint-size="100%,1200px"></dc-import></sc-if>
+<sc-if value="{{ r.importExport }}" hint-placeholder-val="{{ false }}"><dc-import name="Import Export" mode="{{ ieMode }}" theme="{{ theme }}" vw="{{ vw }}" view-state="{{ demo }}" hint-size="100%,1100px"></dc-import></sc-if>
+<sc-if value="{{ r.login }}" hint-placeholder-val="{{ false }}"><dc-import name="Login" view-state="{{ demo }}" hint-size="100%,560px"></dc-import></sc-if>
+<sc-if value="{{ r.title }}" hint-placeholder-val="{{ false }}"><dc-import name="Title Page" screen="{{ titleScreen }}" theme="{{ theme }}" season-layout="{{ seasonLayout }}" numbering="{{ numbering }}" link-color="{{ links }}" hint-size="100%,2400px"></dc-import></sc-if>
+<sc-if value="{{ r.browse }}" hint-placeholder-val="{{ false }}"><dc-import name="Browse" params="{{ params }}" theme="{{ theme }}" vw="{{ vw }}" view-state="{{ demo }}" hint-size="100%,1400px"></dc-import></sc-if>
+<sc-if value="{{ r.collection }}" hint-placeholder-val="{{ false }}"><dc-import name="Collection" collection-id="{{ routeId }}" theme="{{ theme }}" vw="{{ vw }}" view-state="{{ demo }}" hint-size="100%,900px"></dc-import></sc-if>
 
 <aside aria-label="Design notes" style="max-width:960px;margin:0 auto;padding:0 16px 56px">
   <details open="{{ true }}" style="border:1px dashed var(--color-divider);padding:0 16px">
     <summary style="min-height:44px;display:flex;align-items:center;cursor:pointer;font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase">Design notes (not part of the UI)</summary>
     <div style="display:grid;gap:14px;padding:4px 0 18px;font-size:14px;line-height:1.5;max-width:72ch">
-      <div><strong>Red accent.</strong> Only for user actions and state: the active watch status, the Continue button, Save, the TODAY tag and focus rings. Every red surface that carries text uses the deep step <code>--color-accent-700</code> (#AE1800) with light text <code>--color-neutral-100</code> (#F8F4F4), in both themes: <strong>6.6:1</strong>, against the 4.5:1 target for text under 24 px. Hover and pressed states go one step deeper (accent-800 #7C1405 at 9.9:1, accent-900 at about 14:1). The brighter accent (#EC3013 light, #FF563C dark) is kept only for text-free signals such as the focus ring; it measured 3.85:1 and 2.89:1 with light text. In the dark theme the active segment also gets a bold label and a check icon (from 480 px), so the filled state does not rely on color alone. External ratings are neutral ink blocks that name their source (IMDb for shows and films, MAL for anime). Bullets, the nav underline and rating badges are ink.</div>
+      <div><strong>Navigation.</strong> From 720 px the header holds the logo, Library, Upcoming, the search field, the notifications bell with its unread counter, the theme toggle and the user menu (Profile &amp; settings, Import / export, EN / RU, Log out). Below 720 px the header shrinks to the logo, a search icon and the theme toggle, and a fixed 56 px bottom tab bar holds Library, Upcoming, Search, Notifications and Profile. Pages get 72 px of bottom padding so the bar never covers content. Detail, Browse and Collection pages count as Library in the navigation.</div>
+      <div><strong>Screens and routes.</strong> Each screen is its own component under one shell, and the address is the state: <code>#/library</code>, <code>#/upcoming</code>, <code>#/search?q=</code>, <code>#/notifications</code>, <code>#/settings</code>, <code>#/import</code>, <code>#/export</code>, <code>#/login</code>, <code>#/title/show|anime|movie</code>, <code>#/browse?type=&amp;genre=&amp;country=&amp;year=</code> and <code>#/collection/&lt;id&gt;</code>. Each maps one-to-one to a Django view, with HTMX swaps for filters, Load more and status changes.</div>
+      <div><strong>Loading, empty and error.</strong> Every screen has all three. Preview them with Tweaks → Demo state; “Try again” goes from error to loading to the live view. Search also has a typing hint (one character), no results (try “zzz”) and a provider error (search for “error”). Skeletons copy the final layout so nothing jumps when content arrives.</div>
+      <div><strong>Shared components.</strong> Rating badge (source + value, tooltip “TMDB user score, out of 10”, accessible name; MAL on anime). Status picker: an ink chip with the current status, or an outlined “Add”; both open the same menu (Watching, Plan to watch, Completed, Dropped, Remove), with 44 px rows. Poster card: poster, rating badge, airing chip, title, year and the status picker; the Library variant adds the 3 px progress bar and the next air date. Round check: the same three-state control as the episode list.</div>
+      <div><strong>Browse and Collections.</strong> Every “See also” link opens Browse with its filters already in the address, and the page title is generated from those filters (“Drama series of 2025”). Removing a chip or adding a filter rewrites the address, so Back and shared links work. Collection cards open the collection page; the counts on the cards come from the collection’s own titles, so the card and the page always agree.</div>
+      <div><strong>Red on text surfaces.</strong> The bell counter, unread dot, TODAY tags, field errors and primary buttons (Continue, Search, Start import, Download, Sign in, Mark all as watched) all use accent-700 with light text: 6.6:1. Statuses everywhere else are ink chips, so red stays reserved for actions and new or urgent state.</div>
+      <div><strong>44 px touch targets.</strong> Every control is at least 44 × 44 px: the header theme toggle, bell and avatar, the detail-page section tabs (Description, Cast, Episodes, Similar, More), franchise and filter chips, status pickers, check buttons and bottom tabs. Icons stay at 18–22 px inside the larger hit area, so the header is still 56 px tall. On Library and Browse cards, the poster and the title block form one link, and the title block is at least 44 px tall.</div>
+      <div><strong>Telegram states.</strong> Not connected (Connect Telegram) → Waiting (one-time link to the bot, 10-minute countdown, Cancel) → Connected (“Connected as @kira_mori”, Disconnect with a confirmation step). Blocked: if the user blocks the bot, the block shows “Telegram notifications are off: the bot was blocked” with Reconnect, which starts a new one-time link. Preview each state with Tweaks → Telegram state; while Waiting, the Tweaks control “Simulate Start in Telegram” stands in for the bot callback and moves the block to Connected.</div>
+      <div><strong>Languages.</strong> The EN / RU switch in the user menu and the Interface language setting share one value. In this prototype it translates the global navigation; screen copy is English placeholder. Metadata language is a separate setting and controls titles and descriptions from TMDB and MyAnimeList.</div>
+      <div><strong>Prototype data.</strong> All screens read one in-memory store, so a status set in Search, Browse or a collection shows up in Library and Upcoming straight away. The demo date is Oct 8, 2026. Titles without their own placeholder page open the nearest of the three detail pages (show, anime or movie). The store resets on reload.</div>
+      <div style="border-top:1px solid var(--color-divider);padding-top:12px"><strong>Detail pages</strong></div>
+      <div><strong>Red accent.</strong> Only for user actions and state: the active watch status, the Continue button, Save, the TODAY tag and focus rings. Every red surface that carries text uses the deep step <code>--color-accent-700</code> (#AE1800) with light text <code>--color-neutral-100</code> (#F8F4F4), in both themes: <strong>6.6:1</strong>, against the 4.5:1 target for text under 24 px. Hover and pressed states go one step deeper (accent-800 #7C1405 at 9.9:1, accent-900 at about 14:1). The brighter accent (#EC3013 light, #FF563C dark) is kept only for text-free signals such as the focus ring; it measured 3.85:1 and 2.89:1 with light text. In the dark theme the active segment also gets a bold label and a check icon (from 480 px), so the filled state does not rely on color alone. External ratings are neutral ink blocks that name their source (TMDB user score for shows and films, MAL for anime). Each title carries one field, a source name plus a value, so another source such as IMDb can be added later without changing the layout. The badge has a tooltip (“TMDB user score, out of 10”) and an accessible name. Bullets, the nav underline and rating badges are ink.</div>
       <div><strong>Imagery.</strong> Grayscale by default (the system’s <code>.grayscale</code> filter). An image switches to color (1) on hover or keyboard focus, and (2) when it is the active item: this page’s own backdrop or poster, and the selected trailer. Lists (Similar, Collections, trailer thumbnails, cast photos) stay grayscale until hovered or focused. Placeholders are tinted so you can see the switch.</div>
       <div><strong>Secondary text.</strong> Ink at 72% opacity, applied to labels, dates, hints and counters: about 6:1 on the light ground. The dark theme keeps the same targets: secondary text about 8:1, body text about 15:1 and blue links about 9:1 on the dark ground. Watched episode titles switch from blue to muted ink at full opacity; they are never faded.</div>
       <div><strong>Breakpoints.</strong> Below 480 px: no wordmark, short status labels, no check icon in the status control, and movie facts stacked. From 600 px: each episode row is one grid (number, title, date, stars, menu, check) across the full content width. The title column is capped at 420 px so the date and stars stay close to it. From 720 px: two-column hero (image left; status, rating and facts right; poster at most 240 px). Cast shows 2, 3 or 4 columns below 600 px, from 600 px and from 840 px.</div>
@@ -407,443 +116,110 @@ button:disabled{cursor:default!important}
   </details>
 </aside>
 
+<sc-if value="{{ showBottom }}" hint-placeholder-val="{{ true }}">
+  <nav aria-label="Main" style="position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--color-bg);border-top:2px solid var(--color-divider);display:grid;grid-template-columns:repeat(5, minmax(0, 1fr));padding-bottom:env(safe-area-inset-bottom)">
+    <sc-for list="{{ tabs }}" as="b" hint-placeholder-count="5">
+      <a href="{{ b.href }}" aria-current="{{ b.current }}" aria-label="{{ b.aria }}" style="position:relative;min-height:56px;display:grid;justify-items:center;align-content:center;gap:3px;padding:4px 2px;margin-top:-2px;border-top:2px solid {{ b.line }};color:var(--color-text);font-size:11px;font-weight:{{ b.weight }};line-height:1.1;text-decoration:none;text-align:center;min-width:0" style-hover="background:color-mix(in srgb, var(--color-text) 6%, transparent);color:var(--color-text);text-decoration:none">
+        <span style="position:relative;display:grid;place-items:center">
+          <sc-if value="{{ b.isLib }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="m16 6 4 14M12 6v14M8 8v12M4 4v16"></path></svg></sc-if>
+          <sc-if value="{{ b.isUp }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><rect width="18" height="18" x="3" y="4"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg></sc-if>
+          <sc-if value="{{ b.isSearch }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg></sc-if>
+          <sc-if value="{{ b.isBell }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg></sc-if>
+          <sc-if value="{{ b.isUser }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><circle cx="12" cy="8" r="5"></circle><path d="M20 21a8 8 0 0 0-16 0"></path></svg></sc-if>
+          <sc-if value="{{ b.badge }}"><span aria-hidden="true" style="position:absolute;top:-4px;left:14px;min-width:17px;height:17px;padding:0 4px;display:grid;place-items:center;background:var(--color-accent-700);color:var(--color-neutral-100);font-size:10px;font-weight:800;line-height:1">{{ unread }}</span></sc-if>
+        </span>
+        <span style="max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.label }}</span>
+      </a>
+    </sc-for>
+  </nav>
+</sc-if>
+
 <template id="__bundler_thumbnail" data-bg-color="#f3f2f2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#ec3013"></rect><text x="30" y="64" font-family="Archivo, sans-serif" font-weight="800" font-size="34" fill="#f3f2f2">見</text></svg></template>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;screen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;show&quot;,&quot;anime&quot;,&quot;movie&quot;],&quot;default&quot;:&quot;show&quot;,&quot;tsType&quot;:&quot;'show'|'anime'|'movie'&quot;,&quot;section&quot;:&quot;Screen&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;,&quot;section&quot;:&quot;Screen&quot;},&quot;seasonLayout&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;accordion&quot;,&quot;tabs&quot;],&quot;default&quot;:&quot;accordion&quot;,&quot;tsType&quot;:&quot;'accordion'|'tabs'&quot;,&quot;section&quot;:&quot;Episodes&quot;},&quot;numbering&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;both&quot;,&quot;season&quot;,&quot;continuous&quot;],&quot;default&quot;:&quot;both&quot;,&quot;tsType&quot;:&quot;'both'|'season'|'continuous'&quot;,&quot;section&quot;:&quot;Episodes&quot;},&quot;linkColor&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;blue&quot;,&quot;ink&quot;],&quot;default&quot;:&quot;blue&quot;,&quot;tsType&quot;:&quot;'blue'|'ink'&quot;,&quot;section&quot;:&quot;Style&quot;}}">
-const TODAY = '2026-10-08';
-const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const MUTED = 'var(--mt-muted)';
-const HINT_KEY = 'mitaroku.hint.markUpTo';
-const fmt = iso => { const p = iso.split('-').map(Number); return MON[p[1]-1] + ' ' + p[2] + ', ' + p[0]; };
-const daysTo = iso => Math.round((Date.parse(iso) - Date.parse(TODAY)) / 864e5);
-const slug = t => '#/' + t.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '-');
-const weekly = (start, titles) => titles.map((t, i) => { const d = new Date(start + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + 7 * i); return { n: i + 1, t, d: d.toISOString().slice(0, 10) }; });
-const L = t => ({ t, href: slug(t) });
-const T = t => ({ t });
-const tint = (h, dark) => dark ? 'oklch(0.42 0.07 ' + h + ')' : 'oklch(0.8 0.08 ' + h + ')';
-const KIND_TAG = { tv: 'TV', ova: 'OVA', movie: 'Movie', special: 'Special' };
-
-const DATA = {
-  show: {
-    title: 'Salt & Signal', original: 'Salt og merki', lang: 'is', status: 'Airing', hue: 225,
-    ext: { value: '7.9', source: 'IMDb' }, heroCaption: 'Still from S1 · E1 “The Keeper’s Log” — placeholder image',
-    description: 'When the last lighthouse keeper on a remote Icelandic peninsula disappears during a winter storm, his estranged daughter returns to run the station alone — and starts picking up radio transmissions that seem to come from the night he vanished.',
-    facts: [
-      { k: 'Release dates', v: [T('Mar 14, 2025 – Oct 15, 2026')] },
-      { k: 'Country', v: [L('Iceland')] },
-      { k: 'Genres', v: [L('Drama'), L('Mystery'), L('Thriller')] },
-      { k: 'Network', v: [L('Nordvísir')] },
-      { k: 'Total runtime', v: [T('6 h 36 min')] },
-      { k: 'Episode runtime', v: [T('48–52 min')] },
-      { k: 'Episodes', v: [T('8 in 2 seasons')] },
-    ],
-    seeAlso: ['Icelandic series', 'Drama series of 2025', 'Mystery series', 'Icelandic dramas of 2025', 'Thrillers from Iceland', 'Series of 2025'].map(L),
-    castHeading: 'Actors',
-    cast: [['Sigrún Ólafsdóttir','Hekla Jónsdóttir',1],['Ari Magnússon','Jón Einarsson',1],['Dagný Þórsdóttir','Ragna',0],['Tómas Berg','Officer Halldór',1],['Elín Guðmundsdóttir','Bára',0],['Kristján Haralds','Old Gunnar',0],['Maja Lindqvist','Ingrid Sand',1],['Óskar Pétursson','Radio operator',0],['Freyja Ásgeirs','Young Hekla',0],['Nils Aho','Captain Lehto',0]],
-    groups: [
-      { id: 's1', kind: 'tv', season: 1, title: 'Season 1', sub: '2025', eps: weekly('2025-03-14', ['The Keeper’s Log', 'Low Water', 'Fog Bell', 'Northern Relay', 'Lamp Room']) },
-      { id: 's2', kind: 'tv', season: 2, title: 'Season 2', sub: '2026', eps: weekly('2026-10-01', ['Static', 'Second Beacon', 'Landfall']) },
-    ],
-    init: { s1: [1, 2, 3, 4, 5], s2: [1] },
-    ratings: { 's1|1': 4, 's1|2': 4, 's1|3': 5, 's1|4': 3, 's1|5': 5, 's2|1': 4 },
-    collections: [['Nordic Noir','147 series · 229 films','Cold coasts, slow reveals and very long winters.'],['Lighthouses & Keepers','12 series · 38 films','Stories set at the edge of the map.'],['Radio Mysteries','21 series · 44 films','Signals, static and voices from nowhere.']],
-    similar: [['Harbor Lights','Havnelys','7.8','Ended'],['The Fjord Inquiry','Fjordgranskningen','8.1','Ended'],['North of the Tide','Nord for tidevannet','7.2','Paused'],['Beacon Point','Beacon Point','6.9','Airing'],['Ice Mile','Jäämaili','7.5','Ended'],['Weather Station 9','Veðurstöð 9','7.0','Ended']],
-  },
-  anime: {
-    title: 'Starlit Relay', original: '星屑リレー · Hoshikuzu Rirē', lang: 'ja', status: 'Ended', hue: 300,
-    ext: { value: '8.3', source: 'MAL' }, heroCaption: 'Key visual, Season 2 — placeholder image',
-    description: 'Four students at an orbital academy join its failing relay team, racing in low gravity across the hull of a station that is slowly being decommissioned. Each season follows one leg of the race — and one runner’s reason for not wanting it to end.',
-    facts: [
-      { k: 'Release dates', v: [T('Apr 7, 2022 – Dec 1, 2024')] },
-      { k: 'Country', v: [L('Japan')] },
-      { k: 'Genres', v: [L('Sci-Fi'), L('Sports'), L('Drama')] },
-      { k: 'Studio', v: [L('Studio Kiraboshi')] },
-      { k: 'Total runtime', v: [T('8 h 12 min')] },
-      { k: 'Episode runtime', v: [T('24 min')] },
-      { k: 'Episodes', v: [T('12 TV · 2 OVA · 1 movie · 3 specials')] },
-    ],
-    seeAlso: ['Sci-fi anime', 'Sports anime of 2022', 'Japanese anime series', 'Anime from Studio Kiraboshi', 'Space anime', 'Anime with OVAs'].map(L),
-    castHeading: 'Voice cast',
-    cast: [['Haruka Mizuno','Sora Amane',1],['Kenta Ibuki','Riku Tsukishiro',0],['Aoi Sakuraba','Mei Kanzaki',1],['Daichi Morioka','Coach Hoshino',0],['Yui Takamine','Nana Arisugawa',0],['Shun Kaido','Ren Kurosaki',0],['Mio Fujisaki','Captain Yuzuha',0],['Taro Okabe','Announcer',0]],
-    groups: [
-      { id: 's1', kind: 'tv', season: 1, title: 'Season 1', sub: '2022', eps: weekly('2022-04-07', ['The Baton Drops', 'Orbit Line', 'Fourth Leg', 'Sprint Through Static', 'Comet Tail', 'Starlit Relay']) },
-      { id: 's2', kind: 'tv', season: 2, continues: true, title: 'Season 2', sub: '2023', eps: weekly('2023-10-05', ['New Track', 'Headwind', 'Exchange Zone', 'False Start', 'Anchor Leg', 'The Finish Line Is a Horizon']) },
-      { id: 'ova', kind: 'ova', title: 'OVA', sub: '2023–2024', eps: [{ n: 1, t: 'Training Camp Under Aurora', d: '2023-03-22' }, { n: 2, t: 'Sora’s Day Off', d: '2024-02-14' }] },
-      { id: 'movies', kind: 'movie', title: 'Movies', sub: '2024', eps: [{ n: 1, t: 'Starlit Relay: Last Orbit', d: '2024-12-01' }] },
-      { id: 'sp', kind: 'special', title: 'Specials', sub: '2022–2024', eps: [{ n: 1, t: 'Recap: The First Leg', d: '2022-07-01' }, { n: 2, t: 'Behind the Relay', d: '2023-12-28' }, { n: 3, t: 'Picture Drama Collection', d: '2024-05-10' }] },
-    ],
-    init: { s1: [1, 2, 3, 4, 5, 6], s2: [1, 2, 3, 4], ova: [1], sp: [1] },
-    ratings: { 's1|1': 4, 's1|3': 5, 's1|6': 5, 's2|2': 4, 's2|4': 3, 'ova|1': 4 },
-    collections: [['Sports Anime','312 series · 41 films','Training arcs, rivalries and the final race.'],['Space & Stars','188 series · 96 films','Stations, orbits and long nights between planets.'],['Original Anime','540 series · 120 films','No manga, no novel — written for screen.']],
-    similar: [['Comet Baton','彗星バトン','7.6','Ended'],['Orbit Club','軌道部','8.0','Ended'],['Lunar Lap','月面ラップ','7.1','Paused'],['Skyline Sprinters','スカイライン・スプリンターズ','7.4','Airing'],['Starway','星の道','6.8','Ended']],
-  },
-  movie: {
-    title: 'The Quiet Meridian', original: 'Le Méridien silencieux', lang: 'fr', year: '2026', hue: 60,
-    ext: { value: '7.4', source: 'IMDb' }, heroCaption: 'Theatrical poster — placeholder image',
-    description: 'Hélène Marchal, a cartographer for the national survey, is sent to re-measure a stretch of the Franco-Belgian border that no longer matches any map. In a village where every clock runs four minutes late, she finds a meridian line painted across kitchens, fields and a shuttered school — and a community that insists it has always been there. As her measurements drift further from the official record, Hélène begins to suspect the error is not in the land, but in the summer she spent there as a child.',
-    facts: [
-      { k: 'Release date', v: [T('Oct 8, 2026')], today: true },
-      { k: 'Country', v: [L('France'), L('Belgium')] },
-      { k: 'Genres', v: [L('Drama'), L('Mystery')] },
-      { k: 'Production', v: [L('Atelier Nord Films'), L('Brume Pictures'), L('Lumen Coproductions')], stack: true },
-      { k: 'Runtime', v: [T('1 h 52 min')] },
-    ],
-    seeAlso: ['French dramas', 'Mystery films of 2026', 'Belgian films', 'French films of 2026', 'Dramas of 2026', 'French mysteries'].map(L),
-    castHeading: 'Actors',
-    cast: [['Camille Roux','Hélène Marchal',1],['Lucas Vermeulen','Pieter Aerts',1],['Inès Daoud','Samia',0],['Thomas Lefort','Inspector Garnier',0],['Margaux Bessière','Odile',0],['Jan De Smet','The surveyor',0],['Léa Fontaine','Young Hélène',0]],
-    trailers: [['Official trailer','2:14','Sep 2026'],['Teaser','0:58','Jun 2026'],['Clip — The painted line','1:32','Oct 2026']],
-    collections: [['French Mysteries','18 series · 264 films','Small towns, long lunches, one unanswered question.'],['Slow Cinema','9 series · 181 films','Long takes and room to think.']],
-    similar: [['The Surveyor’s Daughter','La Fille de l’arpenteur','7.1','2024'],['Border Hours','Grensuren','6.8','2023'],['A Line Through Arden','Une ligne à travers l’Ardenne','7.6','2021'],['The Late Clocks','Les Horloges en retard','7.3','2025'],['Map of Small Errors','Carte des petites erreurs','6.9','2022']],
-  },
+<script type="text/x-dc" data-dc-script data-props="{&quot;screen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;library&quot;,&quot;upcoming&quot;,&quot;search&quot;,&quot;notifications&quot;,&quot;settings&quot;,&quot;import&quot;,&quot;export&quot;,&quot;login&quot;,&quot;title-show&quot;,&quot;title-anime&quot;,&quot;title-movie&quot;,&quot;browse&quot;,&quot;collection&quot;],&quot;default&quot;:&quot;library&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Screen&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;,&quot;section&quot;:&quot;Screen&quot;},&quot;demoState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;live&quot;,&quot;loading&quot;,&quot;empty&quot;,&quot;error&quot;],&quot;default&quot;:&quot;live&quot;,&quot;tsType&quot;:&quot;'live'|'loading'|'empty'|'error'&quot;,&quot;section&quot;:&quot;Screen&quot;},&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;member&quot;,&quot;admin&quot;],&quot;default&quot;:&quot;member&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Screen&quot;},&quot;telegramState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;not-connected&quot;,&quot;waiting&quot;,&quot;connected&quot;,&quot;blocked&quot;],&quot;default&quot;:&quot;not-connected&quot;,&quot;tsType&quot;:&quot;'not-connected'|'waiting'|'connected'|'blocked'&quot;,&quot;section&quot;:&quot;Telegram (Settings)&quot;},&quot;simulateTelegramStart&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Telegram (Settings)&quot;},&quot;seasonLayout&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;accordion&quot;,&quot;tabs&quot;],&quot;default&quot;:&quot;accordion&quot;,&quot;tsType&quot;:&quot;'accordion'|'tabs'&quot;,&quot;section&quot;:&quot;Episodes&quot;},&quot;numbering&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;both&quot;,&quot;season&quot;,&quot;continuous&quot;],&quot;default&quot;:&quot;both&quot;,&quot;tsType&quot;:&quot;'both'|'season'|'continuous'&quot;,&quot;section&quot;:&quot;Episodes&quot;},&quot;linkColor&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;blue&quot;,&quot;ink&quot;],&quot;default&quot;:&quot;blue&quot;,&quot;tsType&quot;:&quot;'blue'|'ink'&quot;,&quot;section&quot;:&quot;Style&quot;}}">
+const ROUTES = ['library', 'upcoming', 'search', 'notifications', 'settings', 'import', 'export', 'login', 'title', 'browse', 'collection'];
+const SCREEN_HASH = { library: '#/library', upcoming: '#/upcoming', search: '#/search?q=harbor', notifications: '#/notifications', settings: '#/settings', import: '#/import', export: '#/export', login: '#/login', 'title-show': '#/title/show', 'title-anime': '#/title/anime', 'title-movie': '#/title/movie', browse: '#/browse?type=series&genre=Drama&year=2025', collection: '#/collection/french-mysteries' };
+const I18N = {
+  en: { library: 'Library', upcoming: 'Upcoming', search: 'Search', notifications: 'Notifications', profile: 'Profile', profileSettings: 'Profile & settings', importExport: 'Import / export', language: 'Language', logout: 'Log out', searchLabel: 'Search shows, anime and movies', searchPlaceholder: 'Search shows, anime, movies', account: 'Account menu', unread: 'unread' },
+  ru: { library: 'Библиотека', upcoming: 'Скоро', search: 'Поиск', notifications: 'Уведомления', profile: 'Профиль', profileSettings: 'Профиль и настройки', importExport: 'Импорт / экспорт', language: 'Язык', logout: 'Выйти', searchLabel: 'Поиск сериалов, аниме и фильмов', searchPlaceholder: 'Сериалы, аниме, фильмы', account: 'Меню аккаунта', unread: 'непрочитанных' },
 };
-
-const checkVM = (st, frac) => st === 2
-  ? { bg: 'var(--color-text)', border: 'var(--color-text)', showCheck: true }
-  : st === 1
-    ? { bg: 'conic-gradient(var(--color-text) ' + Math.round(frac * 360) + 'deg, transparent 0deg)', border: 'var(--color-text)', showCheck: false }
-    : { bg: 'transparent', border: 'var(--color-neutral-600)', showCheck: false };
-
-function readHintDismissed() { try { return localStorage.getItem(HINT_KEY) === 'dismissed'; } catch (e) { return false; } }
-
-function buildInitial() {
-  const watched = {}, epRating = {}, collapsed = {};
-  ['show', 'anime'].forEach(id => {
-    const s = DATA[id];
-    Object.keys(s.init).forEach(g => s.init[g].forEach(n => { watched[id + '|' + g + '|' + n] = true; }));
-    Object.keys(s.ratings).forEach(k => { epRating[id + '|' + k] = s.ratings[k]; });
-    s.groups.forEach(g => {
-      const aired = g.eps.filter(e => e.d <= TODAY);
-      if (g.eps.length > 1 && aired.length && aired.every(e => watched[id + '|' + g.id + '|' + e.n])) collapsed[id + '|' + g.id] = true;
-    });
-  });
-  return {
-    screen: null, theme: null, watched, epRating, collapsed, tab: {},
-    vw: typeof window !== 'undefined' ? window.innerWidth : 390,
-    status: { show: 'watching', anime: 'watching', movie: 'plan' },
-    myRating: { show: 4, anime: 5, movie: 0 },
-    bookmarked: { show: true, anime: true, movie: false },
-    watchedOn: TODAY, rewatches: 0,
-    info: false, activeSec: 'desc', moreOpen: false, menu: null,
-    castAll: false, descMore: false, trailer: 0, playing: false,
-    noteEditing: false, note: '', draft: '',
-    hint: false, hintDismissed: readHintDismissed(), fade: { nav: true, franchise: true },
-  };
+function parseRoute(hash) {
+  const h = (hash || '').replace(/^#\/?/, '');
+  if (!h) return null;
+  const qi = h.indexOf('?');
+  const path = qi < 0 ? h : h.slice(0, qi), qs = qi < 0 ? '' : h.slice(qi + 1);
+  const seg = path.split('/');
+  if (ROUTES.indexOf(seg[0]) < 0) return null;
+  return { name: seg[0], id: seg[1] || null, params: window.MT ? MT.parseQuery(qs) : {} };
 }
-
 class Component extends DCLogic {
-  state = buildInitial();
-
+  state = { route: parseRoute(location.hash) || parseRoute(SCREEN_HASH[this.props.screen || 'library']), theme: null, vw: window.innerWidth, userOpen: false, draft: '' };
   componentDidMount() {
-    this._onScroll = () => {
-      const ids = this._secIds || [];
-      let cur = ids[0];
-      for (const id of ids) { const el = document.getElementById('sec-' + id); if (el && el.getBoundingClientRect().top <= 96) cur = id; }
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) cur = ids[ids.length - 1];
-      if (cur && cur !== this.state.activeSec) this.setState({ activeSec: cur });
+    this._u = window.MT ? MT.sub(() => this.forceUpdate()) : null;
+    { const r0 = parseRoute(location.hash); if (r0) this.setState({ route: r0, draft: r0.name === 'search' ? (r0.params.q || '') : '' }); }
+    this._hash = () => {
+      const r = parseRoute(location.hash);
+      if (!r) return;
+      const same = this.state.route && this.state.route.name === r.name && this.state.route.id === r.id;
+      this.setState({ route: r, userOpen: false, draft: r.name === 'search' ? (r.params.q || '') : this.state.draft });
+      if (!same) window.scrollTo(0, 0);
     };
-    this._onResize = () => { if (window.innerWidth !== this.state.vw) this.setState({ vw: window.innerWidth }); this.measure(); };
-    this._onDown = e => {
-      const t = e.target;
-      if (this.state.menu && !(t.closest && t.closest('[data-mt-menu]'))) this.setState({ menu: null });
-      if (this.state.moreOpen && !(t.closest && t.closest('[data-mt-more]'))) this.setState({ moreOpen: false });
-    };
-    this._onKey = e => { if (e.key === 'Escape' && (this.state.menu || this.state.moreOpen)) this.setState({ menu: null, moreOpen: false }); };
-    window.addEventListener('scroll', this._onScroll, { passive: true });
-    window.addEventListener('resize', this._onResize);
-    document.addEventListener('pointerdown', this._onDown);
-    document.addEventListener('keydown', this._onKey);
-    this._onResize();
-    this._mt = setTimeout(() => this.measure(), 80);
-  }
-  measure() {
-    const f = {};
-    document.querySelectorAll('[data-mt-scroller]').forEach(el => { const pr = parseFloat(getComputedStyle(el).paddingRight) || 0; const n = el.getAttribute('data-mt-scroller'); f[n] = el.scrollWidth - pr > el.scrollLeft + el.clientWidth + 2; f[n + 'L'] = el.scrollLeft > 2; });
-    const cur = this.state.fade || {};
-    if (['nav', 'franchise', 'franchiseL'].some(k => !!f[k] !== !!cur[k])) this.setState({ fade: { nav: !!f.nav, franchise: !!f.franchise, franchiseL: !!f.franchiseL } });
-  }
-  scrollFranchise() {
-    const el = document.querySelector('[data-mt-scroller="franchise"]');
-    if (el) { el.scrollLeft = el.scrollLeft + Math.round(el.clientWidth * 0.6); this.measure(); }
+    this._resize = () => { if (window.innerWidth !== this.state.vw) this.setState({ vw: window.innerWidth }); };
+    this._down = e => { if (this.state.userOpen && !(e.target.closest && e.target.closest('[data-mt-user]'))) this.setState({ userOpen: false }); };
+    this._key = e => { if (e.key === 'Escape' && this.state.userOpen) this.setState({ userOpen: false }); };
+    window.addEventListener('hashchange', this._hash);
+    window.addEventListener('resize', this._resize);
+    document.addEventListener('pointerdown', this._down);
+    document.addEventListener('keydown', this._key);
   }
   componentWillUnmount() {
-    window.removeEventListener('scroll', this._onScroll);
-    window.removeEventListener('resize', this._onResize);
-    document.removeEventListener('pointerdown', this._onDown);
-    document.removeEventListener('keydown', this._onKey);
-    clearTimeout(this._lp);
-    clearTimeout(this._mt);
+    this._u && this._u();
+    window.removeEventListener('hashchange', this._hash);
+    window.removeEventListener('resize', this._resize);
+    document.removeEventListener('pointerdown', this._down);
+    document.removeEventListener('keydown', this._key);
   }
   componentDidUpdate(pp) {
-    if (pp.screen !== this.props.screen) this.switchScreen(null);
+    if (pp.screen !== this.props.screen && this.props.screen && SCREEN_HASH[this.props.screen]) location.hash = SCREEN_HASH[this.props.screen];
     if (pp.theme !== this.props.theme) this.setState({ theme: null });
-    clearTimeout(this._mt);
-    this._mt = setTimeout(() => this.measure(), 60);
   }
-
-  switchScreen(screen) {
-    this.setState({ screen, castAll: false, descMore: false, menu: null, moreOpen: false, activeSec: 'desc', info: false, playing: false });
-    window.scrollTo(0, 0);
-  }
-  go(id) {
-    const el = document.getElementById('sec-' + id);
-    if (!el) return;
-    window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - 56), behavior: 'smooth' });
-    this.setState({ activeSec: id, moreOpen: false });
-  }
-  setW(updates, fromSingle) {
-    this.setState(s => ({ watched: Object.assign({}, s.watched, updates), menu: null, hint: s.hint || (fromSingle && !s.hintDismissed) }));
-  }
-  dismissHint() {
-    try { localStorage.setItem(HINT_KEY, 'dismissed'); } catch (e) {}
-    this.setState({ hint: false, hintDismissed: true });
-  }
-
-  episodesVM(id, tabs, mode, wideRows) {
-    const continuous = mode === 'continuous', both = mode === 'both';
-    const s = DATA[id], W = this.state.watched, R = this.state.epRating;
-    const key = (g, e) => id + '|' + g.id + '|' + e.n;
-    const aired = e => e.d <= TODAY;
-    const showTags = id === 'anime';
-    const hasCont = both && s.groups.some(g => g.continues);
-    const abs = {};
-    let counter = 0;
-    s.groups.forEach(g => { if (g.kind === 'tv') g.eps.forEach(e => { abs[key(g, e)] = ++counter; }); });
-    const codeOf = (g, e) => g.kind === 'tv' ? (continuous ? 'Ep ' + abs[key(g, e)] : 'S' + g.season + 'E' + e.n) : g.kind === 'ova' ? 'OVA ' + e.n : g.kind === 'special' ? 'SP ' + e.n : 'Movie';
-    const allKeys = [], airedAll = [];
-    let next = null, upcoming = null;
-    s.groups.forEach(g => g.eps.forEach(e => {
-      const k = key(g, e); allKeys.push(k);
-      if (aired(e)) airedAll.push(k);
-      if (!W[k]) { if (aired(e)) { if (!next) next = { g, e, k }; } else if (!upcoming) upcoming = { g, e }; }
-    }));
-    const nextGroupId = next ? next.g.id : (upcoming ? upcoming.g.id : s.groups[0].id);
-    const activeTab = this.state.tab[id] || nextGroupId;
-
-    const groups = s.groups.map((g, gi) => {
-      const total = g.eps.length, single = total === 1;
-      const watched = g.eps.filter(e => W[key(g, e)]).length;
-      const airedKeys = g.eps.filter(aired).map(e => key(g, e));
-      const full = airedKeys.length > 0 && airedKeys.every(k => W[k]);
-      const st = full ? 2 : watched > 0 ? 1 : 0;
-      const ck = id + '|' + g.id;
-      const open = tabs || single ? true : !this.state.collapsed[ck];
-      const eps = g.eps.map((e, ei) => {
-        const k = key(g, e), w = !!W[k], future = !aired(e), today = e.d === TODAY, r = R[k] || 0;
-        const dt = daysTo(e.d), code = codeOf(g, e);
-        const toggle = () => { if (!future) this.setW({ [k]: !w }, true); };
-        return {
-          num: single ? '' : (g.kind === 'tv' && (continuous || (both && g.continues)) ? abs[k] : e.n), t: e.t, code,
-          hasNum2: !single && both && !!g.continues, num2: (wideRows ? '· ' : '') + 'S' + g.season + 'E' + e.n,
-          numDir: wideRows ? 'row' : 'column',
-          mainDisplay: wideRows ? 'contents' : 'grid', metaDisplay: wideRows ? 'contents' : 'flex', titlePad: wideRows ? '8px 0' : '0',
-          colGap: wideRows ? '12px' : '4px',
-          href: slug(s.title + '-' + g.id + '-' + e.n),
-          showTag: single && showTags, tag: KIND_TAG[g.kind],
-          cols: wideRows ? (hasCont ? '84px' : '44px') + ' minmax(0, 420px) 96px auto minmax(0, 1fr) 36px 44px' : (hasCont ? '48px' : '36px') + ' minmax(0, 1fr) 36px 44px',
-          dateText: fmt(e.d), relText: dt === 1 ? 'tomorrow' : 'in ' + dt + ' days',
-          today, future, dateStyle: future ? 'italic' : 'normal',
-          todayInTitle: today && !wideRows, todayInMeta: today && wideRows, relInTitle: future && !wideRows, relInMeta: future && wideRows,
-          bg: ei % 2 ? 'color-mix(in srgb, var(--color-text) 4.5%, transparent)' : 'transparent',
-          titleColor: future || w ? MUTED : 'var(--mt-link)',
-          titleWeight: single ? '800' : (w ? '500' : '600'), titleSize: single ? '15px' : '14px',
-          starOpacity: future ? '0.4' : '1', checkOpacity: future ? '0.45' : '1',
-          stars: [1, 2, 3, 4, 5].map(i => ({
-            fill: i <= r ? 'currentColor' : 'none', color: i <= r ? 'var(--color-text)' : 'var(--color-neutral-500)',
-            pressed: i <= r ? 'true' : 'false', label: 'Rate ' + code + ' ' + i + ' of 5',
-            onClick: () => this.setState(st0 => ({ epRating: Object.assign({}, st0.epRating, { [k]: st0.epRating[k] === i ? 0 : i }) })),
-          })),
-          check: Object.assign(checkVM(w ? 2 : 0), { pressed: w ? 'true' : 'false', label: (w ? 'Mark as unwatched: ' : 'Mark as watched: ') + code + ' · ' + e.t, onClick: toggle }),
-          toggleLabel: w ? 'Mark as unwatched' : 'Mark as watched',
-          menuOpen: this.state.menu === k, menuExpanded: this.state.menu === k ? 'true' : 'false',
-          onMenu: () => this.setState(s0 => ({ menu: s0.menu === k ? null : k })),
-          onDown: ev => { if (ev.pointerType === 'mouse') return; clearTimeout(this._lp); this._lp = setTimeout(() => this.setState({ menu: k }), 500); },
-          onUp: () => clearTimeout(this._lp),
-          onContext: ev => { ev.preventDefault(); clearTimeout(this._lp); this.setState({ menu: k }); },
-          onUpTo: () => {
-            if (future) return;
-            const upd = {};
-            s.groups.forEach((g2, gi2) => g2.eps.forEach((e2, ei2) => { if ((gi2 < gi || (gi2 === gi && ei2 <= ei)) && aired(e2)) upd[key(g2, e2)] = true; }));
-            this.setW(upd);
-            this.dismissHint();
-          },
-        };
-      });
-      const isActive = tabs && g.id === activeTab;
-      return {
-        id: g.id, title: g.title, sub: g.sub, total, watched, multi: !single, single,
-        showTag: showTags, tag: KIND_TAG[g.kind],
-        eps: open ? eps : [],
-        pct: Math.round(watched / total * 100) + '%', progressText: watched + '/' + total,
-        expanded: open ? 'true' : 'false', showChevron: !tabs,
-        chevron: open ? 'rotate(180deg)' : 'none', cursor: tabs ? 'default' : 'pointer',
-        onCollapse: () => { if (!tabs) this.setState(s0 => ({ collapsed: Object.assign({}, s0.collapsed, { [ck]: !s0.collapsed[ck] }) })); },
-        visible: tabs ? g.id === activeTab : true,
-        check: Object.assign(checkVM(st, watched / total), {
-          pressed: st === 2 ? 'true' : st === 1 ? 'mixed' : 'false',
-          label: full ? 'Mark ' + g.title + ' as unwatched' : 'Mark all of ' + g.title + ' as watched',
-          onClick: () => { const u = {}; airedKeys.forEach(k => { u[k] = !full; }); this.setW(u); },
-        }),
-        chip: {
-          label: g.title, count: watched + '/' + total, role: tabs ? 'tab' : 'button', selected: isActive ? 'true' : 'false',
-          bg: isActive ? 'var(--color-text)' : 'transparent', fg: isActive ? 'var(--color-bg)' : 'var(--color-text)',
-          border: isActive ? 'var(--color-text)' : 'var(--color-divider)',
-          onClick: () => {
-            if (tabs) { this.setState(s0 => ({ tab: Object.assign({}, s0.tab, { [id]: g.id }) })); return; }
-            this.setState(s0 => ({ collapsed: Object.assign({}, s0.collapsed, { [ck]: false }) }), () => {
-              const el = document.getElementById('grp-' + g.id);
-              if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 60, behavior: 'smooth' });
-            });
-          },
-        },
-      };
-    });
-
-    const totalW = allKeys.filter(k => W[k]).length;
-    const showFull = airedAll.every(k => W[k]);
-    const showSt = showFull ? 2 : totalW > 0 ? 1 : 0;
-    return {
-      watchedText: totalW + ' of ' + allKeys.length + ' watched',
-      cont: {
-        hasNext: !!next, hasUpcoming: !next && !!upcoming, caughtUp: !next && !upcoming,
-        label: next ? 'Continue: ' + codeOf(next.g, next.e) + ' · ' + next.e.t : '',
-        upLabel: upcoming ? 'Next: ' + codeOf(upcoming.g, upcoming.e) + ' · airs ' + fmt(upcoming.e.d) : '',
-        onClick: () => { if (next) this.setW({ [next.k]: true }, true); },
-      },
-      hint: this.state.hint && !this.state.hintDismissed,
-      check: Object.assign(checkVM(showSt, totalW / allKeys.length), {
-        pressed: showSt === 2 ? 'true' : showSt === 1 ? 'mixed' : 'false',
-        label: showFull ? 'Mark whole show as unwatched' : 'Mark whole show as watched',
-        onClick: () => { const u = {}; airedAll.forEach(k => { u[k] = !showFull; }); this.setW(u); },
-      }),
-      showChipRow: id === 'anime' || tabs,
-      chipRole: tabs ? 'tablist' : 'group', chipRowLabel: id === 'anime' ? 'Franchise entries' : 'Seasons',
-      chips: groups.map(g => g.chip),
-      groups: groups.filter(g => g.visible),
-    };
-  }
-
   renderVals() {
+    const MT = window.MT;
     const st = this.state;
-    const screen = st.screen || this.props.screen || 'show';
+    const r = st.route || { name: 'library', params: {} };
+    const name = r.name;
     const theme = st.theme || this.props.theme || 'light';
     const dark = theme === 'dark';
-    const tabs = (this.props.seasonLayout || 'accordion') === 'tabs';
-    const numbering = this.props.numbering || 'both';
-    const vw = st.vw || 390;
-    const compact = vw < 480, wideRows = vw >= 600, wideHero = vw >= 720;
-    const d = DATA[screen], isMovie = screen === 'movie';
-    this._secIds = isMovie ? ['desc', 'seealso', 'cast', 'trailers', 'collections', 'similar'] : ['desc', 'seealso', 'cast', 'episodes', 'collections', 'similar'];
-    clearTimeout(this._mt);
-    this._mt = setTimeout(() => this.measure(), 60);
-
-    const chipLook = a => ({ bg: a ? 'var(--color-text)' : 'transparent', fg: a ? 'var(--color-bg)' : 'var(--color-text)', border: a ? 'var(--color-text)' : 'var(--color-divider)' });
-    const chipDefs = isMovie ? [['desc', 'Description'], ['cast', 'Cast'], ['trailers', 'Trailers'], ['similar', 'Similar']] : [['desc', 'Description'], ['cast', 'Cast'], ['episodes', 'Episodes'], ['similar', 'Similar']];
-    const moreDefs = [['seealso', 'See also'], ['collections', 'Collections']];
-    const moreActive = moreDefs.some(m => m[0] === st.activeSec);
-
-    const statusDefs = isMovie
-      ? [['watched', 'Watched', 'Watched'], ['plan', 'Plan to watch', 'Plan'], ['none', 'Not watched', 'Not watched']]
-      : [['watching', 'Watching', 'Watching'], ['plan', 'Plan to watch', 'Plan'], ['dropped', 'Dropped', 'Dropped'], ['none', 'Not watching', 'Not watching']];
-    const curStatus = st.status[screen];
-    const mr = st.myRating[screen];
-
-    const cast = d.cast.map((c, i) => ({ name: c[0], role: c[1], photo: !!c[2], noPhoto: !c[2], tint: tint((d.hue + 40 + i * 47) % 360, dark), initials: c[0].split(' ').map(w => w[0]).slice(0, 2).join(''), href: slug(c[0]) }));
-    const stackFacts = isMovie && compact;
-    const facts = d.facts.map(f => ({ k: f.k, today: !!f.today, v: f.v.map((p, i) => ({ t: p.t, href: p.href, isLink: !!p.href, isText: !p.href, display: f.stack ? 'block' : 'inline', sep: !f.stack && i < f.v.length - 1 ? ', ' : '' })) }));
-
-    const page = {
-      title: d.title, original: d.original, lang: d.lang, hasYear: !!d.year, year: d.year,
-      hasStatus: !!d.status, status: d.status, heroCaption: d.heroCaption, tint: tint(d.hue, dark),
-      description: d.description, facts, seeAlso: d.seeAlso,
-      castHeading: d.castHeading, castCount: cast.length, cast: st.castAll ? cast : cast.slice(0, wideHero ? 8 : 6), castHasMore: cast.length > (wideHero ? 8 : 6),
-      collections: d.collections.map((c, i) => ({ title: c[0], counts: c[1], desc: c[2], tint: tint((d.hue + 120 + i * 70) % 360, dark), href: slug('collection-' + c[0]) })), collectionCount: d.collections.length,
-      similar: d.similar.map((s, i) => ({ title: s[0], orig: s[1], rating: s[2], status: s[3], tint: tint((d.hue + 60 + i * 53) % 360, dark), href: slug(s[0]) })), similarCount: d.similar.length,
-    };
-
-    const hero = isMovie
-      ? { cols: wideHero ? '240px minmax(0, 1fr)' : 'min(240px, 38%) minmax(0, 1fr)', areas: wideHero ? '"media rating" "media facts" "media status"' : '"media rating" "media facts" "status status"', rows: wideHero ? 'auto auto 1fr' : 'auto 1fr auto' }
-      : { cols: wideHero ? 'minmax(0, 1fr) minmax(0, 1fr)' : 'minmax(0, 1fr)', areas: wideHero ? '"media status" "media rating" "media facts"' : '"media" "status" "rating" "facts"', rows: wideHero ? 'auto auto 1fr' : 'auto' };
-
-    const trailers = d.trailers || [];
-    const tr = trailers[st.trailer] || ['', '', ''];
-    const bm = st.bookmarked[screen];
-
+    const vw = st.vw || 390, wide = vw >= 720;
+    const lang = MT ? MT.state.lang : 'en';
+    const t = I18N[lang] || I18N.en;
+    const unread = MT ? MT.unread() : 0;
+    const isLogin = name === 'login';
+    const inLib = ['library', 'title', 'browse', 'collection'].indexOf(name) >= 0;
+    const tabDefs = [['lib', '#/library', t.library, inLib], ['up', '#/upcoming', t.upcoming, name === 'upcoming'], ['search', '#/search', t.search, name === 'search'], ['bell', '#/notifications', t.notifications, name === 'notifications'], ['user', '#/settings', t.profile, ['settings', 'import', 'export'].indexOf(name) >= 0]];
     return {
       theme, links: this.props.linkColor || 'blue', isDark: dark, isLight: !dark,
-      showWordmark: !compact,
-      chipPad: compact ? '10px' : '12px',
-      avatarSize: compact ? '40px' : '48px', castGap: compact ? '10px' : '12px', castNameSize: compact ? '13px' : '14px',
-      fade: { nav: st.fade.nav ? '1' : '0', franchise: st.fade.franchise ? '1' : '0', franchiseL: st.fade.franchiseL ? '1' : '0', franchiseVis: st.fade.franchise ? 'visible' : 'hidden' },
-      scrollFranchise: () => this.scrollFranchise(),
-      navPadR: st.fade.nav ? '44px' : '3px', moreText: !compact, morePad: compact ? '9px' : '8px 6px 12px',
-      onScrollerScroll: () => this.measure(),
       themeLabel: dark ? 'Switch to light theme' : 'Switch to dark theme',
       toggleTheme: () => this.setState({ theme: dark ? 'light' : 'dark' }),
-      navScreens: [['show', 'Shows'], ['anime', 'Anime'], ['movie', 'Movies']].map(([id, label]) => ({
-        label, current: id === screen ? 'page' : 'false', weight: id === screen ? '800' : '500',
-        line: id === screen ? 'var(--color-text)' : 'transparent', onClick: () => this.switchScreen(id),
-      })),
-      isShow: !isMovie, isMovie, page, hero,
-      factsCols: stackFacts ? 'minmax(0, 1fr)' : 'minmax(96px, max-content) minmax(0, 1fr)',
-      dtSize: stackFacts ? '12px' : '14px', ddGap: stackFacts ? '6px' : '0',
-      castCols: vw >= 840 ? 'repeat(4, minmax(0, 1fr))' : vw >= 600 ? 'repeat(3, minmax(0, 1fr))' : 'repeat(2, minmax(0, 1fr))',
-      navChips: chipDefs.map(([id, label]) => Object.assign({ label, current: st.activeSec === id ? 'true' : 'false', onClick: () => this.go(id) }, chipLook(st.activeSec === id))),
-      moreOpen: st.moreOpen, moreExpanded: st.moreOpen ? 'true' : 'false', more: chipLook(moreActive),
-      toggleMore: () => this.setState(s => ({ moreOpen: !s.moreOpen })),
-      moreItems: moreDefs.map(([id, label]) => ({ label, onClick: () => this.go(id) })),
-      bookmark: { pressed: bm ? 'true' : 'false', fill: bm ? 'currentColor' : 'none', label: bm ? 'In my list — remove' : 'Add to my list', onClick: () => this.setState(s => ({ bookmarked: Object.assign({}, s.bookmarked, { [screen]: !s.bookmarked[screen] }) })) },
-      info: { open: st.info, expanded: st.info ? 'true' : 'false', onClick: () => this.setState(s => ({ info: !s.info })) },
-      segPad: compact ? '8px' : '10px',
-      statusOpts: statusDefs.map(([v, full, short]) => ({
-        label: compact ? short : full, full, checked: curStatus === v, showIcon: curStatus === v && !compact,
-        name: 'status-' + screen, weight: curStatus === v ? '800' : '400',
-        color: curStatus === v ? 'var(--color-neutral-100)' : 'var(--color-text)',
-        bg: curStatus === v ? 'var(--color-accent-700)' : 'transparent',
-        hoverBg: curStatus === v ? 'var(--color-accent-800)' : 'color-mix(in srgb, var(--color-text) 7%, transparent)',
-        onSelect: () => this.setState(s => ({ status: Object.assign({}, s.status, { [screen]: v }) })),
-      })),
-      watchedMeta: {
-        show: isMovie && curStatus === 'watched', date: st.watchedOn, count: st.rewatches,
-        minDisabled: st.rewatches === 0, minOpacity: st.rewatches === 0 ? '0.45' : '1',
-        onDate: e => this.setState({ watchedOn: e.target.value || TODAY }),
-        dec: () => this.setState(s => ({ rewatches: Math.max(0, s.rewatches - 1) })),
-        inc: () => this.setState(s => ({ rewatches: s.rewatches + 1 })),
-      },
-      ext: { value: d.ext.value, source: d.ext.source, label: d.ext.source + ' rating ' + d.ext.value + ' of 10' },
-      myStars: [1, 2, 3, 4, 5].map(i => ({
-        fill: i <= mr ? 'currentColor' : 'none', color: i <= mr ? 'var(--color-text)' : 'var(--color-neutral-600)',
-        pressed: i <= mr ? 'true' : 'false', label: 'Rate ' + i + ' of 5',
-        onClick: () => this.setState(s => ({ myRating: Object.assign({}, s.myRating, { [screen]: s.myRating[screen] === i ? 0 : i }) })),
-      })),
-      myRatingText: mr ? mr + ' / 5' : 'Not rated',
-      descClamp: isMovie && !st.descMore ? 3 : 'unset',
-      hasDescToggle: isMovie, descExpanded: st.descMore ? 'true' : 'false',
-      descToggleLabel: st.descMore ? 'Less' : '… more',
-      toggleDesc: () => this.setState(s => ({ descMore: !s.descMore })),
-      castExpanded: st.castAll ? 'true' : 'false',
-      castToggleLabel: st.castAll ? 'Show fewer' : 'Show all ' + cast.length,
-      toggleCast: () => this.setState(s => ({ castAll: !s.castAll })),
-      ep: isMovie ? { groups: [], chips: [], check: checkVM(0), cont: {} } : this.episodesVM(screen, tabs, numbering, wideRows),
-      dismissHint: () => this.dismissHint(),
-      trailerCount: trailers.length,
-      trailer: { title: tr[0], dur: tr[1], tint: tint((d.hue + 200) % 360, dark) },
-      playing: st.playing, notPlaying: !st.playing,
-      playTrailer: () => this.setState({ playing: true }), stopTrailer: () => this.setState({ playing: false }),
-      trailerList: trailers.map((t, i) => ({
-        title: t[0], meta: t[1] + ' · ' + t[2], current: i === st.trailer ? 'true' : 'false', weight: i === st.trailer ? '800' : '400',
-        imgClass: i === st.trailer ? '' : 'grayscale', tint: tint((d.hue + 200 + i * 40) % 360, dark),
-        bg: i === st.trailer ? 'color-mix(in srgb, var(--color-text) 7%, transparent)' : 'transparent',
-        onClick: () => this.setState({ trailer: i, playing: false }),
-      })),
-      note: {
-        showButton: !st.noteEditing, buttonLabel: st.note ? 'Edit note' : 'Write a note',
-        hasNote: !!st.note && !st.noteEditing, text: st.note, editing: st.noteEditing, draft: st.draft,
-        open: () => this.setState(s => ({ noteEditing: true, draft: s.note })),
-        onDraft: e => this.setState({ draft: e.target.value }),
-        save: () => this.setState(s => ({ note: s.draft.trim(), noteEditing: false })),
-        cancel: () => this.setState({ noteEditing: false }),
-      },
+      vw, wide, wideNav: wide && !isLogin, narrowNav: !wide && !isLogin, isLogin,
+      showBottom: !wide && !isLogin, bottomPad: !wide && !isLogin ? '72px' : '0',
+      t,
+      mainNav: [['#/library', t.library, inLib], ['#/upcoming', t.upcoming, name === 'upcoming']].map(([href, label, on]) => ({ href, label, current: on ? 'page' : 'false', weight: on ? '800' : '500', line: on ? 'var(--color-text)' : 'transparent' })),
+      draft: st.draft, onDraft: e => this.setState({ draft: e.target.value }),
+      onSearchSubmit: e => { e.preventDefault(); location.hash = '#/search?q=' + encodeURIComponent(st.draft.trim()); },
+      unread, hasUnread: unread > 0, bellLabel: t.notifications + (unread ? ', ' + unread + ' ' + t.unread : ''), bellCurrent: name === 'notifications' ? 'page' : 'false',
+      userOpen: st.userOpen, userExpanded: st.userOpen ? 'true' : 'false',
+      toggleUser: () => this.setState(s => ({ userOpen: !s.userOpen })), closeUser: () => this.setState({ userOpen: false }),
+      langs: [['en', 'EN'], ['ru', 'RU']].map(([code, label]) => ({ code, label, checked: lang === code ? 'true' : 'false', bg: lang === code ? 'var(--color-text)' : 'transparent', fg: lang === code ? 'var(--color-bg)' : 'var(--color-text)', onClick: () => MT && MT.set({ lang: code }) })),
+      tabs: tabDefs.map(([k, href, label, on]) => ({ href, label, current: on ? 'page' : 'false', weight: on ? '800' : '500', line: on ? 'var(--color-text)' : 'transparent', isLib: k === 'lib', isUp: k === 'up', isSearch: k === 'search', isBell: k === 'bell', isUser: k === 'user', badge: k === 'bell' && unread > 0, aria: k === 'bell' && unread ? label + ', ' + unread + ' ' + t.unread : label })),
+      r: { library: name === 'library', upcoming: name === 'upcoming', search: name === 'search', notifications: name === 'notifications', settings: name === 'settings', importExport: name === 'import' || name === 'export', login: isLogin, title: name === 'title', browse: name === 'browse', collection: name === 'collection' },
+      ieMode: name === 'export' ? 'export' : 'import',
+      titleScreen: ['show', 'anime', 'movie'].indexOf(r.id) >= 0 ? r.id : 'show',
+      routeId: r.id || 'french-mysteries', params: r.params || {}, query: (r.params && r.params.q) || '',
+      demo: this.props.demoState || 'live', role: this.props.role || 'member',
+      tgState: this.props.telegramState || 'not-connected', tgSimulate: !!this.props.simulateTelegramStart,
+      seasonLayout: this.props.seasonLayout || 'accordion', numbering: this.props.numbering || 'both',
     };
   }
 }
