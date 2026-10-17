@@ -47,6 +47,7 @@
 | `spikes/anime_mapping/fixtures.py` | The 12 titles under test |
 | `spikes/anime_mapping/franchise.py` | Pure franchise grouping over AniList relations |
 | `spikes/anime_mapping/fork_rules.py`, `compare_fork.py` | The Yamtrack fork's relation rules over AniList types, and the side-by-side table |
+| `spikes/anime_mapping/episodes_tmdb.py` | TMDB-only episode allocation scored against Simkl |
 | `spikes/anime_mapping/anilist.py` | AniList client with cache and rate limiting |
 | `spikes/anime_mapping/fribb.py` | Dataset download and lookups |
 | `spikes/anime_mapping/simkl.py`, `tmdb.py` | Optional probes |
@@ -991,7 +992,7 @@ Expected: one `== <title> (MAL <id>)` line per fixture, then `Wrote .../results.
 cd spikes/anime_mapping && ../.venv/bin/python report.py > ../../table.md && cat ../../table.md
 ```
 
-Expected: a 12-row markdown table. Keep `table.md` out of git; its contents go into the report in Task 7.
+Expected: a 12-row markdown table. Keep `table.md` out of git; its contents go into the report in Task 8.
 
 - [ ] **Step 4: Inspect the awkward cases by hand**
 
@@ -1233,7 +1234,223 @@ git commit -m "spike: compare franchise grouping with the Yamtrack fork rules"
 
 ---
 
-### Task 7: Write the report and update the spec
+### Task 7: Episode source without Simkl (TMDB-only variant)
+
+Question: can episode lists for anime come from TMDB alone, bridged by Fribb and AniList, closely enough that Simkl is not needed? Two allocations are scored against the AniList start date of each TV/ONA entry:
+
+- `concat`: glue every non-special TMDB season into one stream and slice it by the AniList episode counts in release order.
+- `fribb`: use the Fribb `season` and `episode_offset`.
+
+Simkl is scored the same way (first non-special episode with a date) as the reference. The check is deliberately weak (only the first episode's air date, within 14 days); a pass means the allocation starts in the right place, not that every episode lines up.
+
+**Files:**
+- Create: `spikes/anime_mapping/tests/test_episodes_tmdb.py`, then `spikes/anime_mapping/episodes_tmdb.py`
+
+**Interfaces:**
+- Consumes: `results.json` from Task 5 (needs `TMDB_TOKEN` and `SIMKL_CLIENT_ID` set); `DiskCache`; `simkl.SimklClient.episodes`.
+- Produces: `allocate_concat(flat, counts) -> list[list[dict]]`, `allocate_fribb(seasons, season, offset, count) -> list[dict]`, `date_matches(air_date, start, days=14) -> bool`, and a markdown table on stdout.
+
+- [ ] **Step 1: Write the failing tests**
+
+```python
+from datetime import date
+
+from episodes_tmdb import allocate_concat, allocate_fribb, date_matches
+
+
+def ep(n, day):
+    return {'episode_number': n, 'air_date': f'2020-01-{day:02d}'}
+
+
+def test_concat_slices_by_cumulative_counts_and_gives_the_rest_to_open_ended():
+    flat = [ep(i, i) for i in range(1, 8)]
+    parts = allocate_concat(flat, [3, 2, None])
+    assert [len(p) for p in parts] == [3, 2, 2]
+    assert parts[1][0]['episode_number'] == 4
+
+
+def test_concat_runs_short_when_tmdb_has_fewer_episodes():
+    flat = [ep(i, i) for i in range(1, 4)]
+    parts = allocate_concat(flat, [2, 5])
+    assert [len(p) for p in parts] == [2, 1]
+
+
+def test_fribb_uses_season_and_offset():
+    seasons = {1: [ep(i, i) for i in range(1, 13)], 2: [ep(i, i) for i in range(1, 5)]}
+    assert [e['episode_number'] for e in allocate_fribb(seasons, 1, 8, 3)] == [9, 10, 11]
+    assert allocate_fribb(seasons, 9, 0, 3) == []
+    assert allocate_fribb(seasons, None, 0, 3) == []
+
+
+def test_date_matches_within_tolerance():
+    assert date_matches('2020-01-10', (2020, 1, 1), days=14)
+    assert not date_matches('2020-03-10', (2020, 1, 1), days=14)
+    assert not date_matches(None, (2020, 1, 1), days=14)
+    assert not date_matches('2020-01-10', (2020, None, None), days=14)
+```
+
+- [ ] **Step 2: Run the tests to verify they fail**
+
+Run: `cd spikes/anime_mapping && ../.venv/bin/python -m pytest tests/test_episodes_tmdb.py -q`
+Expected: FAIL with `ModuleNotFoundError: No module named 'episodes_tmdb'`.
+
+- [ ] **Step 3: Implement `episodes_tmdb.py`**
+
+```python
+"""Variant 1: build anime episode lists from TMDB alone and score them.
+
+Two allocations are compared against the AniList start date of each entry:
+``concat`` glues every non-special TMDB season into one stream and slices it by
+the AniList episode counts; ``fribb`` uses the Fribb season and offset.
+"""
+
+import json
+import os
+from datetime import date, timedelta
+from pathlib import Path
+
+import httpx
+import simkl
+from cache import DiskCache
+
+HERE = Path(__file__).parent
+BASE = 'https://api.themoviedb.org/3'
+
+
+def allocate_concat(flat: list[dict], counts: list[int | None]) -> list[list[dict]]:
+    """Slice one episode stream by consecutive entry counts.
+
+    Args:
+        flat: Episodes in watching order.
+        counts: Episode count per entry in release order; None takes the rest.
+
+    Returns:
+        One list of episodes per entry (shorter when the stream runs out).
+    """
+    parts = []
+    pos = 0
+    for count in counts:
+        end = len(flat) if count is None else pos + count
+        parts.append(flat[pos:end])
+        pos = min(end, len(flat))
+    return parts
+
+
+def allocate_fribb(
+    seasons: dict[int, list[dict]], season: int | None, offset: int, count: int | None
+) -> list[dict]:
+    """Take ``count`` episodes of a TMDB season starting after ``offset``."""
+    if season is None or season not in seasons:
+        return []
+    episodes = seasons[season][offset:]
+    return episodes if count is None else episodes[:count]
+
+
+def date_matches(air_date: str | None, start: tuple, days: int = 14) -> bool:
+    """Return True when ``air_date`` is within ``days`` of a (y, m, d) start."""
+    if not air_date or None in start:
+        return False
+    return abs(date.fromisoformat(air_date) - date(*start)) <= timedelta(days=days)
+
+
+class Tmdb:
+    """Cached TMDB season fetcher."""
+
+    def __init__(self, token: str, cache: DiskCache) -> None:
+        self._http = httpx.Client(timeout=30, headers={'Authorization': f'Bearer {token}'})
+        self._cache = cache
+
+    def seasons(self, tv_id: int) -> dict[int, list[dict]]:
+        """Return ``{season_number: episodes}`` for seasons 1 and up."""
+        key = f'tmdb_tv_{tv_id}'
+        cached = self._cache.get(key)
+        if cached is None:
+            show = self._http.get(f'{BASE}/tv/{tv_id}').json()
+            cached = {}
+            for s in show.get('seasons', []):
+                if s['season_number'] < 1:
+                    continue
+                resp = self._http.get(f'{BASE}/tv/{tv_id}/season/{s["season_number"]}')
+                cached[str(s['season_number'])] = resp.json().get('episodes', [])
+            self._cache.put(key, cached)
+        return {int(k): v for k, v in cached.items()}
+
+
+def main() -> None:
+    """Score both allocations (and Simkl) for every TV/ONA entry in results.json."""
+    results = json.loads((HERE / 'results.json').read_text(encoding='utf-8'))
+    cache = DiskCache(HERE / '.cache' / 'variant1')
+    tmdb = Tmdb(os.environ['TMDB_TOKEN'], cache)
+    sk = simkl.SimklClient(os.environ['SIMKL_CLIENT_ID'])
+    print('| Title | entries | concat ok | fribb ok | simkl ok | notes |')
+    print('| --- | --- | --- | --- | --- | --- |')
+    totals = {'n': 0, 'concat': 0, 'fribb': 0, 'simkl': 0}
+    for fixture in results:
+        groups: dict[int, list[dict]] = {}
+        for entry in fixture['main']:
+            if entry['format'] in ('TV', 'ONA') and entry['tmdb'] and entry['tmdb'][0] == 'tv':
+                groups.setdefault(entry['tmdb'][1], []).append(entry)
+        n = c_ok = f_ok = s_ok = 0
+        notes = []
+        for tv_id, entries in groups.items():
+            seasons = tmdb.seasons(tv_id)
+            flat = [e for s in sorted(seasons) for e in seasons[s]]
+            entries.sort(key=lambda e: tuple(x or 0 for x in e['start']))
+            concat = allocate_concat(flat, [e['episodes'] for e in entries])
+            for entry, part in zip(entries, concat):
+                n += 1
+                first = part[0].get('air_date') if part else None
+                c_ok += date_matches(first, tuple(entry['start']))
+                off = ((entry['episode_offset'] or {}).get('tmdb')) or 0
+                fpart = allocate_fribb(
+                    seasons, (entry['season'] or {}).get('tmdb'), off, entry['episodes']
+                )
+                ffirst = fpart[0].get('air_date') if fpart else None
+                f_ok += date_matches(ffirst, tuple(entry['start']))
+                eps = sk.episodes(entry['simkl_id']) if entry['simkl_id'] else []
+                real = [e for e in eps if e.get('type') == 'episode' and e.get('date')]
+                sfirst = real[0]['date'][:10] if real else None
+                s_ok += date_matches(sfirst, tuple(entry['start']))
+                if not date_matches(first, tuple(entry['start'])):
+                    notes.append(f'{entry["title"][:28]} (concat first={first})')
+        totals['n'] += n
+        totals['concat'] += c_ok
+        totals['fribb'] += f_ok
+        totals['simkl'] += s_ok
+        print(f'| {fixture["label"]} | {n} | {c_ok} | {f_ok} | {s_ok} | {"; ".join(notes)} |')
+    print(f'| TOTAL | {totals["n"]} | {totals["concat"]} | {totals["fribb"]} | {totals["simkl"]} | |')
+
+
+if __name__ == '__main__':
+    main()
+```
+
+- [ ] **Step 4: Run the tests to verify they pass**
+
+Run: `cd spikes/anime_mapping && ../.venv/bin/python -m pytest -q`
+Expected: all tests pass (16).
+
+- [ ] **Step 5: Run the scoring**
+
+Run: `cd spikes/anime_mapping && ../.venv/bin/python episodes_tmdb.py > ../../variant1-table.md && cat ../../variant1-table.md`
+Expected: a table with one row per fixture and a TOTAL row. The first run downloads every TMDB season of the fixtures and takes about a minute. Keep `variant1-table.md` out of git.
+
+Reference result from 2026-10-17: of 38 TV/ONA entries, `concat` starts in the right place for 29, `fribb` for 28, Simkl for 35. Without Bakemonogatari (TMDB orders the Monogatari episodes by arc, not by release) `concat` is 28 of 29. Other misses: Frieren season 3 (not aired yet, no dates anywhere), One Piece under `fribb` (Fribb has no season for the single absolutely numbered entry), Cowboy Bebop under Simkl (undated episodes).
+
+- [ ] **Step 6: Inspect every miss**
+
+For each name in the "notes" column, look at the TMDB season list and the AniList page and write one line (title, cause, whether a rule would fix it, for example "reorder by air date" or "needs manual override") for the report.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add spikes/anime_mapping/episodes_tmdb.py spikes/anime_mapping/tests/test_episodes_tmdb.py
+git commit -m "spike: score TMDB-only episode allocation against Simkl"
+```
+
+---
+
+### Task 8: Write the report and update the spec
 
 **Files:**
 - Create: `docs/superpowers/spikes/2026-10-10-anime-source-and-id-mapping.md`
@@ -1245,7 +1462,7 @@ Create the report with exactly these headings, filling each from the run:
 
 1. `## Question`: which providers supply anime franchise structure, episode lists with air dates and TMDB bridges.
 2. `## Method`: the 12 fixtures, the sources probed, which keys were available, the run date.
-3. `## Results`: paste the table from `table.md`, then the hand-check notes from Task 5, Step 4, then the fork comparison from Task 6 (`fork-table.md` and the per-id verdicts).
+3. `## Results`: paste the table from `table.md`, then the hand-check notes from Task 5, Step 4, then the fork comparison from Task 6 (`fork-table.md` and the per-id verdicts), then the TMDB-only scoring from Task 7 (`variant1-table.md` and the notes on every miss).
 4. `## Findings`: answer each of these in one or two sentences with numbers from the table:
    - What share of main-chain entries has a Fribb record, a Simkl id, a TMDB id? Which fixtures are weakest?
    - Does the Fribb `season` and `episode_offset` data let an anime cour map onto a TMDB season (Attack on Titan is the test)?
