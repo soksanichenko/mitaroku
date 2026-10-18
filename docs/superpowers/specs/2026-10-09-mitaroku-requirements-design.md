@@ -74,9 +74,10 @@ prioritises watching and planned titles.
 
 The anime id mapping was the riskiest part of the system. The spike
 (`docs/superpowers/spikes/2026-10-10-anime-source-and-id-mapping.md`) settled it: Fribb is
-the bridge, AniList gives the franchise, and TMDB episodes are accepted only when the
-first air date is within 14 days of the AniList start date. Entries that fail the check
-fall back to a degraded mode: episode numbers and dates from AniList, no titles.
+the bridge, AniList gives the franchise, and TMDB episodes are accepted only when the first
+episode airs within 2 days of the AniList start date and the allocation has exactly the
+AniList episode count (the spike measured 29 of 38 TV/ONA entries passing). Entries that fail the guard
+fall back to a degraded mode: the episode count and start date from AniList, no titles.
 Simkl is not used because its catalog terms require Simkl login and sync.
 
 ## 5. Screens
@@ -167,7 +168,8 @@ role from the `new-service-repo` and `new-nginx-service` skills.
 
 - Fribb dataset refresh schedule, and the UX of the degraded episode mode.
 - Whether a Simkl provider is added later together with Simkl login and sync.
-- The PARENT rule: a movie or special with a PARENT edge is an extra.
+- The PARENT rule (a movie or special with a PARENT edge is an extra); test cases AniList 11577, 192809 and 204066.
+- Per-episode past air dates from AniList for the degraded mode were not probed.
 - Telegram: webhook or polling.
 - Posters: browser hotlinks the CDN, or a server proxy.
 - Subdomain or subpath.

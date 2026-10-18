@@ -32,3 +32,24 @@ def test_date_matches_within_tolerance():
     assert not date_matches('2020-03-10', (2020, 1, 1), days=14)
     assert not date_matches(None, (2020, 1, 1), days=14)
     assert not date_matches('2020-01-10', (2020, None, None), days=14)
+
+
+def test_accepts_only_tight_date_and_matching_length():
+    from episodes_tmdb import accepts
+
+    part = [ep(i, i) for i in range(1, 13)]
+    assert accepts(part, 12, (2020, 1, 1))
+    assert accepts(part, None, (2020, 1, 1))
+    assert accepts(part, 12, (2019, 12, 30))  # two days earlier
+    assert not accepts(part, 12, (2019, 12, 20))  # eleven days earlier
+    assert not accepts(part, 13, (2020, 1, 1))  # one episode short
+    assert not accepts([], 12, (2020, 1, 1))
+
+
+def test_first_accepted_picks_the_first_candidate_that_passes():
+    from episodes_tmdb import first_accepted
+
+    bad = [ep(i, 20 + i) for i in range(1, 4)]
+    good = [ep(i, i) for i in range(1, 4)]
+    assert first_accepted([bad, good], 3, (2020, 1, 1)) == 1
+    assert first_accepted([bad, bad], 3, (2020, 1, 1)) is None
