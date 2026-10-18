@@ -2804,12 +2804,12 @@ jobs:
 ---
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.13
+    rev: v0.17.0
     hooks:
       - id: ruff
-        args: [sources/, tests/]
+        files: ^(sources|tests)/
       - id: ruff-format
-        args: [sources/, tests/]
+        files: ^(sources|tests)/
 ```
 
 - [ ] **Step 3: Replace the template README**
