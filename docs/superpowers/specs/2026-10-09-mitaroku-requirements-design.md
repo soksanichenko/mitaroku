@@ -47,7 +47,7 @@ for secrets, Docker, Ansible (repo created from `service-repo-template`).
 - `TitleTranslation`: lazily filled persistent cache per language. Search results
   are not persisted. Empty values are not stored. Orphans are garbage-collected.
   Fallback chain: user language, original, English.
-- `Season`: for anime, a franchise group of type tv, ova, movie or special.
+- `Season`: for anime, a franchise group of type tv, ona, ova, movie or special.
 - `Episode`: number, absolute number, air date.
 - `LibraryEntry`: status watching, planned, completed or dropped ("not watching"
   means no entry). Score stored 0 to 10 and shown as 5 stars. Private note.
@@ -77,7 +77,7 @@ The anime id mapping was the riskiest part of the system. The spike
 the bridge, AniList gives the franchise, and TMDB episodes are accepted only when the first
 episode airs within 2 days of the AniList start date and the allocation has exactly the
 AniList episode count (the spike measured 29 of 38 TV/ONA entries passing). Entries that fail the guard
-fall back to a degraded mode: the episode count and start date from AniList, no titles.
+fall back to a degraded mode: the episode count, start date and rating from AniList, and per-episode dates only when its `airingSchedule` has one node per episode (3 of the 8 probed entries); no titles.
 Simkl is not used because its catalog terms require Simkl login and sync.
 
 ## 5. Screens
@@ -169,7 +169,6 @@ role from the `new-service-repo` and `new-nginx-service` skills.
 - Fribb dataset refresh schedule, and the UX of the degraded episode mode.
 - Whether a Simkl provider is added later together with Simkl login and sync.
 - The PARENT rule (a movie or special with a PARENT edge is an extra); test cases AniList 11577, 192809 and 204066.
-- Per-episode past air dates from AniList for the degraded mode were not probed.
 - Telegram: webhook or polling.
 - Posters: browser hotlinks the CDN, or a server proxy.
 - Subdomain or subpath.
