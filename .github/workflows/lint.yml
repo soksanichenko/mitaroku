@@ -1,6 +1,9 @@
 ---
 name: Lint
 
+# Runs the same hooks as the local pre-commit installation, so a commit that
+# passes locally passes here. Scope and ruff version live in
+# .pre-commit-config.yaml and pyproject.toml only.
 on:
   push:
   pull_request:
@@ -10,18 +13,18 @@ permissions:
   contents: read
 
 jobs:
-  ruff:
-    name: ruff
+  pre-commit:
+    name: pre-commit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
 
-      - name: Run ruff check
-        uses: astral-sh/ruff-action@v3
+      - uses: actions/setup-python@v7
         with:
-          args: "check sources/"
+          python-version: "3.12"
 
-      - name: Run ruff format check
-        uses: astral-sh/ruff-action@v3
-        with:
-          args: "format --check sources/"
+      - name: Install pre-commit
+        run: pip install pre-commit==4.6.2
+
+      - name: Run all hooks
+        run: pre-commit run --all-files --show-diff-on-failure

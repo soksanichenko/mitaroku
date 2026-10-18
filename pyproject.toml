@@ -8,5 +8,13 @@ dependencies = []
 [tool.setuptools.packages.find]
 where = ["sources"]
 
+[tool.ruff]
+# Throwaway spike code and documentation are not linted; hooks and CI use the same scope
+# (see .pre-commit-config.yaml).
+extend-exclude = ["spikes", "docs"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
 [tool.ruff.format]
 quote-style = "single"

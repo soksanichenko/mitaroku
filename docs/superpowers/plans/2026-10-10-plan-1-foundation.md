@@ -92,6 +92,11 @@ dependencies = []
 [tool.setuptools.packages.find]
 where = ["sources"]
 
+[tool.ruff]
+# Throwaway spike code and documentation are not linted; hooks and CI use the
+# same scope (see .pre-commit-config.yaml).
+extend-exclude = ["spikes", "docs"]
+
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "I"]
 
@@ -2764,7 +2769,9 @@ jobs:
         run: python -m pytest
 ```
 
-- [ ] **Step 2: Extend linting to the tests**
+- [ ] **Step 2: Make CI run the pre-commit hooks**
+
+The previous workflow called ruff directly with its own paths, so it linted a different set of files than the local hook (ruff-action also appends the repository root to its arguments) and used a different ruff version. Both now come from `.pre-commit-config.yaml`.
 
 **Replace the whole file `.github/workflows/lint.yml`:**
 
@@ -2772,6 +2779,9 @@ jobs:
 ---
 name: Lint
 
+# Runs the same hooks as the local pre-commit installation, so a commit that
+# passes locally passes here. Scope and ruff version live in
+# .pre-commit-config.yaml and pyproject.toml only.
 on:
   push:
   pull_request:
@@ -2781,21 +2791,21 @@ permissions:
   contents: read
 
 jobs:
-  ruff:
-    name: ruff
+  pre-commit:
+    name: pre-commit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
 
-      - name: Run ruff check
-        uses: astral-sh/ruff-action@v3
+      - uses: actions/setup-python@v7
         with:
-          args: "check sources/ tests/"
+          python-version: "3.12"
 
-      - name: Run ruff format check
-        uses: astral-sh/ruff-action@v3
-        with:
-          args: "format --check sources/ tests/"
+      - name: Install pre-commit
+        run: pip install pre-commit==4.6.2
+
+      - name: Run all hooks
+        run: pre-commit run --all-files --show-diff-on-failure
 ```
 
 **Replace the whole file `.pre-commit-config.yaml`:**
