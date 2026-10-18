@@ -1,0 +1,25 @@
+---
+# Copy to config.yaml (git-ignored) for local development.
+# Every key can also be set through the environment, for example
+# MITAROKU_DATABASE__PASSWORD; the environment wins over this file.
+secret_key: change-me
+debug: true
+allowed_hosts: [localhost, 127.0.0.1]
+huey_immediate: false
+
+auth:
+  mode: local  # local = Django accounts; portal = trust the SSO headers from nginx
+  trusted_proxies: ['127.0.0.1/32', '::1/128', '172.16.0.0/12']
+  portal_logout_url: ''
+
+database:
+  host: localhost
+  port: 55432
+  name: mitaroku
+  user: mitaroku
+  password: mitaroku
+
+redis:
+  host: localhost
+  port: 56379
+...

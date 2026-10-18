@@ -1,0 +1,7 @@
+Django==5.2.18
+huey==3.4.0
+psycopg[binary]==3.3.6
+pydantic==2.14.0
+pydantic-settings==2.15.0
+PyYAML==6.0.3
+redis==8.1.0

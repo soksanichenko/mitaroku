@@ -1,7 +1,7 @@
 [project]
-name = "REPLACE_ME"
+name = "mitaroku"
 version = "0.1.0"
-description = "REPLACE_ME"
+description = "Self-hosted tracker for movies, TV series and anime"
 requires-python = ">=3.12"
 dependencies = []
 
@@ -18,3 +18,17 @@ select = ["E4", "E7", "E9", "F", "I"]
 
 [tool.ruff.format]
 quote-style = "single"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "mitaroku.settings"
+pythonpath = ["sources"]
+testpaths = ["tests"]
+env = [
+  "D:MITAROKU_CONFIG=tests/no-such-config.yaml",
+  "D:MITAROKU_SECRET_KEY=test-secret-key-not-for-production",
+  "D:MITAROKU_DATABASE__PASSWORD=mitaroku",
+  "D:MITAROKU_DATABASE__PORT=55432",
+  "D:MITAROKU_REDIS__PORT=56379",
+  "D:MITAROKU_HUEY_IMMEDIATE=true",
+  "D:MITAROKU_AUTH__MODE=portal",
+]
