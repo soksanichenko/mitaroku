@@ -1,0 +1,21 @@
+{% load i18n static %}{% get_current_language as LANGUAGE_CODE %}<!doctype html>
+<html lang="{{ LANGUAGE_CODE }}" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}mitaroku{% endblock %} · mitaroku</title>
+  <link rel="stylesheet" href="{% static 'web/ds.css' %}">
+  <link rel="stylesheet" href="{% static 'web/app.css' %}">
+  <script src="{% static 'web/theme.js' %}"></script>
+  <script src="{% static 'web/vendor/htmx.min.js' %}" defer></script>
+  <script src="{% static 'web/vendor/alpine.min.js' %}" defer></script>
+</head>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+  <a class="mt-skip" href="#main">{% trans 'Skip to content' %}</a>
+  {% block header %}{% include 'web/_header.html' %}{% endblock %}
+  <main id="main" class="mt-page">
+    {% block content %}{% endblock %}
+  </main>
+  {% block bottom %}{% if user.is_authenticated %}{% include 'web/_bottom_nav.html' %}{% endif %}{% endblock %}
+</body>
+</html>

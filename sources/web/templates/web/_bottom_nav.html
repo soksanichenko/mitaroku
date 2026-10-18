@@ -1,0 +1,11 @@
+{% load i18n %}
+<nav class="mt-bottom-nav" aria-label="{% trans 'Main' %}">
+  <a href="{% url 'library' %}"{% if current_nav == 'library' %} aria-current="page"{% endif %}>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 6 4 14M12 6v14M8 8v12M4 4v16"></path></svg>
+    <span>{% trans 'Library' %}</span>
+  </a>
+  <a href="{% url 'upcoming' %}"{% if current_nav == 'upcoming' %} aria-current="page"{% endif %}>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="18" x="3" y="4"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+    <span>{% trans 'Upcoming' %}</span>
+  </a>
+</nav>

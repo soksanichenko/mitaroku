@@ -1,0 +1,52 @@
+{% load i18n web_extras %}
+<header class="mt-header">
+  <div class="mt-header-inner">
+    <a class="mt-logo" href="{% url 'library' %}" aria-label="{% trans 'mitaroku, go to library' %}">
+      <span class="mt-logo-mark">見た録</span>
+      <span class="mt-logo-name">mitaroku</span>
+    </a>
+    {% if user.is_authenticated %}
+    <nav class="mt-nav" aria-label="{% trans 'Main' %}">
+      <a href="{% url 'library' %}"{% if current_nav == 'library' %} aria-current="page"{% endif %}>{% trans 'Library' %}</a>
+      <a href="{% url 'upcoming' %}"{% if current_nav == 'upcoming' %} aria-current="page"{% endif %}>{% trans 'Upcoming' %}</a>
+    </nav>
+    {% endif %}
+    <span class="mt-spacer"></span>
+    {% include 'web/_theme_toggle.html' %}
+    {% if user.is_authenticated %}
+    <div class="mt-user" x-data="{ open: false }" @keydown.escape="open = false" @click.outside="open = false">
+      <button type="button" class="mt-user-btn" aria-haspopup="menu" :aria-expanded="open"
+              aria-label="{% trans 'Account' %}" title="{% trans 'Account' %}" @click="open = !open">
+        <span class="mt-avatar" aria-hidden="true">{{ user|initials }}</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+      </button>
+      <div class="mt-menu" role="menu" aria-label="{% trans 'Account' %}" x-show="open" x-cloak>
+        <div class="mt-menu-identity">
+          <strong>{{ user.get_full_name|default:user.get_username }}</strong>
+          {% if user.email %}<span>{{ user.email }}</span>{% endif %}
+        </div>
+        <form class="mt-lang" method="post" action="{% url 'set_language' %}" role="group" aria-label="{% trans 'Language' %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <span class="mt-lang-label">{% trans 'Language' %}</span>
+          <div class="mt-lang-options">
+            {% get_current_language as CURRENT_LANGUAGE %}
+            {% for code, name in language_choices %}
+            <button type="submit" name="language" value="{{ code }}" role="menuitemradio" lang="{{ code }}"
+                    aria-checked="{% if code == CURRENT_LANGUAGE %}true{% else %}false{% endif %}">{{ code|upper }}</button>
+            {% endfor %}
+          </div>
+        </form>
+        {% if auth_mode == 'local' %}
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button type="submit" class="mt-menu-item" role="menuitem">{% trans 'Log out' %}</button>
+        </form>
+        {% elif portal_logout_url %}
+        <a class="mt-menu-item" role="menuitem" href="{{ portal_logout_url }}">{% trans 'Log out' %}</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</header>

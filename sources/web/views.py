@@ -4,22 +4,27 @@ import redis
 from django.conf import settings
 from django.contrib.auth.decorators import login_not_required
 from django.db import connection
-from django.http import HttpResponse, JsonResponse
-from django.shortcuts import redirect
+from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.shortcuts import redirect, render
 
 
-def index(request):
+def index(request: HttpRequest) -> HttpResponse:
     """Send the root URL to the library."""
     return redirect('library')
 
 
-def library(request):
-    """Placeholder until the shell templates arrive."""
-    return HttpResponse('Library')
+def library(request: HttpRequest) -> HttpResponse:
+    """Render the library page (filled in by the tracking plan)."""
+    return render(request, 'web/library.html')
+
+
+def upcoming(request: HttpRequest) -> HttpResponse:
+    """Render the upcoming page (filled in by the tracking plan)."""
+    return render(request, 'web/upcoming.html')
 
 
 @login_not_required
-def healthz(request):
+def healthz(request: HttpRequest) -> JsonResponse:
     """Report whether PostgreSQL and Redis answer.
 
     Returns:
