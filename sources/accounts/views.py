@@ -2,14 +2,14 @@
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_not_required
-from django.http import HttpResponseRedirect
+from django.http import HttpRequest, HttpResponseRedirect
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 
 @login_not_required
 @require_POST
-def set_language(request):
+def set_language(request: HttpRequest) -> HttpResponseRedirect:
     """Save the chosen interface language and return to the previous page.
 
     The language goes to the profile for signed-in users and to a cookie for

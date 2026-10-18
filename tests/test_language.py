@@ -28,8 +28,9 @@ def test_set_language_saves_profile_and_cookie(client, portal_headers):
 
 def test_set_language_ignores_unknown_language(client, portal_headers):
     client.get('/library/', **portal_headers)
-    client.post('/language/', {'language': 'xx'}, **portal_headers)
+    response = client.post('/language/', {'language': 'xx'}, **portal_headers)
     assert User.objects.get(discord_id='1001').profile.interface_language == 'en'
+    assert 'django_language' not in response.cookies
 
 
 def test_set_language_rejects_open_redirect(client, portal_headers):

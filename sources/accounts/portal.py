@@ -2,6 +2,7 @@
 
 import ipaddress
 
+from accounts.models import User
 from django.contrib.auth.models import Group
 
 ADMIN_GROUP = 'app-admins'
@@ -44,7 +45,7 @@ def is_valid_discord_id(value: str) -> bool:
     return value.isascii() and value.isdigit() and len(value) <= 32
 
 
-def sync_user(user, *, email: str, avatar_url: str, access_level: str) -> None:
+def sync_user(user: User, *, email: str, avatar_url: str, access_level: str) -> None:
     """Copy portal-provided attributes onto the user.
 
     The role follows the portal on every request: ``admin`` makes the user

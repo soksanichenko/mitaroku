@@ -1,9 +1,16 @@
 """Middleware for portal authentication and per-user language."""
 
+from collections.abc import Callable
+
 from accounts.portal import is_trusted_peer, is_valid_discord_id, sync_user
 from django.conf import settings
 from django.contrib import auth
-from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden
+from django.http import (
+    HttpRequest,
+    HttpResponse,
+    HttpResponseBadRequest,
+    HttpResponseForbidden,
+)
 from django.utils import translation
 
 ID_HEADER = 'HTTP_X_DISCORD_USER_ID'
@@ -21,11 +28,11 @@ class PortalAuthMiddleware:
     sync_capable = True
     async_capable = False
 
-    def __init__(self, get_response):
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
         """Store the next handler."""
         self.get_response = get_response
 
-    def __call__(self, request):
+    def __call__(self, request: HttpRequest) -> HttpResponse:
         """Authenticate from the headers, then run the rest of the stack."""
         discord_id = request.META.get(ID_HEADER)
         if discord_id is None:
@@ -48,7 +55,7 @@ class PortalAuthMiddleware:
                 )
         return self.get_response(request)
 
-    def _sign_in(self, request, discord_id: str) -> None:
+    def _sign_in(self, request: HttpRequest, discord_id: str) -> None:
         """Make ``request.user`` the portal user, replacing a different session."""
         if request.user.is_authenticated:
             if request.user.get_username() == discord_id:
@@ -59,7 +66,13 @@ class PortalAuthMiddleware:
             request.user = user
             auth.login(request, user)
 
-    def process_view(self, request, view_func, view_args, view_kwargs):
+    def process_view(
+        self,
+        request: HttpRequest,
+        view_func: Callable[..., HttpResponse],
+        view_args: tuple,
+        view_kwargs: dict,
+    ) -> HttpResponse | None:
         """Reject anonymous requests to views that require a login."""
         if request.user.is_authenticated or not getattr(
             view_func, 'login_required', True
@@ -71,11 +84,11 @@ class PortalAuthMiddleware:
 class ProfileLanguageMiddleware:
     """Activate the signed-in user's interface language."""
 
-    def __init__(self, get_response):
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
         """Store the next handler."""
         self.get_response = get_response
 
-    def __call__(self, request):
+    def __call__(self, request: HttpRequest) -> HttpResponse:
         """Switch language for authenticated users before the view runs."""
         user = getattr(request, 'user', None)
         if user is not None and user.is_authenticated:

@@ -104,3 +104,28 @@ def test_missing_optional_headers_leave_existing_values(client, portal_headers):
     del portal_headers['HTTP_X_DISCORD_AVATAR_URL']
     client.get('/library/', **portal_headers)
     assert User.objects.get().email == 'kira@example.com'
+
+
+def test_portal_id_does_not_adopt_an_existing_local_account(client, portal_headers):
+    local = User.objects.create_user(username='123456789012345678', password='x')
+    local.is_superuser = True
+    local.save()
+    portal_headers['HTTP_X_DISCORD_USER_ID'] = '123456789012345678'
+    portal_headers['HTTP_X_DISCORD_ACCESS_LEVEL'] = 'admin'
+    response = client.get('/library/', **portal_headers)
+    assert response.status_code == 401
+    local.refresh_from_db()
+    assert local.discord_id is None
+    assert not local.is_staff
+    assert not local.groups.filter(name='app-admins').exists()
+
+
+def test_x_forwarded_for_is_not_honoured(client, portal_headers):
+    response = client.get(
+        '/library/',
+        REMOTE_ADDR='8.8.8.8',
+        HTTP_X_FORWARDED_FOR='127.0.0.1',
+        **portal_headers,
+    )
+    assert response.status_code == 403
+    assert not User.objects.exists()
