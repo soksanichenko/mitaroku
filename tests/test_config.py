@@ -1,3 +1,5 @@
+import ipaddress
+
 import pytest
 from mitaroku.config import Settings
 from pydantic import ValidationError
@@ -51,3 +53,12 @@ def test_unknown_key_is_rejected(tmp_path, monkeypatch):
     monkeypatch.setenv('MITAROKU_CONFIG', str(config_file))
     with pytest.raises(ValidationError):
         Settings()
+
+
+def test_default_trusted_proxies_are_loopback_only():
+    from accounts.portal import is_trusted_peer
+
+    networks = [ipaddress.ip_network(item) for item in Settings().auth.trusted_proxies]
+    assert is_trusted_peer('127.0.0.1', networks)
+    assert is_trusted_peer('::1', networks)
+    assert not is_trusted_peer('172.18.0.5', networks)

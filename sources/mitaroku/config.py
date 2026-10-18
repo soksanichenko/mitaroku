@@ -45,7 +45,7 @@ class AuthConfig(BaseModel):
     """
 
     mode: Literal['portal', 'local'] = 'portal'
-    trusted_proxies: list[str] = ['127.0.0.1/32', '::1/128', '172.16.0.0/12']
+    trusted_proxies: list[str] = ['127.0.0.1/32', '::1/128']
     portal_logout_url: str = ''
 
     @field_validator('trusted_proxies')

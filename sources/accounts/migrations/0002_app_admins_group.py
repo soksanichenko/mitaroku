@@ -1,17 +1,19 @@
 """Create the ``app-admins`` group that portal admins join."""
 
+from django.apps.registry import Apps
 from django.db import migrations
+from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 
 GROUP_NAME = 'app-admins'
 
 
-def create_group(apps, schema_editor):
+def create_group(apps: Apps, schema_editor: BaseDatabaseSchemaEditor) -> None:
     """Create the group if it does not exist."""
     Group = apps.get_model('auth', 'Group')
     Group.objects.get_or_create(name=GROUP_NAME)
 
 
-def delete_group(apps, schema_editor):
+def delete_group(apps: Apps, schema_editor: BaseDatabaseSchemaEditor) -> None:
     """Remove the group on rollback."""
     Group = apps.get_model('auth', 'Group')
     Group.objects.filter(name=GROUP_NAME).delete()

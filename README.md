@@ -36,14 +36,28 @@ environment variables prefixed `MITAROKU_`, with `__` between nested keys, for e
 `MITAROKU_DATABASE__PASSWORD`. The environment wins over the file. See
 `config.example.yaml` for every key.
 
+- `secret_key` and `database.password` have no defaults: set `MITAROKU_SECRET_KEY` and
+  `MITAROKU_DATABASE__PASSWORD` (or the YAML keys).
+- List-valued environment variables must be JSON, for example
+  `MITAROKU_ALLOWED_HOSTS='["mitaroku.example.com"]'`.
+- Behind a TLS proxy, `csrf_trusted_origins` must list the https origin (for example
+  `['https://mitaroku.example.com']`), or every POST gets 403.
+- `python sources/manage.py collectstatic` writes to `staticfiles/` (git-ignored).
+  Serving `/static/` in production is deferred to plan 6.
+
 ## Authentication
 
 - `auth.mode: portal` (production): nginx authenticates through the SSO portal and
   passes `X-Discord-User-Id`, `X-Discord-Email`, `X-Discord-Avatar-Url` and
   `X-Discord-Access-Level`. They are trusted only from addresses in
-  `auth.trusted_proxies`.
+  `auth.trusted_proxies`, which defaults to loopback only (`127.0.0.1/32`, `::1/128`).
+  List the exact address of nginx; a Docker-based nginx needs its container address or
+  the bridge gateway listed.
 - `auth.mode: local` (development, or when the portal is down): Django accounts and
   the `/login/` page.
 
 An `admin` access level makes the user staff and a member of the `app-admins` group;
-it never grants superuser rights.
+it never grants superuser rights. An admin is `is_staff` plus `app-admins`, with view
+access to users and view/change access to profiles in `/admin/` (no permission to
+change users, so nobody can promote themselves). Password login and `createsuperuser`
+work only in local mode; in portal mode the portal header is the only login.
