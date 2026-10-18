@@ -1,0 +1,57 @@
+---
+name: Tests
+
+on:
+  push:
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    name: pytest
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: mitaroku
+          POSTGRES_PASSWORD: mitaroku
+          POSTGRES_DB: mitaroku
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U mitaroku"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 56379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            sources/requirements.txt
+            tests/requirements.txt
+
+      - name: Install gettext (compiles the translations)
+        run: sudo apt-get update && sudo apt-get install -y gettext
+
+      - name: Install dependencies
+        run: pip install -r tests/requirements.txt
+
+      - name: Run tests
+        run: python -m pytest
