@@ -61,9 +61,9 @@ All user-data queries go through a model manager that scopes them to the user.
 
 | Provider | Role in the MVP |
 | --- | --- |
-| TMDB | Movies and TV, external ids including IMDb, MVP rating |
-| MAL | Anime entries and sequel/prequel relations (franchise grouping), anime rating |
-| Simkl | Anime episodes |
+| TMDB | Movies and TV, anime episodes (titles, overviews, stills, air dates), external ids including IMDb, MVP rating |
+| AniList | Anime entries, sequel/prequel relations (franchise grouping), upcoming episode schedule, anime rating; no key |
+| Fribb/anime-lists | Dataset bridging MAL, AniList, TMDB and IMDb ids, with season and episode offset |
 
 IMDb ratings (post-MVP) come from the public datasets by `imdb_id`. API keys are
 global server-side keys from Infisical.
@@ -72,8 +72,12 @@ Cache layers: Postgres (durable), Redis TTL for responses, a per-provider rate
 limiter, a single-flight lock, and stale-on-error with Huey retry. Scheduled sync
 prioritises watching and planned titles.
 
-The MAL, Simkl and TMDB id mapping is the riskiest part of the system and gets a
-spike at the start of the plan.
+The anime id mapping was the riskiest part of the system. The spike
+(`docs/superpowers/spikes/2026-10-10-anime-source-and-id-mapping.md`) settled it: Fribb is
+the bridge, AniList gives the franchise, and TMDB episodes are accepted only when the
+first air date is within 14 days of the AniList start date. Entries that fail the check
+fall back to a degraded mode: episode numbers and dates from AniList, no titles.
+Simkl is not used because its catalog terms require Simkl login and sync.
 
 ## 5. Screens
 
@@ -161,7 +165,9 @@ role from the `new-service-repo` and `new-nginx-service` skills.
 
 ## 13. Open items for the implementation plan
 
-- Spike: MAL, Simkl and TMDB id mapping.
+- Fribb dataset refresh schedule, and the UX of the degraded episode mode.
+- Whether a Simkl provider is added later together with Simkl login and sync.
+- The PARENT rule: a movie or special with a PARENT edge is an extra.
 - Telegram: webhook or polling.
 - Posters: browser hotlinks the CDN, or a server proxy.
 - Subdomain or subpath.
