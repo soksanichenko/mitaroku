@@ -1,0 +1,28 @@
+{% extends 'web/base.html' %}{% load i18n %}
+{% block title %}{% trans 'Sign in' %}{% endblock %}
+{% block bottom %}{% endblock %}
+{% block content %}
+<div class="mt-login">
+  <h1 class="mt-page-title">{% trans 'Sign in' %}</h1>
+  <p class="mt-muted">{% trans 'Local account. Use this when the portal sign-in is not available.' %}</p>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    {% if form.errors %}
+    <p class="mt-error" role="alert">{% trans 'The username or password is wrong. Try again.' %}</p>
+    {% endif %}
+    <div class="field">
+      <label for="id_username">{% trans 'Username' %}</label>
+      <input id="id_username" class="input" name="username" autocomplete="username" required
+             style="min-height:44px" value="{{ form.username.value|default:'' }}">
+    </div>
+    <div class="field">
+      <label for="id_password">{% trans 'Password' %}</label>
+      <input id="id_password" class="input" type="password" name="password"
+             autocomplete="current-password" required style="min-height:44px">
+    </div>
+    <button type="submit" class="btn btn-primary" style="min-height:44px">{% trans 'Sign in' %}</button>
+  </form>
+  <p class="mt-muted">{% trans 'Forgot your password? Ask the administrator of this server to reset it.' %}</p>
+</div>
+{% endblock %}

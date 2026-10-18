@@ -1,10 +1,29 @@
-"""Language view."""
+"""Login, logout and language views."""
+
+from typing import Any
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_not_required
-from django.http import HttpRequest, HttpResponseRedirect
+from django.contrib.auth.views import LoginView
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
+from django.shortcuts import redirect
+from django.utils.decorators import method_decorator
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
+
+
+@method_decorator(login_not_required, name='dispatch')
+class MitarokuLoginView(LoginView):
+    """Local login form; in portal mode there is nothing to log in to."""
+
+    template_name = 'accounts/login.html'
+    redirect_authenticated_user = True
+
+    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        """Send portal-mode visitors to the library."""
+        if settings.AUTH_MODE == 'portal':
+            return redirect('/')
+        return super().dispatch(request, *args, **kwargs)
 
 
 @login_not_required

@@ -39,3 +39,21 @@ msgstr "Здесь появятся ваши тайтлы."
 
 msgid "Upcoming episodes and premieres will appear here."
 msgstr "Здесь появятся ближайшие серии и премьеры."
+
+msgid "Sign in"
+msgstr "Войти"
+
+msgid "Local account. Use this when the portal sign-in is not available."
+msgstr "Локальная учётная запись. Используйте её, когда вход через портал недоступен."
+
+msgid "The username or password is wrong. Try again."
+msgstr "Неверное имя пользователя или пароль. Попробуйте ещё раз."
+
+msgid "Username"
+msgstr "Имя пользователя"
+
+msgid "Password"
+msgstr "Пароль"
+
+msgid "Forgot your password? Ask the administrator of this server to reset it."
+msgstr "Забыли пароль? Попросите администратора сервера сбросить его."
