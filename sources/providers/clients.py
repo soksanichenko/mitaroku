@@ -3,6 +3,7 @@
 import httpx
 from django.conf import settings
 from mitaroku.config import load_settings
+from providers.anilist import AniListClient
 from providers.http import ProviderError, ProviderHttp
 from providers.tmdb import TmdbClient
 from redis import Redis
@@ -50,3 +51,16 @@ def get_tmdb() -> TmdbClient:
         min_interval=config.tmdb_min_interval,
     )
     return TmdbClient(http)
+
+
+def get_anilist() -> AniListClient:
+    """Return an AniList client; it needs no key."""
+    config = load_settings().providers
+    client = httpx.Client(timeout=TIMEOUT, headers={'User-Agent': user_agent()})
+    http = ProviderHttp(
+        'anilist',
+        client=client,
+        redis=connect_redis(),
+        min_interval=config.anilist_min_interval,
+    )
+    return AniListClient(http)
