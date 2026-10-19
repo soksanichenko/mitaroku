@@ -1,7 +1,13 @@
 """Factories that wire the provider clients to Django settings."""
 
+import httpx
 from django.conf import settings
+from mitaroku.config import load_settings
+from providers.http import ProviderError, ProviderHttp
+from providers.tmdb import TmdbClient
 from redis import Redis
+
+TIMEOUT = 30.0
 
 
 def connect_redis() -> Redis:
@@ -13,3 +19,34 @@ def connect_redis() -> Redis:
         password=settings.REDIS_PASSWORD,
         decode_responses=True,
     )
+
+
+def user_agent() -> str:
+    """Return the ``User-Agent`` header, naming the operator when configured."""
+    contact = load_settings().providers.contact
+    return f'mitaroku/0.1 ({contact})' if contact else 'mitaroku/0.1'
+
+
+def get_tmdb() -> TmdbClient:
+    """Return a TMDB client.
+
+    Raises:
+        ProviderError: No TMDB token is configured.
+    """
+    config = load_settings().providers
+    if config.tmdb_token is None:
+        raise ProviderError('TMDB is not configured: set providers.tmdb_token')
+    client = httpx.Client(
+        timeout=TIMEOUT,
+        headers={
+            'Authorization': f'Bearer {config.tmdb_token.get_secret_value()}',
+            'User-Agent': user_agent(),
+        },
+    )
+    http = ProviderHttp(
+        'tmdb',
+        client=client,
+        redis=connect_redis(),
+        min_interval=config.tmdb_min_interval,
+    )
+    return TmdbClient(http)
