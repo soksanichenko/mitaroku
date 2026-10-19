@@ -517,3 +517,89 @@ def test_movie_and_tv_hits_do_not_call_anilist():
         hit = SearchHit(provider, '5', kind, 'T', 'T', None, '', '')
         _, created = get_or_create_title(hit, clients_)
         assert created is True
+
+
+def remake_entries():
+    """FMA 2003 (100) and its alternative version Brotherhood (200, sequel 201)."""
+    return [
+        media(100, [edge('ALTERNATIVE', 200)], year=2003, episodes=51),
+        media(
+            200,
+            [edge('ALTERNATIVE', 100), edge('SEQUEL', 201)],
+            year=2009,
+            episodes=64,
+        ),
+        media(201, [edge('PREQUEL', 200)], year=2010, episodes=4),
+    ]
+
+
+def add_hit(anilist_id, clients):
+    hit = SearchHit(
+        'anilist', str(anilist_id), 'anime', 'T', f'n{anilist_id}', 0, '', ''
+    )
+    title, created = get_or_create_title(hit, clients)
+    sync_title(title, clients, NOW)
+    return title, created
+
+
+def test_an_alternative_version_becomes_its_own_title():
+    clients_ = Clients(None, FakeAniList(*remake_entries()))
+    original, _ = add_hit(100, clients_)
+    remake, created = add_hit(200, clients_)
+    assert created is True and remake.pk != original.pk
+    assert [(s.anilist_id, s.is_extra) for s in remake.seasons.all()][:2] == [
+        (200, False),
+        (201, False),
+    ]
+    # Both titles list the other's entry as an extra season, neither owns its id.
+    assert (200, True) in [(s.anilist_id, s.is_extra) for s in original.seasons.all()]
+    assert (100, True) in [(s.anilist_id, s.is_extra) for s in remake.seasons.all()]
+    owner = {
+        link.external_id: link.title_id
+        for link in ExternalId.objects.filter(provider='anilist')
+    }
+    assert owner == {
+        '100': original.pk,
+        '200': remake.pk,
+        '201': remake.pk,
+    }
+
+
+def test_an_alternative_version_added_first_does_not_swallow_the_original():
+    clients_ = Clients(None, FakeAniList(*remake_entries()))
+    remake, _ = add_hit(200, clients_)
+    original, created = add_hit(100, clients_)
+    assert created is True and original.pk != remake.pk
+    assert {s.anilist_id for s in remake.seasons.filter(is_extra=False)} == {200, 201}
+
+
+def test_a_side_story_entry_belongs_to_the_franchise_title():
+    clients_ = Clients(None, FakeAniList(*franchise_entries()))
+    title, _ = add_hit(10, clients_)
+    assert title.external_ids.filter(provider='anilist', external_id='80').exists()
+    found, created = add_hit(80, clients_)
+    assert created is False and found.pk == title.pk
+
+
+def test_a_spin_off_is_not_linked_to_the_parent_franchise():
+    anilist = FakeAniList(
+        media(300, [edge('SPIN_OFF', 310)]),
+        media(310, [edge('PARENT', 300)], year=2021, mal_id=999),
+    )
+    clients_ = Clients(None, anilist)
+    parent, _ = add_hit(300, clients_)
+    assert not parent.external_ids.filter(external_id__in=['310', '999']).exists()
+    assert parent.seasons.get(anilist_id=310).is_extra is True
+    spin_off, created = add_hit(310, clients_)
+    assert created is True
+
+
+def test_a_spin_off_added_first_does_not_swallow_its_parent():
+    anilist = FakeAniList(
+        media(300, [edge('SPIN_OFF', 310)]),
+        media(310, [edge('PARENT', 300)], year=2021),
+    )
+    clients_ = Clients(None, anilist)
+    spin_off, _ = add_hit(310, clients_)
+    parent, created = add_hit(300, clients_)
+    assert created is True and parent.pk != spin_off.pk

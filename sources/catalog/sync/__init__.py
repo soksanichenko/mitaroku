@@ -44,14 +44,16 @@ def find_franchise_title(hit: SearchHit, clients: Clients | None) -> Title | Non
     """Return the title that already holds another entry of the hit's franchise.
 
     A sequel announced after the franchise was last synced is not linked yet,
-    but its siblings are. This is a network call, so it runs before any write.
+    but its siblings are. Only the franchise's own entries count: a remake or
+    spin-off that the franchise merely lists is a title of its own. This is a
+    network call, so it runs before any write.
 
     Raises:
         ProviderError: AniList is down.
     """
     anilist = (clients or default_clients()).anilist
     franchise = load_franchise(anilist.media_many, int(hit.external_id))
-    ids = [str(media.anilist_id) for media in franchise.main + franchise.extras]
+    ids = [str(media.anilist_id) for media in franchise.own]
     link = (
         ExternalId.objects.select_related('title')
         .filter(provider='anilist', external_id__in=ids)

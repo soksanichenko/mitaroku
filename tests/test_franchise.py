@@ -160,3 +160,33 @@ def test_a_standalone_movie_is_its_own_main_entry():
     fetch = Fake(media(1, [edge('ADAPTATION', 9, 'NOVEL', 'MANGA')], fmt='MOVIE'))
     franchise = load_franchise(fetch, 1)
     assert ids(franchise.main) == [1] and franchise.extras == []
+
+
+def test_alternatives_and_spin_offs_are_listed_but_not_the_franchises_own():
+    fetch = Fake(
+        media(
+            1,
+            [
+                edge('ALTERNATIVE', 2),
+                edge('SPIN_OFF', 3),
+                edge('SIDE_STORY', 4, 'OVA'),
+                edge('SPIN_OFF', 5),
+                edge('SIDE_STORY', 5),
+            ],
+        ),
+        media(2, [edge('ALTERNATIVE', 1)], year=2021),
+        media(3, [edge('PARENT', 1)], year=2022),
+        media(4, [edge('PARENT', 1)], fmt='OVA', year=2023),
+        media(5, [edge('PARENT', 1)], year=2024),
+    )
+    franchise = load_franchise(fetch, 1)
+    assert ids(franchise.extras) == [2, 3, 4, 5]
+    assert franchise.detached == {2, 3}
+    assert ids(franchise.own) == [1, 4, 5]
+
+
+def test_a_franchise_without_loose_relations_owns_everything():
+    fetch = Fake(media(1, [edge('SIDE_STORY', 4, 'OVA')]), media(4, [], fmt='OVA'))
+    franchise = load_franchise(fetch, 1)
+    assert franchise.detached == set()
+    assert ids(franchise.own) == [1, 4]

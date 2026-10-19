@@ -266,7 +266,7 @@ def update_title(
     schedule_next_sync(title, now)
     title.save()
     save_title_translation(title, 'en', first.english or first.romaji, '')
-    for media in franchise.main + franchise.extras:
+    for media in franchise.own:
         link_external_id(title, 'anilist', media.anilist_id)
         if media.mal_id:
             link_external_id(title, 'mal', media.mal_id)

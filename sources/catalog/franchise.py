@@ -11,21 +11,38 @@ compilation without a PARENT edge, such as AniList 192809 (the second Jujutsu
 Kaisen compilation film, linked by ALTERNATIVE), is not recognised.
 """
 
+from collections import defaultdict
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from providers.anilist import ANIME_FORMATS, AniListEdge, AniListMedia
 
 MAIN_RELATIONS = {'SEQUEL', 'PREQUEL'}
 EXTRA_RELATIONS = {'SIDE_STORY', 'SUMMARY', 'SPIN_OFF', 'ALTERNATIVE', 'PARENT'}
+# An extra found only through these is a work of its own that merely relates to
+# the franchise (a remake, a spin-off series): it is listed, but never claimed.
+DETACHED_RELATIONS = {'SPIN_OFF', 'ALTERNATIVE'}
 
 
 @dataclass
 class Franchise:
-    """A franchise split into the main chain and its extras, both chronological."""
+    """A franchise split into the main chain and its extras, both chronological.
+
+    ``detached`` holds the AniList ids of the extras that are only related to
+    the franchise (see ``DETACHED_RELATIONS``). They are shown as extra seasons
+    but are not the franchise's own, so they must not decide which title a
+    provider id belongs to.
+    """
 
     main: list[AniListMedia]
     extras: list[AniListMedia]
+    detached: set[int] = field(default_factory=set)
+
+    @property
+    def own(self) -> list[AniListMedia]:
+        """The entries that belong to this franchise: the main chain and its extras
+        except the detached ones."""
+        return self.main + [m for m in self.extras if m.anilist_id not in self.detached]
 
 
 def is_compilation(media: AniListMedia) -> bool:
@@ -91,15 +108,25 @@ def load_franchise(
             )
         )
     main = [media for media in walked.values() if not is_compilation(media)]
-    extra_ids = {
-        edge.anilist_id
-        for media in main
-        for edge in media.edges
-        if _is_extra_edge(edge) and edge.anilist_id not in walked
-    }
-    extras = [media for media in walked.values() if is_compilation(media)]
-    if extra_ids:
-        extras.extend(fetch_many(sorted(extra_ids)))
+    found_by: dict[int, set[str]] = defaultdict(set)
+    for media in main:
+        for edge in media.edges:
+            if _is_extra_edge(edge) and edge.anilist_id not in walked:
+                found_by[edge.anilist_id].add(edge.relation)
+    fetched = list(fetch_many(sorted(found_by))) if found_by else []
+    extras = [media for media in walked.values() if is_compilation(media)] + fetched
+    main_ids = {media.anilist_id for media in main}
+    # The extra's own edges back to the main chain tell what it really is: the
+    # reverse of a spin-off is a plain PARENT edge, which says nothing by itself.
+    for media in fetched:
+        found_by[media.anilist_id].update(
+            edge.relation for edge in media.edges if edge.anilist_id in main_ids
+        )
+    detached = set()
+    for extra_id, relations in found_by.items():
+        informative = relations - {'PARENT'}
+        if informative and informative <= DETACHED_RELATIONS:
+            detached.add(extra_id)
     main.sort(key=lambda media: media.sort_key)
     extras.sort(key=lambda media: media.sort_key)
-    return Franchise(main=main, extras=extras)
+    return Franchise(main=main, extras=extras, detached=detached)
