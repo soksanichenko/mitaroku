@@ -5,7 +5,8 @@
 The library. The Alpine scope only tells a failed request from a good one: a failed
 GET (the filters, "Show more", the strip's refresh) shows the error block; a finished
 POST (a status change, "mark next as watched") announces `library-changed`, which
-makes the strip and the results fetch themselves again.
+makes the strip and the results fetch themselves again (the results with all the
+pages loaded so far).
 {% endcomment %}
 <div id="library" class="mt-library" x-data="{ failed: false }"
      @htmx:response-error="if ($event.detail.requestConfig.verb === 'get') failed = true"
@@ -20,7 +21,7 @@ makes the strip and the results fetch themselves again.
   {% include 'web/_continue_watching.html' %}
   <section class="mt-lib-all" aria-label="{% trans 'All titles' %}">
     <form id="library-filters" class="mt-lib-filters" method="get" action="{% url 'library' %}"
-          hx-get="{% url 'library' %}" hx-trigger="change[target.name!='q'], input delay:300ms from:#library-q, submit, library-changed from:body"
+          hx-get="{% url 'library' %}" hx-trigger="change[target.name!='q'], input delay:300ms from:#library-q, submit"
           hx-target="#library-results" hx-swap="outerHTML" hx-replace-url="true" hx-indicator="#library-loading" hx-sync="this:replace">
       <div class="mt-fc-row" role="radiogroup" aria-label="{% trans 'Type' %}">
         {% for t in tabs %}
@@ -50,6 +51,15 @@ makes the strip and the results fetch themselves again.
         <noscript><button type="submit" class="btn btn-secondary mt-touch">{% trans 'Apply filters' %}</button></noscript>
       </div>
     </form>
+    {% comment %}
+    The refresh after a card or picker action asks for the rows the user has loaded
+    (pages) and keeps their place; the form's own changes do not send pages, so
+    they start from page 1. The input lives next to the form for that reason, and
+    every answer updates it out of band.
+    {% endcomment %}
+    <input type="hidden" id="library-pages" name="pages" value="{{ pages }}">
+    <div id="library-refresh" hidden hx-get="{% url 'library' %}" hx-trigger="library-changed from:body" hx-include="#library-filters, #library-pages"
+         hx-target="#library-results" hx-swap="outerHTML" hx-indicator="#library-loading" hx-sync="#library-filters:replace"></div>
     <div id="library-error" x-show="failed" x-cloak>
       {% trans 'Couldn’t load your library' as error_heading %}
       {% include 'web/components/_state_error.html' with heading=error_heading retry_click="failed = false; htmx.trigger('#library-filters', 'submit')" %}

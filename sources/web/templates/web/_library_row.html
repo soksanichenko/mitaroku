@@ -15,7 +15,7 @@ Context: item (web.views.library.Item), remove_text.
   <td class="mt-col-wide mt-muted">{{ title.kind|kind_label }}</td>
   <td class="mt-lrow-progress">{% if title.kind == 'movie' %}{% if entry.status == 'completed' %}{% trans 'Watched' %}{% else %}—{% endif %}{% else %}{{ item.row.watched }}/{{ item.row.total }}{% endif %}</td>
   <td class="mt-col-wide mt-muted mt-lrow-next">{% include 'web/_library_next.html' %}</td>
-  <td class="mt-col-status">
+  <td class="mt-col-status" hx-vals='{"ui": "library"}'>
     {% url 'title_status' title.pk as status_url %}
     {% include 'web/components/_status_picker.html' with title=title entry=entry action=status_url swap='none' align='right' confirm_remove=remove_text %}
   </td>

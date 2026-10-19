@@ -1,17 +1,27 @@
 import re
 from datetime import UTC, datetime
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from catalog.models import Episode, EpisodeTranslation, Season, Title, TitleTranslation
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
-from tracking.models import LibraryEntry
+from tracking.models import LibraryEntry, WatchEvent
 from tracking_helpers import TODAY, first_episode, make_movie, make_show, watch
 
 pytestmark = pytest.mark.django_db
 
 HTMX = {'HTTP_HX_REQUEST': 'true'}
+APP_CSS = Path(__file__).parents[1] / 'sources/web/static/web/app.css'
+IDS_OF_THE_TITLE_PAGE = (
+    'title-progress',
+    'continue-bar',
+    'mark-up-to-hint',
+    'library-panel',
+    'episodes',
+    'movie-watch',
+)
 NAME = re.compile(r'class="mt-(?:lcard|lrow)-name">([^<]*)<')
 
 
@@ -377,7 +387,7 @@ def test_continue_watching_lists_watching_titles_and_enables_aired_next(
     assert button
     button = button.group()
     assert f'hx-post="/titles/{synced_show.pk}/continue/"' in button
-    assert f'hx-vals=\'{{"episode": "{second.pk}"}}\'' in button
+    assert f'hx-vals=\'{{"episode": "{second.pk}", "ui": "library"}}\'' in button
     assert 'hx-swap="none"' in button
     assert f'id="cw-btn-{synced_show.pk}"' in button
     assert 'Mark S1E2 of Show as watched' in button
@@ -467,12 +477,94 @@ def test_the_continue_strip_refreshes_itself_and_stays_when_empty(
 def test_the_page_refreshes_after_a_card_post(client, portal_headers, alice, today):
     track(alice, make_title('Show A'))
     html = library(client, portal_headers)
-    assert 'library-changed from:body' in tag(html, 'library-filters')
     root = tag(html, 'library')
     assert 'htmx:after-request' in root
     assert 'library-changed' in root
     assert 'htmx:response-error' in root
     assert 'htmx:send-error' in root
+    # The form's own changes start from page 1; only the refresh keeps the pages.
+    assert 'library-changed' not in tag(html, 'library-filters')
+    refresh = tag(html, 'library-refresh')
+    assert 'hx-trigger="library-changed from:body"' in refresh
+    assert 'hx-include="#library-filters, #library-pages"' in refresh
+    assert 'hx-get="/library/"' in refresh
+    assert 'hx-target="#library-results"' in refresh
+    assert 'hx-replace-url' not in refresh
+    form = html[
+        html.index('<form') : html.index('</form>', html.index('id="library-filters"'))
+    ]
+    assert 'name="pages"' not in form
+
+
+def test_the_pages_input_starts_at_one_outside_the_form(
+    client, portal_headers, alice, today
+):
+    track(alice, make_title('Show A'))
+    html = library(client, portal_headers)
+    pages = tag(html, 'library-pages')
+    assert 'type="hidden"' in pages
+    assert 'name="pages"' in pages
+    assert 'value="1"' in pages
+    assert html.count('id="library-pages"') == 1
+
+
+def test_a_refresh_keeps_every_loaded_page_once(client, portal_headers, alice, today):
+    for title in make_listed(65):
+        track(alice, title)
+    for view in ('grid', 'list'):
+        response = client.get(
+            f'/library/?sort=title&view={view}&pages=2', **portal_headers, **HTMX
+        )
+        html = response.content.decode()
+        assert names(html) == [f'T{n:03d}' for n in range(65)]
+        assert '<html' not in html
+        assert 'Show more' not in html
+        assert 'id="library-results"' in html
+        assert re.search(r'id="library-pages"[^>]*hx-swap-oob="true"', html)
+        assert 'value="2"' in tag(html, 'library-pages')
+        assert_unique_ids(html)
+
+
+def test_a_filter_change_goes_back_to_page_one(client, portal_headers, alice, today):
+    for title in make_listed(65):
+        track(alice, title)
+    html = client.get('/library/?sort=title&tab=tv', **portal_headers, **HTMX)
+    html = html.content.decode()
+    assert len(names(html)) == 60
+    assert 'value="1"' in tag(html, 'library-pages')
+    assert 'page=2' in html
+
+
+def test_show_more_carries_the_new_number_of_pages(
+    client, portal_headers, alice, today
+):
+    for title in make_listed(125):
+        track(alice, title)
+    html = client.get('/library/?sort=title&page=3', **portal_headers, **HTMX)
+    html = html.content.decode()
+    assert len(names(html)) == 5
+    assert re.search(r'id="library-pages"[^>]*hx-swap-oob="true"', html)
+    assert 'value="3"' in tag(html, 'library-pages')
+    page_two = client.get('/library/?sort=title&page=2', **portal_headers, **HTMX)
+    page_two = page_two.content.decode()
+    assert 'value="2"' in tag(page_two, 'library-pages')
+    assert 'page=3' in page_two
+
+
+def test_pages_is_validated_and_clamped(client, portal_headers, alice, today):
+    for title in make_listed(65):
+        track(alice, title)
+    for bad in ('x', '-1', '0', '', '１'):
+        html = library(client, portal_headers, f'?sort=title&pages={bad}')
+        assert len(names(html)) == 60, bad
+        assert 'value="1"' in tag(html, 'library-pages')
+    html = library(client, portal_headers, '?sort=title&pages=999')
+    assert len(names(html)) == 65
+    assert 'value="2"' in tag(html, 'library-pages')
+    # A plain request with page=N shows N pages and says so.
+    html = library(client, portal_headers, '?sort=title&page=2')
+    assert len(names(html)) == 65
+    assert 'value="2"' in tag(html, 'library-pages')
 
 
 def test_pagination_appends_the_next_page(client, portal_headers, alice, today):
@@ -753,3 +845,86 @@ def test_extra_seasons_do_not_change_the_card_progress(
     html = library(client, portal_headers)
     assert '0/2' in html
     assert Season.objects.filter(title=title, is_extra=True).exists()
+
+
+def post(client, headers, path: str, **data):
+    """POST ``data`` to ``path``."""
+    return client.post(path, data, **headers)
+
+
+def test_continue_from_the_library_sends_no_title_page_parts(
+    client, portal_headers, alice, synced_show
+):
+    track(alice, synced_show, 'watching')
+    first = first_episode(synced_show)
+    path = f'/titles/{synced_show.pk}/continue/'
+    plain = post(client, portal_headers, path, episode=first.pk)
+    html = plain.content.decode()
+    for element in ('title-progress', 'continue-bar', 'mark-up-to-hint'):
+        assert f'id="{element}"' in html
+    WatchEvent.objects.for_user(alice).delete()
+    response = post(client, portal_headers, path, episode=first.pk, ui='library')
+    assert response.status_code == 204
+    assert not response.content
+    assert WatchEvent.objects.for_user(alice).count() == 1
+
+
+def test_status_from_the_library_sends_no_title_page_parts(
+    client, portal_headers, alice, synced_show
+):
+    path = f'/titles/{synced_show.pk}/status/'
+    html = post(client, portal_headers, path, status='completed').content.decode()
+    assert 'id="library-panel"' in html
+    assert 'id="episodes"' in html
+    response = post(client, portal_headers, path, status='dropped', ui='library')
+    assert response.status_code == 204
+    assert not response.content
+    assert LibraryEntry.objects.for_user(alice).get().status == 'dropped'
+
+
+def test_movie_status_from_the_library_sends_no_movie_block(
+    client, portal_headers, alice, today
+):
+    movie = make_movie('Film')
+    Title.objects.filter(pk=movie.pk).update(synced_at=datetime.now(UTC))
+    path = f'/titles/{movie.pk}/status/'
+    html = post(client, portal_headers, path, status='completed').content.decode()
+    assert 'id="movie-watch"' in html
+    LibraryEntry.objects.for_user(alice).delete()
+    html = post(client, portal_headers, path, status='planned', ui='library')
+    for element in IDS_OF_THE_TITLE_PAGE:
+        assert f'id="{element}"' not in html.content.decode()
+
+
+def test_the_library_ui_field_does_not_hide_errors(
+    client, portal_headers, alice, synced_show
+):
+    path = f'/titles/{synced_show.pk}/continue/'
+    assert post(client, portal_headers, path, ui='library').status_code == 400
+    status = f'/titles/{synced_show.pk}/status/'
+    assert (
+        post(client, portal_headers, status, status='x', ui='library').status_code
+        == 400
+    )
+
+
+def test_library_cards_and_pickers_say_they_come_from_the_library(
+    client, portal_headers, alice, synced_show
+):
+    track(alice, synced_show, 'watching')
+    watch(alice, first_episode(synced_show))
+    html = library(client, portal_headers)
+    nxt = Episode.objects.get(season__title=synced_show, season__number=1, number=2)
+    assert f'hx-vals=\'{{"episode": "{nxt.pk}", "ui": "library"}}\'' in html
+    assert re.search(
+        r'<article class="mt-lcard"[^>]*hx-vals=\'{"ui": "library"}\'', html
+    )
+    listing = library(client, portal_headers, '?view=list')
+    assert re.search(
+        r'<td[^>]*mt-col-status[^>]*hx-vals=\'{"ui": "library"}\'', listing
+    )
+
+
+def test_the_loading_overlay_does_not_block_clicks():
+    css = APP_CSS.read_text()
+    assert re.search(r'\.mt-lib-loading\s*{[^}]*pointer-events:\s*none', css)

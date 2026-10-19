@@ -2,8 +2,8 @@
 The "Continue watching" strip. It asks for itself again (`?fragment=continue`)
 whenever the page announces `library-changed`, so it stays in the page even when
 there is nothing to show. A card posts the episode it shows to `title_continue`
-with `hx-swap="none"` (the answer is built for the title page, whose targets are
-absent here) and the page then refreshes the strip. A card whose next episode has
+with `ui=library` (the answer is then an empty 204: the title page's elements are
+absent here) and `hx-swap="none"`, and the page then refreshes the strip. A card whose next episode has
 not aired has no button.
 Context: cards (list of ContinueCard).
 {% endcomment %}{% load i18n web_extras %}
@@ -27,7 +27,7 @@ Context: cards (list of ContinueCard).
       </div>
       {% if card.aired %}
       {% blocktrans trimmed asvar mark_label with code=card.code name=card.name %}Mark {{ code }} of {{ name }} as watched{% endblocktrans %}
-      <button type="button" id="cw-btn-{{ title.pk }}" class="mt-cw-check mt-touch" hx-post="{% url 'title_continue' title.pk %}" hx-vals='{"episode": "{{ next.pk }}"}' hx-swap="none" hx-sync="this:drop" aria-label="{{ mark_label }}" title="{{ mark_label }}">
+      <button type="button" id="cw-btn-{{ title.pk }}" class="mt-cw-check mt-touch" hx-post="{% url 'title_continue' title.pk %}" hx-vals='{"episode": "{{ next.pk }}", "ui": "library"}' hx-swap="none" hx-sync="this:drop" aria-label="{{ mark_label }}" title="{{ mark_label }}">
         <span class="mt-cw-circle"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span>
       </button>
       {% endif %}

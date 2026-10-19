@@ -19,6 +19,9 @@ from tracking.models import LibraryEntry
 SYNC_TIMEOUT = timedelta(minutes=15)
 NOTE_MAX_LENGTH = 5000
 REMOVE = 'remove'
+# The library page posts ``ui=library`` to the actions it shares with the title
+# page: it has none of the title page's elements, so it needs no answer.
+LIBRARY_UI = 'library'
 
 SYNCING = 'syncing'
 STUCK = 'stuck'
@@ -281,6 +284,11 @@ def title_refresh(request: HttpRequest, pk: int) -> HttpResponse:
     return render(request, 'web/_title_body.html', page_context(request, title))
 
 
+def from_library(request: HttpRequest) -> bool:
+    """Tell whether a POST comes from the library page (``ui=library``)."""
+    return request.POST.get('ui') == LIBRARY_UI
+
+
 def _panel(request: HttpRequest, title: Title, entry: LibraryEntry | None):
     """Render the library panel for ``entry``."""
     context = {'title': title, 'entry': entry}
@@ -295,8 +303,11 @@ def title_status(request: HttpRequest, pk: int) -> HttpResponse:
     a viewing, so the response carries the episode list or the movie block too
     (an out-of-band swap).
 
+    From the library page (``ui=library``) the status is set and the answer is
+    an empty 204: none of the elements above exist there.
+
     Args:
-        request: The request with ``status``.
+        request: The request with ``status`` and, from the library, ``ui``.
         pk: Primary key of the title.
 
     Returns:
@@ -311,6 +322,8 @@ def title_status(request: HttpRequest, pk: int) -> HttpResponse:
     entry = services.set_status(
         request.user, title, None if status == REMOVE else status
     )
+    if from_library(request):
+        return HttpResponse(status=204)
     context = page_context(request, title)
     context.update(
         entry=entry,

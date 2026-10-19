@@ -1,10 +1,10 @@
 {% comment %}
 A title in the grid: poster, name, progress and what comes next, status picker.
-The picker posts to the title page's status action and ignores the answer (swap
-none); the page refreshes itself when the post is done.
+The picker posts to the title page's status action with ui=library (hx-vals,
+inherited from the article), gets an empty 204 and swaps nothing; the page refreshes itself when the post is done.
 Context: item (web.views.library.Item), remove_text.
 {% endcomment %}{% load i18n web_extras %}{% with entry=item.row.entry title=item.row.entry.title %}
-<article class="mt-lcard">
+<article class="mt-lcard" hx-vals='{"ui": "library"}'>
   <a class="mt-lcard-link" href="{% url 'title' title.pk %}">
     <span class="mt-lcard-img">
       {% include 'web/components/_poster.html' with title=title %}

@@ -97,7 +97,7 @@ def _choice(value: str, allowed: Collection[str], default: str) -> str:
 
 
 def _page(value: str) -> int:
-    """Return the 1-based page number; anything but a positive integer is 1."""
+    """Return a 1-based page count; anything but a positive integer is 1."""
     if value.isascii() and value.isdecimal() and len(value) <= 6:
         return max(int(value), 1)
     return 1
@@ -240,10 +240,12 @@ def library(request: HttpRequest) -> HttpResponse:
     Query parameters (unknown values fall back to the defaults): ``tab``
     (``all``, ``tv``, ``anime``, ``movie``), ``status`` (``all`` or a status),
     ``q`` (at most 100 characters), ``sort`` (``recent``, ``title``, ``rating``,
-    ``next``), ``view`` (``grid``, ``list``) and ``page`` (60 titles a page).
+    ``next``), ``view`` (``grid``, ``list``), ``page`` (60 titles a page) and
+    ``pages`` (how many pages the page has loaded, sent by the refresh).
 
-    An HTMX request gets only the results block. With ``page`` above 1 it gets
-    just the titles of that page, to append to the list. A plain request with a
+    An HTMX request gets only the results block, with the first ``pages`` pages.
+    With ``page`` above 1 it gets just the titles of that page, to append to the
+    list. A plain request with a
     ``page`` shows every title up to that page, so "Show more" works without
     JavaScript. ``fragment=continue`` asks HTMX for the "Continue watching" strip
     alone.
@@ -261,6 +263,7 @@ def library(request: HttpRequest) -> HttpResponse:
     sort = _choice(params.get('sort', ''), {v for v, _l in SORTS}, DEFAULT_SORT)
     view = _choice(params.get('view', ''), VIEWS, DEFAULT_VIEW)
     page = _page(params.get('page', ''))
+    pages = _page(params.get('pages', ''))
     fragment = _is_fragment_request(request)
 
     user = request.user
@@ -282,15 +285,23 @@ def library(request: HttpRequest) -> HttpResponse:
     status_counts[ALL] = len(in_tab)
     shown = _sorted([i for i in in_status if _in_tab(i, tab)], sort)
 
+    # A refresh sends ``pages`` (how many pages the user has loaded) and gets all of
+    # them again; "Show more" (HTMX, ``page`` above 1) gets only its own page; any
+    # other request starts from page 1 or, without HTMX, shows every page up to
+    # ``page``. The count never exceeds the pages that exist.
+    last = max(1, -(-len(shown) // PAGE_SIZE))
     append = fragment and page > 1
-    end = page * PAGE_SIZE
+    loaded = min(page if append else max(page, pages), last)
+    end = (page if append else loaded) * PAGE_SIZE
+    start = end - PAGE_SIZE if append else 0
     context = {
         'total': total,
-        'items': shown[end - PAGE_SIZE if append else 0 : end],
+        'items': shown[start:end],
         'append': append,
         'oob': fragment,
+        'pages': loaded,
         'more_url': _library_url(
-            tab=tab, status=status, q=query, sort=sort, view=view, page=page + 1
+            tab=tab, status=status, q=query, sort=sort, view=view, page=loaded + 1
         )
         if len(shown) > end
         else '',

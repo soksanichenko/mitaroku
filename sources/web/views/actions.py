@@ -13,7 +13,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from tracking import queries, services
 from tracking.models import LibraryEntry
-from web.views.titles import page_context
+from web.views.titles import from_library, page_context
 
 NOT_READY = 'The title is not ready yet'
 NOT_AIRED = 'The episode has not aired yet'
@@ -232,14 +232,12 @@ def title_continue(request: HttpRequest, pk: int) -> HttpResponse:
     a 200 with refreshed parts (htmx does not swap 4xx), and the main fragment
     is always the posted episode's group, which is what the button targets.
 
-    The Library cards post here too. Their page has no group, progress, bar,
-    tip or panel with these ids, so the cleanest use is ``hx-swap="none"``:
-    the main fragment is dropped, the out-of-band parts find no target and are
-    ignored, and the card refreshes itself (for example by re-fetching its own
-    markup after the request).
+    The Library cards post here too, with ``ui=library``. Their page has no
+    group, progress, bar, tip or panel, so they get an empty 204 (the episode is
+    marked all the same) and refresh themselves afterwards.
 
     Args:
-        request: The request with ``episode``.
+        request: The request with ``episode`` and, from the library, ``ui``.
         pk: Primary key of a series or anime title.
 
     Returns:
@@ -269,4 +267,6 @@ def title_continue(request: HttpRequest, pk: int) -> HttpResponse:
     marked = following is not None and following.pk == episode.pk
     if marked:
         services.set_episode_watched(request.user, episode, True)
+    if from_library(request):
+        return HttpResponse(status=204)
     return _respond(request, title, before, 'group', episode.season, hint=marked)

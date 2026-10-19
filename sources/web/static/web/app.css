@@ -1940,6 +1940,7 @@ a:focus-visible .mt-poster-img {
 
 .mt-lib-loading {
   display: none;
+  pointer-events: none;
 }
 
 .mt-lib-loading.htmx-request {
