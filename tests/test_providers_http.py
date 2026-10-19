@@ -214,3 +214,43 @@ def test_retry_after_accepts_seconds_and_http_dates():
     assert parse_retry_after('Mon, 19 Oct 2026 11:00:00 GMT', now) == 0.0
     assert parse_retry_after('soon') is None
     assert parse_retry_after(None) is None
+
+
+def test_retry_after_ignores_non_ascii_digits():
+    assert parse_retry_after('²') is None
+
+
+def test_lock_outlives_the_worst_case_of_all_retries(redis_client, redis_prefix):
+    remaining = []
+
+    def handler(request):
+        for key in redis_client.scan_iter(redis_prefix + 'test:lock:*'):
+            remaining.append(redis_client.pttl(key) / 1000)
+        return httpx.Response(200, json='ok')
+
+    http = make_http(handler, redis_client, redis_prefix, max_attempts=4)
+    assert http.get_json(URL) == 'ok'
+    assert remaining
+    assert remaining[0] > 3 * 120
+
+
+def test_waiter_warns_when_it_proceeds_without_the_lock(
+    redis_client, redis_prefix, monkeypatch, caplog
+):
+    monkeypatch.setattr('providers.http.LOCK_MARGIN', 0.2)
+    client = httpx.Client(
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, json='ok')),
+        timeout=httpx.Timeout(None),
+    )
+    http = ProviderHttp(
+        'test', client=client, redis=redis_client, prefix=redis_prefix, max_attempts=1
+    )
+    key = http._key('GET', URL, None)
+    held = redis_client.lock(http._prefix + 'lock:' + key, timeout=30)
+    assert held.acquire(blocking=False)
+    try:
+        with caplog.at_level('WARNING', logger='providers.http'):
+            assert http.get_json(URL) == 'ok'
+    finally:
+        held.release()
+    assert 'test: proceeding without the request lock' in caplog.messages

@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 MAX_RETRY_DELAY = 120.0
 NOT_FOUND_TTL = 300
+LOCK_MARGIN = 30.0
 
 
 class ProviderError(Exception):
@@ -41,7 +42,7 @@ def parse_retry_after(value: str | None, now: datetime | None = None) -> float |
     if not value:
         return None
     value = value.strip()
-    if value.isdigit():
+    if value.isascii() and value.isdigit():
         return float(value)
     try:
         moment = parsedate_to_datetime(value)
@@ -152,8 +153,11 @@ class ProviderHttp:
         hit = self._read(key)
         if hit is not None:
             return hit[0]
-        lock = self._redis.lock(self._prefix + 'lock:' + key, timeout=180)
-        locked = lock.acquire(blocking=True, blocking_timeout=120)
+        worst_case = self._worst_case_duration()
+        lock = self._redis.lock(self._prefix + 'lock:' + key, timeout=worst_case)
+        locked = lock.acquire(blocking=True, blocking_timeout=worst_case)
+        if not locked:
+            logger.warning('%s: proceeding without the request lock', self.name)
         try:
             hit = self._read(key)
             if hit is not None:
@@ -176,6 +180,21 @@ class ProviderHttp:
                     lock.release()
                 except LockError:
                     logger.warning('%s lock expired before release', self.name)
+
+    def _worst_case_duration(self) -> float:
+        """Return the longest a single fetch can take, retries included.
+
+        The single-flight lock must outlive this, or a second caller could send
+        a duplicate request while the first is still retrying.
+        """
+        timeout = self._client.timeout
+        per_request = sum(
+            part
+            for part in (timeout.connect, timeout.read, timeout.write, timeout.pool)
+            if part is not None
+        )
+        sleeps = (self._max_attempts - 1) * MAX_RETRY_DELAY
+        return sleeps + self._max_attempts * per_request + LOCK_MARGIN
 
     def _throttle(self) -> None:
         """Wait until this provider's minimum request interval has passed."""
