@@ -1,11 +1,12 @@
 """Web URLs."""
 
 from django.urls import path
-from web import views
+from web.views import library, search, shell, upcoming
 
 urlpatterns = [
-    path('', views.index, name='index'),
-    path('library/', views.library, name='library'),
-    path('upcoming/', views.upcoming, name='upcoming'),
-    path('healthz/', views.healthz, name='healthz'),
+    path('', shell.index, name='index'),
+    path('library/', library.library, name='library'),
+    path('upcoming/', upcoming.upcoming, name='upcoming'),
+    path('search/', search.search, name='search'),
+    path('healthz/', shell.healthz, name='healthz'),
 ]

@@ -1,44 +1,10 @@
 msgid ""
 msgstr ""
-"Content-Type: text/plain; charset=UTF-8\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-19 18:02+0000\n"
 "Language: ru\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
-
-msgid "Skip to content"
-msgstr "Перейти к содержимому"
-
-msgid "mitaroku, go to library"
-msgstr "mitaroku, перейти в библиотеку"
-
-msgid "Main"
-msgstr "Главное меню"
-
-msgid "Library"
-msgstr "Библиотека"
-
-msgid "Upcoming"
-msgstr "Скоро"
-
-msgid "Account"
-msgstr "Аккаунт"
-
-msgid "Language"
-msgstr "Язык"
-
-msgid "Log out"
-msgstr "Выйти"
-
-msgid "Switch to dark theme"
-msgstr "Включить тёмную тему"
-
-msgid "Switch to light theme"
-msgstr "Включить светлую тему"
-
-msgid "Your titles will appear here."
-msgstr "Здесь появятся ваши тайтлы."
-
-msgid "Upcoming episodes and premieres will appear here."
-msgstr "Здесь появятся ближайшие серии и премьеры."
 
 msgid "Sign in"
 msgstr "Войти"
@@ -57,3 +23,109 @@ msgstr "Пароль"
 
 msgid "Forgot your password? Ask the administrator of this server to reset it."
 msgstr "Забыли пароль? Попросите администратора сервера сбросить его."
+
+msgid "Main"
+msgstr "Главное меню"
+
+msgid "Library"
+msgstr "Библиотека"
+
+msgid "Upcoming"
+msgstr "Скоро"
+
+msgid "Search"
+msgstr "Поиск"
+
+msgid "mitaroku, go to library"
+msgstr "mitaroku, перейти в библиотеку"
+
+msgid "Search shows, anime and movies"
+msgstr "Поиск сериалов, аниме и фильмов"
+
+msgid "Search shows, anime, movies"
+msgstr "Сериалы, аниме, фильмы"
+
+msgid "Account"
+msgstr "Аккаунт"
+
+msgid "Language"
+msgstr "Язык"
+
+msgid "Log out"
+msgstr "Выйти"
+
+msgid "Switch to dark theme"
+msgstr "Включить тёмную тему"
+
+msgid "Switch to light theme"
+msgstr "Включить светлую тему"
+
+msgid "Skip to content"
+msgstr "Перейти к содержимому"
+
+msgid "Episodes watched"
+msgstr "Просмотрено серий"
+
+#, python-format
+msgid "%(source)s rating %(value)s out of 10"
+msgstr "Рейтинг %(source)s: %(value)s из 10"
+
+#, python-format
+msgid "%(source)s rating, out of 10"
+msgstr "Рейтинг %(source)s, из 10"
+
+msgid "Nothing here yet"
+msgstr "Здесь пока ничего нет"
+
+msgid "Couldn't load this"
+msgstr "Не удалось загрузить"
+
+msgid "The server didn't respond. Nothing was lost. Try again in a moment."
+msgstr "Сервер не ответил. Ничего не потеряно. Попробуйте ещё раз чуть позже."
+
+msgid "Try again"
+msgstr "Повторить"
+
+msgid "Loading…"
+msgstr "Загрузка…"
+
+#, python-format
+msgid "Status of %(name)s: %(label)s. Change status"
+msgstr "Статус «%(name)s»: %(label)s. Изменить статус"
+
+msgid "Change status"
+msgstr "Изменить статус"
+
+#, python-format
+msgid "Add %(name)s to library"
+msgstr "Добавить «%(name)s» в библиотеку"
+
+msgid "Add to library"
+msgstr "Добавить в библиотеку"
+
+msgid "Add"
+msgstr "Добавить"
+
+msgid "Add with status"
+msgstr "Добавить со статусом"
+
+msgid "Remove from library"
+msgstr "Удалить из библиотеки"
+
+msgid "Your titles will appear here."
+msgstr "Здесь появятся ваши тайтлы."
+
+msgid "Upcoming episodes and premieres will appear here."
+msgstr "Здесь появятся ближайшие серии и премьеры."
+
+msgid "Watching"
+msgstr "Смотрю"
+
+msgid "Plan to watch"
+msgstr "Буду смотреть"
+
+msgid "Completed"
+msgstr "Просмотрено"
+
+msgid "Dropped"
+msgstr "Брошено"

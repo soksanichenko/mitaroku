@@ -12,6 +12,13 @@
     </nav>
     {% endif %}
     <span class="mt-spacer"></span>
+    {% if user.is_authenticated %}
+    <form class="mt-search" role="search" method="get" action="{% url 'search' %}">
+      <label class="mt-sr-only" for="mt-search-q">{% trans 'Search shows, anime and movies' %}</label>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+      <input id="mt-search-q" class="input" type="search" name="q" value="{% if current_nav == 'search' %}{{ request.GET.q }}{% endif %}" placeholder="{% trans 'Search shows, anime, movies' %}" autocomplete="off">
+    </form>
+    {% endif %}
     {% include 'web/_theme_toggle.html' %}
     {% if user.is_authenticated %}
     <div class="mt-user" x-data="{ open: false }" @keydown.escape="open = false" @click.outside="open = false">

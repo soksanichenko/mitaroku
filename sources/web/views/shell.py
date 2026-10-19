@@ -1,26 +1,16 @@
-"""Page and health views."""
+"""Root redirect and health check."""
 
 import redis
 from django.conf import settings
 from django.contrib.auth.decorators import login_not_required
 from django.db import connection
 from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect
 
 
 def index(request: HttpRequest) -> HttpResponse:
     """Send the root URL to the library."""
     return redirect('library')
-
-
-def library(request: HttpRequest) -> HttpResponse:
-    """Render the library page (filled in by the tracking plan)."""
-    return render(request, 'web/library.html')
-
-
-def upcoming(request: HttpRequest) -> HttpResponse:
-    """Render the upcoming page (filled in by the tracking plan)."""
-    return render(request, 'web/upcoming.html')
 
 
 @login_not_required

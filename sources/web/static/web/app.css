@@ -299,9 +299,56 @@ a:hover {
   display: none;
 }
 
+/* Header search. */
+.mt-search {
+  position: relative;
+  flex: 0 1 360px;
+  min-width: 120px;
+  display: flex;
+}
+
+.mt-search svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  transform: translateY(-50%);
+  fill: none;
+  stroke: var(--mt-muted);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.mt-search .input {
+  min-height: 44px;
+  padding-left: 34px;
+}
+
+/* Text for screen readers only. */
+.mt-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* A control that must be at least 44 px square to touch. */
+.mt-touch {
+  min-height: 44px;
+  min-width: 44px;
+}
+
 @media (max-width: 719.98px) {
   .mt-logo-name,
-  .mt-nav {
+  .mt-nav,
+  .mt-search {
     display: none;
   }
 
@@ -386,4 +433,348 @@ a:hover {
 
 .btn-primary:active {
   background: var(--color-accent-900);
+}
+
+/* Poster: a tinted placeholder under the image; grayscale until hovered or focused. */
+.mt-poster {
+  position: relative;
+  display: block;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.mt-poster--thumb {
+  width: 56px;
+}
+
+.mt-poster-ph,
+.mt-poster-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  filter: grayscale(1) contrast(1.08);
+  transition: filter 0.2s;
+}
+
+.mt-poster-ph {
+  background-color: oklch(0.8 0.08 var(--mt-hue, 0));
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-text) 10%, transparent) 0 1px,
+    transparent 1px 9px
+  );
+}
+
+:root[data-theme='dark'] .mt-poster-ph {
+  background-color: oklch(0.42 0.07 var(--mt-hue, 0));
+}
+
+.mt-poster-img {
+  object-fit: cover;
+}
+
+a:hover .mt-poster-ph,
+a:hover .mt-poster-img,
+a:focus-visible .mt-poster-ph,
+a:focus-visible .mt-poster-img {
+  filter: none;
+}
+
+.mt-poster-badge {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  display: flex;
+}
+
+/* Rating badge: value, then the source on a dark tab. */
+.mt-rating {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--color-text);
+  background: var(--color-bg);
+  color: var(--color-text);
+  cursor: help;
+}
+
+.mt-rating-value {
+  padding: 2px 5px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.mt-rating-source {
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  background: var(--color-text);
+  color: var(--color-bg);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.mt-rating--lg {
+  border-width: 2px;
+}
+
+.mt-rating--lg .mt-rating-value {
+  padding: 4px 8px;
+  font-size: 16px;
+  line-height: 1.15;
+}
+
+.mt-rating--lg .mt-rating-source {
+  padding: 0 6px;
+  letter-spacing: 0.04em;
+}
+
+/* Status picker: an Alpine dropdown. */
+.mt-picker {
+  position: relative;
+  min-width: 0;
+}
+
+.mt-picker-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 10px;
+  background: color-mix(in srgb, var(--color-text) 9%, transparent);
+  border: 1px solid transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mt-picker-btn:hover {
+  border-color: var(--color-text);
+}
+
+.mt-picker-btn--add {
+  background: transparent;
+  border-color: var(--color-text);
+}
+
+.mt-picker-btn--add:hover {
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
+}
+
+.mt-picker-btn svg,
+.mt-picker-item svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mt-picker-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mt-picker-menu {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px);
+  z-index: 40;
+  width: max-content;
+  min-width: 100%;
+  display: grid;
+  padding: 4px 0;
+  background: var(--color-bg);
+  border: 1px solid var(--color-text);
+  box-shadow: var(--shadow-md);
+}
+
+.mt-picker-menu--right {
+  left: auto;
+  right: 0;
+}
+
+.mt-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px 0 10px;
+  background: none;
+  border: 0;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mt-picker-item:hover {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+
+.mt-picker-item[aria-checked='true'] {
+  font-weight: 800;
+}
+
+.mt-picker-item--remove {
+  padding-left: 34px;
+}
+
+.mt-picker-mark {
+  width: 16px;
+  display: grid;
+  place-items: center;
+}
+
+.mt-picker-sep {
+  height: 1px;
+  margin: 4px 0;
+  border: 0;
+  background: var(--color-divider);
+}
+
+/* Progress bar. */
+.mt-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mt-progress-bar {
+  flex: 1;
+  height: 3px;
+  background: color-mix(in srgb, var(--color-text) 14%, transparent);
+}
+
+.mt-progress-fill {
+  height: 100%;
+  width: min(var(--mt-pct, 0%), 100%);
+  background: var(--color-text);
+}
+
+.mt-progress-text {
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Poster grid, shared by the screens and the loading skeleton. */
+.mt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 20px 16px;
+}
+
+/* Loading, empty and error states. */
+.mt-state {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  padding: 20px 0 28px;
+  border-top: 2px solid var(--color-divider);
+}
+
+.mt-state--loading {
+  gap: 16px;
+  justify-items: stretch;
+}
+
+.mt-state--empty,
+.mt-state--error {
+  border-top-color: var(--color-text);
+}
+
+.mt-state-title {
+  margin: 0;
+  font-size: 22px;
+}
+
+.mt-state-text {
+  margin: 0;
+  max-width: 52ch;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--mt-muted);
+}
+
+.mt-state-label {
+  font-size: 13px;
+  color: var(--mt-muted);
+}
+
+.mt-state-icon,
+.mt-state--error .btn svg {
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mt-state--error .btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.mt-skeleton-card {
+  display: grid;
+  gap: 8px;
+}
+
+.mt-skeleton,
+.mt-skeleton-row {
+  background: color-mix(in srgb, var(--color-text) 9%, transparent);
+}
+
+.mt-skeleton-poster {
+  aspect-ratio: 2 / 3;
+}
+
+.mt-skeleton-line {
+  height: 14px;
+  width: 80%;
+}
+
+.mt-skeleton-line--short {
+  height: 12px;
+  width: 50%;
+}
+
+.mt-skeleton-rows {
+  display: grid;
+  gap: 8px;
+}
+
+.mt-skeleton-row {
+  height: 56px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mt-skeleton,
+  .mt-skeleton-row {
+    animation: mt-pulse 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes mt-pulse {
+  50% {
+    opacity: 0.55;
+  }
 }

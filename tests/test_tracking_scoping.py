@@ -48,7 +48,7 @@ def scanned_files() -> list[Path]:
 def test_reads_and_writes_go_through_for_user():
     """Only create/get_or_create/bulk_create may bypass for_user: reads must be scoped."""
     files = scanned_files()
-    assert SOURCES / 'web' / 'views.py' in files
+    assert SOURCES / 'web' / 'views' / 'library.py' in files
     assert SOURCES / 'tracking' / 'models.py' not in files
     assert scan(files) == []
 

@@ -1,0 +1,11 @@
+{% comment %}
+Loading skeleton that copies the final layout.
+Variables: label (optional, default "Loading..."); variant (optional): "grid"
+(default, poster cards) or "rows" (list rows).
+{% endcomment %}{% load i18n %}
+<div class="mt-state mt-state--loading" role="status" aria-busy="true">
+  <div class="mt-skeleton-{% if variant == 'rows' %}rows{% else %}grid mt-grid{% endif %}" aria-hidden="true">
+    {% for n in '12345678' %}{% if variant == 'rows' %}<div class="mt-skeleton-row"></div>{% else %}<div class="mt-skeleton-card"><div class="mt-skeleton mt-skeleton-poster"></div><div class="mt-skeleton mt-skeleton-line"></div><div class="mt-skeleton mt-skeleton-line mt-skeleton-line--short"></div></div>{% endif %}{% endfor %}
+  </div>
+  <span class="mt-state-label">{{ label|default:_('Loading…') }}</span>
+</div>
