@@ -3,6 +3,7 @@ from datetime import timedelta
 
 import pytest
 from catalog.models import Title
+from django.template.loader import render_to_string
 from django.utils import timezone
 from providers.search import SearchResults
 from providers.types import SearchHit
@@ -10,6 +11,10 @@ from tracking.models import AddRequest, LibraryEntry
 
 pytestmark = pytest.mark.django_db
 
+# 5 queries are the session, the user, the admin group check and the profile; the
+# lookup of library entries adds 2 however many hits there are.
+NUM_SEARCH_QUERIES = 7
+NUM_POLL_QUERIES = 7  # 5 for the sign-in, then the expiry update and the read
 ADD = {'provider': 'tmdb_tv', 'external_id': '1396', 'status': 'planned'}
 
 
@@ -62,9 +67,10 @@ def test_search_input_is_wired_to_htmx(client, portal_headers, patched_search):
     html = client.get('/search/?q=frieren', **portal_headers).content.decode()
     field = re.search(r'<input id="mt-q"[^>]*>', html, re.S).group()
     assert 'hx-get="/search/"' in field
-    assert 'hx-trigger="input changed delay:400ms, search"' in field
+    assert 'hx-trigger="input changed delay:400ms"' in field
     assert 'hx-target="#search-results"' in field
-    assert 'hx-push-url="true"' in field
+    assert 'hx-replace-url="true"' in field
+    assert 'hx-push-url' not in field
     assert 'value="frieren"' in field
     assert 'id="search-results"' in html
 
@@ -216,7 +222,8 @@ def test_htmx_request_returns_only_the_results_fragment(
     assert 'Breaking Bad' in html
     assert '<html' not in html and 'mt-header' not in html
     assert 'id="search-results"' in html
-    assert 'HX-Request' in response['Vary']
+    vary = [name.strip() for name in response['Vary'].split(',')]
+    assert 'HX-Request' in vary and 'HX-History-Restore-Request' in vary
 
 
 def test_history_restore_gets_the_full_page(client, portal_headers, patched_search):
@@ -398,3 +405,79 @@ def test_search_page_is_translated_to_russian(
     assert 'Введите название' in empty
     typing = client.get('/search/?q=a', **portal_headers).content.decode()
     assert 'Введите не менее 2 символов' in typing
+
+
+@pytest.mark.parametrize(
+    'names',
+    [('', 'Original'), (None, 'Original'), ('', ''), (None, None)],
+    ids=['empty-title', 'none-title', 'both-empty', 'both-none'],
+)
+def test_a_hit_without_a_title_does_not_break_the_page(
+    client, portal_headers, patched_search, names
+):
+    title, original = names
+    bad = SearchHit('tmdb_tv', '7', 'tv', title, original, 2020, '', '')
+    patched_search.result = SearchResults(hits=[bad, hit('tv', 'Fine', 8)])
+    response = client.get('/search/?q=anything', **portal_headers)
+    html = response.content.decode()
+    assert response.status_code == 200
+    assert 'Fine' in html
+    expected = original or 'Untitled'
+    assert f'aria-label="Add {expected} to library"' in html
+    assert f'>{expected}<' in html
+
+
+def test_the_picker_without_a_title_or_a_name_renders_a_generic_label():
+    html = render_to_string(
+        'web/components/_status_picker.html',
+        {'entry': None, 'action': '/search/add/', 'display_name': ''},
+    )
+    assert 'aria-label="Add Untitled to library"' in html
+
+
+def test_the_library_lookup_does_not_grow_with_the_hits(
+    client,
+    portal_headers,
+    patched_search,
+    alice,
+    synced_movie,
+    django_assert_num_queries,
+):
+    LibraryEntry.objects.create(user=alice, title=synced_movie, status='planned')
+    hits = [hit('tv', f'Show {n}', n) for n in range(1, 12)]
+    patched_search.result = SearchResults(hits=[*hits, hit('movie', 'Matrix', 603)])
+    client.get('/search/?q=warm', **portal_headers)  # session, profile, user
+    with django_assert_num_queries(NUM_SEARCH_QUERIES):
+        client.get('/search/?q=show', **portal_headers)
+
+
+def test_one_poll_of_add_status_costs_a_few_queries(
+    client, portal_headers, alice, django_assert_max_num_queries
+):
+    request = pending(alice)
+    client.get(f'/add/{request.pk}/', **portal_headers)
+    with django_assert_max_num_queries(NUM_POLL_QUERIES):
+        client.get(f'/add/{request.pk}/', **portal_headers)
+
+
+def test_the_too_many_pending_fragment_carries_the_retry_fields(
+    client, portal_headers, queued, alice
+):
+    for number in range(1, 6):
+        pending(alice, number)
+    data = {'provider': 'tmdb_movie', 'external_id': '603', 'status': 'dropped'}
+    html = client.post('/search/add/', data, **portal_headers).content.decode()
+    assert '5 titles are already being added' in html
+    assert 'name="provider" value="tmdb_movie"' in html
+    assert 'name="external_id" value="603"' in html
+    assert 'name="status" value="dropped"' in html
+    assert 'hx-post="/search/add/"' in html and 'hx-include="closest .mt-add"' in html
+
+
+def test_an_untitled_hit_is_translated(client, portal_headers, patched_search, alice):
+    alice.profile.interface_language = 'ru'
+    alice.profile.save()
+    bad = SearchHit('tmdb_tv', '7', 'tv', '', '', None, '', '')
+    patched_search.result = SearchResults(hits=[bad])
+    html = client.get('/search/?q=anything', **portal_headers).content.decode()
+    assert 'Без названия' in html

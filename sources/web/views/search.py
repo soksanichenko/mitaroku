@@ -47,6 +47,11 @@ class ResultRow:
     entry: LibraryEntry | None
 
     @property
+    def name(self) -> str:
+        """The name to show: provider data may lack a title or both names."""
+        return self.hit.title or self.hit.original_title or gettext('Untitled')
+
+    @property
     def fields(self) -> dict[str, str]:
         """The hidden fields the add picker sends."""
         return {'provider': self.hit.provider, 'external_id': self.hit.external_id}
@@ -140,7 +145,7 @@ def _is_fragment_request(request: HttpRequest) -> bool:
     )
 
 
-@vary_on_headers('HX-Request')
+@vary_on_headers('HX-Request', 'HX-History-Restore-Request')
 def search_page(request: HttpRequest) -> HttpResponse:
     """Render the search page, or only its results block for an HTMX request.
 

@@ -7,7 +7,7 @@
     <label class="mt-sr-only" for="mt-q">{% trans 'Search shows, anime and movies' %}</label>
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
     <input id="mt-q" class="input" type="search" name="q" value="{{ q }}" maxlength="100" autocomplete="off" placeholder="{% trans 'Title or original title' %}"
-           hx-get="{% url 'search' %}" hx-trigger="input changed delay:400ms, search" hx-target="#search-results" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#search-loading">
+           hx-get="{% url 'search' %}" hx-trigger="input changed delay:400ms" hx-target="#search-results" hx-swap="outerHTML" hx-replace-url="true" hx-indicator="#search-loading">
   </form>
   <p class="mt-muted mt-search-source">{% trans 'Results from TMDB (shows and movies) and AniList (anime).' %}</p>
 </div>

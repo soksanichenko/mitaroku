@@ -26,8 +26,8 @@
           {% if row.title_id %}<a href="{% url 'title' row.title_id %}" aria-hidden="true" tabindex="-1">{% include 'web/components/_poster.html' with title=row.poster variant='thumb' %}</a>{% else %}{% include 'web/components/_poster.html' with title=row.poster variant='thumb' %}{% endif %}
         </div>
         <div class="mt-result-body">
-          <div class="mt-result-name">{% if row.title_id %}<a href="{% url 'title' row.title_id %}">{{ hit.title }}</a>{% else %}{{ hit.title }}{% endif %}</div>
-          {% if hit.original_title and hit.original_title != hit.title %}<span class="mt-result-sub">{{ hit.original_title }}</span>{% endif %}
+          <div class="mt-result-name">{% if row.title_id %}<a href="{% url 'title' row.title_id %}">{{ row.name }}</a>{% else %}{{ row.name }}{% endif %}</div>
+          {% if hit.original_title and hit.original_title != row.name %}<span class="mt-result-sub">{{ hit.original_title }}</span>{% endif %}
           <span class="mt-result-sub">{% if hit.year %}{{ hit.year }} · {% endif %}{{ row.kind_label }}</span>
           {% if hit.overview %}<p class="mt-result-desc">{{ hit.overview }}</p>{% endif %}
         </div>
@@ -38,7 +38,7 @@
           {% endwith %}
           {% else %}
           {% url 'search_add' as add_url %}
-          {% include 'web/components/_status_picker.html' with display_name=hit.title entry=None action=add_url fields=row.fields align='right' %}
+          {% include 'web/components/_status_picker.html' with display_name=row.name entry=None action=add_url fields=row.fields align='right' %}
           {% endif %}
         </div>
       </li>
