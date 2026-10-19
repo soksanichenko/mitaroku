@@ -25,6 +25,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'huey.contrib.djhuey',
     'accounts',
+    'catalog',
+    'providers',
     'web',
 ]
 

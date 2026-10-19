@@ -61,3 +61,25 @@ it never grants superuser rights. An admin is `is_staff` plus `app-admins`, with
 access to users and view/change access to profiles in `/admin/` (no permission to
 change users, so nobody can promote themselves). Password login and `createsuperuser`
 work only in local mode; in portal mode the portal header is the only login.
+
+## Catalog and providers
+
+Titles come from TMDB (movies, TV series, anime episodes), AniList (anime franchises,
+schedule) and the Fribb/anime-lists id mapping. Set a TMDB read access token in
+`providers.tmdb_token` (or `MITAROKU_PROVIDERS__TMDB_TOKEN`); AniList and Fribb need no
+key. Without a token, movies and TV series cannot be synced and anime fall back to
+episode counts and dates from AniList.
+
+```bash
+.venv/bin/python sources/manage.py refresh_mapping          # load the Fribb dataset once
+.venv/bin/python sources/manage.py sync_title anilist 154587   # add and sync an anime
+.venv/bin/python sources/manage.py sync_title tmdb_tv 1396     # a TV series
+.venv/bin/python sources/manage.py sync_title tmdb_movie 603   # a movie
+```
+
+The Huey worker (`run_huey`) refreshes the Fribb dataset every Monday at 03:30 UTC and
+re-syncs every title when it is due (airing titles every 6 hours, announced ones daily,
+finished ones every 14 days). An anime title is a whole franchise; its seasons are the
+AniList entries. Episode titles are shown only when TMDB's episodes for an entry pass a
+check against AniList's start date and episode count; other entries show counts and, when
+AniList has them, dates. A sync never deletes episodes.

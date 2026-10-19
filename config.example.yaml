@@ -29,4 +29,10 @@ redis:
   port: 56379
   db: 0
   password: null  # set when Redis requires AUTH
+
+providers:
+  tmdb_token: null  # TMDB API read access token; required to search or sync TMDB titles
+  contact: ''  # e-mail or URL for the User-Agent, so providers can reach you
+  tmdb_min_interval: 0.05  # seconds between TMDB requests
+  anilist_min_interval: 2.0  # seconds between AniList requests (its limit is 30 a minute)
 ...

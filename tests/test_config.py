@@ -62,3 +62,35 @@ def test_default_trusted_proxies_are_loopback_only():
     assert is_trusted_peer('127.0.0.1', networks)
     assert is_trusted_peer('::1', networks)
     assert not is_trusted_peer('172.18.0.5', networks)
+
+
+def test_provider_defaults_need_no_key():
+    providers = Settings().providers
+    assert providers.tmdb_token is None
+    assert providers.anilist_min_interval == 2.0
+    assert providers.fribb_url.endswith('/anime-list-full.json')
+
+
+def test_provider_token_comes_from_the_environment_and_stays_secret(monkeypatch):
+    monkeypatch.setenv('MITAROKU_PROVIDERS__TMDB_TOKEN', 'tmdb-secret')
+    providers = Settings().providers
+    assert providers.tmdb_token.get_secret_value() == 'tmdb-secret'
+    assert 'tmdb-secret' not in repr(providers)
+
+
+@pytest.mark.parametrize('value', ['', '   '])
+def test_an_empty_provider_token_counts_as_not_configured(monkeypatch, value):
+    monkeypatch.setenv('MITAROKU_PROVIDERS__TMDB_TOKEN', value)
+    assert Settings().providers.tmdb_token is None
+
+
+def test_an_empty_token_degrades_the_default_clients(monkeypatch):
+    from catalog.sync.common import default_clients
+    from mitaroku.config import load_settings
+
+    monkeypatch.setenv('MITAROKU_PROVIDERS__TMDB_TOKEN', '')
+    load_settings.cache_clear()
+    try:
+        assert default_clients().tmdb is None
+    finally:
+        load_settings.cache_clear()

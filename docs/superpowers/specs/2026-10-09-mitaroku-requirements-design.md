@@ -80,6 +80,11 @@ AniList episode count (the spike measured 29 of 38 TV/ONA entries passing). Entr
 fall back to a degraded mode: the episode count, start date and rating from AniList, and per-episode dates only when its `airingSchedule` has one node per episode (3 of the 8 probed entries); no titles.
 Simkl is not used because its catalog terms require Simkl login and sync.
 
+The franchise rule: the main chain follows SEQUEL and PREQUEL links between anime entries;
+a MOVIE or SPECIAL with a PARENT edge is an extra, but the walk passes through it. The
+Fribb dataset is stored in Postgres and refreshed weekly. Plan 2 records the rule's known
+limits (`docs/superpowers/plans/2026-10-19-plan-2-catalog-and-providers.md`).
+
 ## 5. Screens
 
 Library (continue watching, tabs, status filter, sort, grid/list), Upcoming,
@@ -166,9 +171,14 @@ role from the `new-service-repo` and `new-nginx-service` skills.
 
 ## 13. Open items for the implementation plan
 
-- Fribb dataset refresh schedule, and the UX of the degraded episode mode.
+- The UX of the degraded episode mode (the data is `Season.episode_source`; plan 3).
+- Add flow latency: finding the existing title for an AniList entry loads its franchise,
+  one request per chain level at one request per 2 seconds, so a long chain takes tens of
+  seconds. Plan 3 resolves it in a background job or with a bounded wait, not inside a
+  web request.
+- Plan 3 must delete a title it just created when its first sync fails permanently, as
+  `manage.py sync_title` does; a never-synced placeholder otherwise stays in the catalog.
 - Whether a Simkl provider is added later together with Simkl login and sync.
-- The PARENT rule (a movie or special with a PARENT edge is an extra); test cases AniList 11577, 192809 and 204066.
 - Telegram: webhook or polling.
 - Posters: browser hotlinks the CDN, or a server proxy.
 - Subdomain or subpath.

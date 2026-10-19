@@ -1,7 +1,12 @@
 """Shared fixtures."""
 
+import uuid
+
+import httpx
 import pytest
 from django.core.management import call_command
+from providers.clients import connect_redis
+from providers.http import ProviderHttp
 
 PORTAL = {
     'HTTP_X_DISCORD_USER_ID': '1001',
@@ -21,3 +26,35 @@ def compiled_messages() -> None:
 def portal_headers() -> dict[str, str]:
     """Return a fresh copy of valid portal headers for a member."""
     return dict(PORTAL)
+
+
+@pytest.fixture
+def redis_client():
+    """Return a Redis connection and delete the keys of this test afterwards."""
+    client = connect_redis()
+    yield client
+    for key in client.scan_iter('test:*'):
+        client.delete(key)
+
+
+@pytest.fixture
+def redis_prefix() -> str:
+    """Return a Redis key prefix unique to the test."""
+    return f'test:{uuid.uuid4().hex}:'
+
+
+@pytest.fixture
+def provider_http(redis_client, redis_prefix):
+    """Return a factory for a ``ProviderHttp`` over a mock transport."""
+
+    def build(handler, name: str = 'test', **kwargs) -> ProviderHttp:
+        return ProviderHttp(
+            name,
+            client=httpx.Client(transport=httpx.MockTransport(handler)),
+            redis=redis_client,
+            prefix=redis_prefix,
+            sleep=lambda seconds: None,
+            **kwargs,
+        )
+
+    return build

@@ -29,3 +29,21 @@ def test_portal_admin_cannot_add_users(client, portal_headers):
 def test_portal_member_cannot_open_admin_lists(client, portal_headers, path):
     response = client.get(path, **portal_headers)
     assert response.status_code in (302, 403)
+
+
+@pytest.mark.parametrize(
+    'path',
+    [
+        '/admin/catalog/title/',
+        '/admin/catalog/season/',
+        '/admin/catalog/episode/',
+    ],
+)
+def test_portal_admin_can_browse_the_catalog(client, portal_headers, path):
+    portal_headers['HTTP_X_DISCORD_ACCESS_LEVEL'] = 'admin'
+    assert client.get(path, **portal_headers).status_code == 200
+
+
+def test_portal_admin_cannot_edit_the_catalog(client, portal_headers):
+    portal_headers['HTTP_X_DISCORD_ACCESS_LEVEL'] = 'admin'
+    assert client.get('/admin/catalog/title/add/', **portal_headers).status_code == 403
