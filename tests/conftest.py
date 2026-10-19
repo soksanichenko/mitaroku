@@ -4,6 +4,7 @@ import uuid
 
 import httpx
 import pytest
+from accounts.models import User
 from django.core.management import call_command
 from providers.clients import connect_redis
 from providers.http import ProviderHttp
@@ -26,6 +27,32 @@ def compiled_messages() -> None:
 def portal_headers() -> dict[str, str]:
     """Return a fresh copy of valid portal headers for a member."""
     return dict(PORTAL)
+
+
+@pytest.fixture
+def other_headers() -> dict[str, str]:
+    """Return portal headers for a second member (the user ``bob``)."""
+    return {**PORTAL, 'HTTP_X_DISCORD_USER_ID': '1002'}
+
+
+def make_portal_user(discord_id: str) -> User:
+    """Create the account the portal login would create for ``discord_id``."""
+    user = User(username=discord_id, discord_id=discord_id)
+    user.set_unusable_password()
+    user.save()
+    return user
+
+
+@pytest.fixture
+def alice(db) -> User:
+    """Return the member that ``portal_headers`` signs in as."""
+    return make_portal_user('1001')
+
+
+@pytest.fixture
+def bob(db) -> User:
+    """Return the member that ``other_headers`` signs in as."""
+    return make_portal_user('1002')
 
 
 @pytest.fixture
