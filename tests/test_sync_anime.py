@@ -603,3 +603,34 @@ def test_a_spin_off_added_first_does_not_swallow_its_parent():
     spin_off, _ = add_hit(310, clients_)
     parent, created = add_hit(300, clients_)
     assert created is True and parent.pk != spin_off.pk
+
+
+def test_a_shrinking_allocation_releases_the_titles_of_the_next_part():
+    AnimeMapping.objects.create(anilist_id=1, tmdb_tv_id=9, tmdb_season=1)
+    AnimeMapping.objects.create(
+        anilist_id=2, tmdb_tv_id=9, tmdb_season=1, tmdb_episode_offset=12
+    )
+    seasons = {1: tmdb_season(1, 24, date(2020, 1, 1))}
+    tmdb = FakeTmdb(shows={9: (tmdb_show(9, list(seasons.values())), seasons)})
+    title = anime_title('1')
+    # Part 1 is running with an unknown count, so it takes the whole TMDB season.
+    running = FakeAniList(media(1, episodes=None, status='RELEASING'))
+    sync_title(title, Clients(tmdb, running), NOW)
+    assert seasons_of(title)[1].episodes.count() == 24
+
+    # AniList now knows part 1 has 12 episodes and lists part 2 separately.
+    split = FakeAniList(
+        media(1, [edge('SEQUEL', 2)], episodes=12),
+        media(2, [edge('PREQUEL', 1)], month=3, day=25, episodes=12),
+    )
+    sync_title(title, Clients(tmdb, split), NOW)
+    first, second = seasons_of(title)[1], seasons_of(title)[2]
+    assert first.episodes.count() == 24  # rows are never deleted
+    stale = first.episodes.filter(number__gt=12)
+    assert not stale.exclude(tmdb_season_number=None, tmdb_episode_number=None).exists()
+    assert not EpisodeTranslation.objects.filter(episode__in=stale).exists()
+    assert EpisodeTranslation.objects.filter(name='Episode 13').count() == 1
+    assert second.episodes.get(number=1).tmdb_episode_number == 13
+    # The stale rows must not push part 2 off its place in the absolute numbering.
+    assert not stale.exclude(absolute_number=None).exists()
+    assert second.episodes.get(number=1).absolute_number == 13

@@ -233,11 +233,16 @@ def write_seasons(
             },
         )
         kept.append(season.pk)
-        if source != Season.EpisodeSource.TMDB:
-            # Titles from an earlier, now rejected, allocation must not linger.
-            season.episodes.update(tmdb_season_number=None, tmdb_episode_number=None)
-            EpisodeTranslation.objects.filter(episode__season=season).delete()
         write_episodes(season, rows)
+        # Rows outside the current allocation (all of them when it was rejected,
+        # the tail when it shrank) must not keep TMDB numbers or titles that now
+        # belong to another entry. The rows stay: watch events may refer to them.
+        allocated = (
+            [row.number for row in rows] if source == Season.EpisodeSource.TMDB else []
+        )
+        stale = season.episodes.exclude(number__in=allocated)
+        EpisodeTranslation.objects.filter(episode__in=stale).delete()
+        stale.update(tmdb_season_number=None, tmdb_episode_number=None)
     leftovers = list(title.seasons.exclude(pk__in=kept).order_by('pk'))
     for offset, season in enumerate(leftovers, start=len(ordered) + 1):
         season.number = offset

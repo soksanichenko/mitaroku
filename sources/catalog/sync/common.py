@@ -170,13 +170,21 @@ def write_episodes(
 def renumber_absolute(title: Title) -> None:
     """Number the episodes of the main seasons 1, 2, 3 ... across the title.
 
-    Extras and specials get no absolute number.
+    Extras and specials get no absolute number, and neither do rows beyond the
+    known episode count of their season (anime only: TMDB numbers may have
+    gaps): those are left over from an earlier, larger guess and would
+    otherwise be counted twice.
     """
     counter = 0
     changed = []
     for season in title.seasons.order_by('number'):
         for episode in season.episodes.order_by('number'):
-            if season.is_extra:
+            beyond = (
+                season.anilist_id is not None
+                and season.episode_count is not None
+                and episode.number > season.episode_count
+            )
+            if season.is_extra or beyond:
                 wanted = None
             else:
                 counter += 1
