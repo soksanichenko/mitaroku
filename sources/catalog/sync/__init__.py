@@ -3,6 +3,7 @@
 import logging
 from datetime import datetime
 
+from catalog.franchise import load_franchise
 from catalog.models import ExternalId, Title
 from catalog.sync.anime import sync_anime
 from catalog.sync.common import Clients, default_clients
@@ -39,23 +40,56 @@ def sync_title(
     )
 
 
-def get_or_create_title(hit: SearchHit) -> tuple[Title, bool]:
+def find_franchise_title(hit: SearchHit, clients: Clients | None) -> Title | None:
+    """Return the title that already holds another entry of the hit's franchise.
+
+    A sequel announced after the franchise was last synced is not linked yet,
+    but its siblings are. This is a network call, so it runs before any write.
+
+    Raises:
+        ProviderError: AniList is down.
+    """
+    anilist = (clients or default_clients()).anilist
+    franchise = load_franchise(anilist.media_many, int(hit.external_id))
+    ids = [str(media.anilist_id) for media in franchise.main + franchise.extras]
+    link = (
+        ExternalId.objects.select_related('title')
+        .filter(provider='anilist', external_id__in=ids)
+        .order_by('pk')
+        .first()
+    )
+    return link.title if link else None
+
+
+def get_or_create_title(
+    hit: SearchHit, clients: Clients | None = None
+) -> tuple[Title, bool]:
     """Return the title for a search hit, creating a bare one when it is new.
 
     The provider id decides: adding any entry of an anime franchise that is
-    already in the catalog returns the existing franchise title.
+    already in the catalog returns the existing franchise title, even when that
+    entry itself has not been linked by a sync yet.
 
     Args:
         hit: A search result.
+        clients: Provider clients for the franchise lookup of an anime hit; the
+            configured ones when omitted.
 
     Returns:
         ``(title, created)``. A created title has only the data of the search
         result until it is synced.
+
+    Raises:
+        ProviderError: AniList failed during the franchise lookup.
     """
     lookup = {'provider': hit.provider, 'external_id': hit.external_id}
     link = ExternalId.objects.select_related('title').filter(**lookup).first()
     if link is not None:
         return link.title, False
+    if hit.provider == 'anilist':
+        existing = find_franchise_title(hit, clients)
+        if existing is not None:
+            return existing, False
     try:
         with transaction.atomic():
             title = Title.objects.create(

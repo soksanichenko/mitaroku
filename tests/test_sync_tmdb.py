@@ -51,6 +51,23 @@ def test_movie_is_filled_from_tmdb():
     assert title.translations.get(language='en').name == 'The Matrix'
 
 
+def test_a_failed_movie_write_leaves_the_title_untouched(monkeypatch):
+    title = movie_title()
+    sync_title(title, clients(FakeTmdb(movies={603: tmdb_movie(603)})), NOW)
+
+    def fail(*args, **kwargs):
+        raise RuntimeError('translation write failed')
+
+    monkeypatch.setattr('catalog.sync.movies.save_title_translation', fail)
+    changed = replace(tmdb_movie(603), original_title='Changed', rating=1.0)
+    later = NOW + timedelta(days=1)
+    with pytest.raises(RuntimeError):
+        sync_title(title, clients(FakeTmdb(movies={603: changed})), later)
+    title.refresh_from_db()
+    assert title.synced_at == NOW
+    assert (title.original_title, str(title.rating)) == ('The Matrix (original)', '8.2')
+
+
 def test_an_unreleased_movie_is_upcoming_and_synced_often():
     title = movie_title()
     future = tmdb_movie(

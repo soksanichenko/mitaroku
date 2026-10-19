@@ -5,6 +5,7 @@ import pytest
 from catalog.models import Episode, EpisodeTranslation, ExternalId, Title
 from catalog.sync import get_or_create_title, sync_title
 from catalog.sync.common import Clients
+from django.db import connection
 from fakes import FakeAniList, FakeTmdb, edge, media, tmdb_season, tmdb_show
 from providers.anilist import AniListSchedule
 from providers.http import ProviderError
@@ -235,22 +236,57 @@ def test_without_a_tmdb_client_every_entry_is_degraded(mappings):
     assert seasons_of(title)[10].episodes.count() == 12
 
 
-def test_running_degraded_entry_keeps_only_upcoming_dates():
-    entries = franchise_entries()
+def test_running_degraded_entry_without_a_count_numbers_up_to_the_last_node():
     upcoming = {
         13: datetime(2026, 11, 1, 12, tzinfo=UTC),
         14: datetime(2026, 11, 8, 12, tzinfo=UTC),
     }
     anilist = FakeAniList(
-        *entries, schedules={30: AniListSchedule(upcoming=upcoming, all={})}
+        *franchise_entries(), schedules={30: AniListSchedule(upcoming=upcoming, all={})}
     )
     title = anime_title()
     sync_title(title, Clients(None, anilist), NOW)
     running = seasons_of(title)[30]
+    # Episodes 1-12 aired but have no node: they exist (so they can be logged)
+    # without a date; nothing is invented for them.
     assert [(e.number, e.air_date) for e in running.episodes.all()] == [
+        *[(n, None) for n in range(1, 13)],
         (13, date(2026, 11, 1)),
         (14, date(2026, 11, 8)),
     ]
+
+
+def test_running_degraded_entry_without_a_count_keeps_the_aired_episodes():
+    aired = schedule(date(2026, 7, 5), 12)
+    upcoming = {
+        13: datetime(2026, 11, 1, 12, tzinfo=UTC),
+        14: datetime(2026, 11, 8, 12, tzinfo=UTC),
+    }
+    anilist = FakeAniList(
+        *franchise_entries(),
+        schedules={30: AniListSchedule(upcoming=upcoming, all=aired)},
+    )
+    title = anime_title()
+    sync_title(title, Clients(None, anilist), NOW)
+    running = seasons_of(title)[30]
+    assert running.episodes.count() == 14
+    assert running.episodes.get(number=1).air_date == date(2026, 7, 5)
+    assert running.episodes.get(number=12).air_date == date(2026, 9, 20)
+    assert running.episodes.get(number=14).air_date == date(2026, 11, 8)
+
+
+def test_running_degraded_entry_without_a_count_dates_only_the_nodes_it_has():
+    partial = {n: when for n, when in schedule(date(2026, 7, 5), 12).items() if n != 5}
+    anilist = FakeAniList(
+        *franchise_entries(),
+        schedules={30: AniListSchedule(upcoming={}, all=partial)},
+    )
+    title = anime_title()
+    sync_title(title, Clients(None, anilist), NOW)
+    running = seasons_of(title)[30]
+    assert running.episodes.count() == 12
+    assert running.episodes.get(number=5).air_date is None
+    assert running.episodes.get(number=6).air_date == date(2026, 8, 9)
 
 
 def test_an_incomplete_schedule_gives_counts_without_dates():
@@ -408,3 +444,76 @@ def test_a_title_without_an_anilist_id_is_a_provider_error():
     title = Title.objects.create(kind='anime', original_title='x')
     with pytest.raises(ProviderError, match='no AniList id'):
         sync_title(title, clients(), NOW)
+
+
+@pytest.fixture
+def high_season_ids():
+    """Push the season id sequence past the range of a smallint."""
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT pg_get_serial_sequence('catalog_season', 'id')")
+        sequence = cursor.fetchone()[0]
+        cursor.execute(f'SELECT last_value, is_called FROM {sequence}')
+        last_value, is_called = cursor.fetchone()
+        cursor.execute('SELECT setval(%s, 40000)', [sequence])
+    yield
+    with connection.cursor() as cursor:
+        cursor.execute('SELECT setval(%s, %s, %s)', [sequence, last_value, is_called])
+
+
+def test_resync_works_when_season_ids_exceed_a_smallint(mappings, high_season_ids):
+    title = anime_title()
+    sync_title(title, clients(tmdb_with_show()), NOW)
+    before = [(s.pk, s.number) for s in title.seasons.order_by('number')]
+    assert min(pk for pk, _ in before) > 32767
+    sync_title(title, clients(tmdb_with_show()), NOW)
+    assert [(s.pk, s.number) for s in title.seasons.order_by('number')] == before
+
+
+def franchise_before_the_new_sequel():
+    return [
+        media(70, [edge('SEQUEL', 71)]),
+        media(71, [edge('PREQUEL', 70)], month=7),
+    ]
+
+
+def franchise_with_new_sequel():
+    return [
+        media(70, [edge('SEQUEL', 71)]),
+        media(71, [edge('PREQUEL', 70), edge('SEQUEL', 72)], month=7),
+        media(72, [edge('PREQUEL', 71)], year=2021, status='NOT_YET_RELEASED'),
+    ]
+
+
+class NoAniList:
+    """An AniList stand-in that fails the test when it is used."""
+
+    def media_many(self, ids):
+        raise AssertionError('AniList must not be called')
+
+
+def test_a_new_entry_of_a_known_franchise_returns_that_title():
+    title = anime_title('70')
+    anilist = FakeAniList(*franchise_before_the_new_sequel())
+    sync_title(title, Clients(None, anilist), NOW)
+    assert not title.external_ids.filter(external_id='72').exists()
+
+    hit = SearchHit('anilist', '72', 'anime', 'Sequel', 'n72', 2021, '', '')
+    found, created = get_or_create_title(
+        hit, Clients(None, FakeAniList(*franchise_with_new_sequel()))
+    )
+    assert created is False and found.pk == title.pk
+    assert Title.objects.count() == 1
+
+
+def test_an_unknown_anime_entry_still_creates_a_bare_title():
+    hit = SearchHit('anilist', '99', 'anime', 'Lone', 'n99', 2021, '', '')
+    title, created = get_or_create_title(hit, Clients(None, FakeAniList(media(99))))
+    assert created is True and title.external_ids.get().external_id == '99'
+
+
+def test_movie_and_tv_hits_do_not_call_anilist():
+    clients_ = Clients(None, NoAniList())
+    for provider, kind in (('tmdb_tv', 'tv'), ('tmdb_movie', 'movie')):
+        hit = SearchHit(provider, '5', kind, 'T', 'T', None, '', '')
+        _, created = get_or_create_title(hit, clients_)
+        assert created is True

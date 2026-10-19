@@ -109,13 +109,15 @@ def degraded_rows(
     schedule = clients.anilist.schedule(media.anilist_id) if needs_schedule else None
     dates = {}
     if schedule is not None:
-        if media.episodes is not None and len(schedule.all) == media.episodes:
+        # With a known count a partial schedule would date the wrong episodes;
+        # with an unknown one every aired node is all there is.
+        if media.episodes is None or len(schedule.all) == media.episodes:
             dates.update(schedule.all)
         dates.update(schedule.upcoming)
     if media.episodes is not None:
         numbers = range(1, media.episodes + 1)
     else:
-        numbers = sorted(dates)
+        numbers = range(1, max(dates) + 1) if dates else range(0)
     return [
         EpisodeRow(
             number=n, air_date=dates[n].astimezone(JST).date() if n in dates else None
@@ -197,12 +199,13 @@ def write_seasons(
     Existing seasons are matched by AniList id and keep their rows (episodes and
     later watch events hang off them). To renumber without tripping the unique
     ``(title, number)`` constraint every season first gets a unique negative
-    number. Seasons the franchise no longer contains end up after the others as
+    number (its position among the title's seasons, which always fits the
+    ``number`` column). Seasons the franchise no longer contains end up after the others as
     extras.
     """
-    existing = list(title.seasons.all())
-    for season in existing:
-        season.number = -season.pk
+    existing = list(title.seasons.order_by('pk'))
+    for position, season in enumerate(existing, start=1):
+        season.number = -position
     Season.objects.bulk_update(existing, ['number'])
     kept = []
     ordered = [(m, False) for m in franchise.main] + [
@@ -233,7 +236,7 @@ def write_seasons(
             season.episodes.update(tmdb_season_number=None, tmdb_episode_number=None)
             EpisodeTranslation.objects.filter(episode__season=season).delete()
         write_episodes(season, rows)
-    leftovers = list(title.seasons.exclude(pk__in=kept).order_by('-number'))
+    leftovers = list(title.seasons.exclude(pk__in=kept).order_by('pk'))
     for offset, season in enumerate(leftovers, start=len(ordered) + 1):
         season.number = offset
         season.is_extra = True
