@@ -100,10 +100,12 @@ def degraded_rows(
 ) -> list[EpisodeRow]:
     """Build episodes from AniList alone: counts, and dates where they are reliable.
 
-    Per-episode dates for finished episodes are used only when the airing
-    schedule has exactly one node per episode. Dates of episodes still to air
-    are always used. Times are converted to Japan time to get the air date, as
-    AniList's start dates are. No titles exist in this mode.
+    With a known count, dates of finished episodes are used only when the
+    airing schedule has exactly one node per episode; with an unknown count
+    every aired node is used and the episodes run up to the last node. Dates of
+    episodes still to air are always used. Times are converted to Japan time to
+    get the air date, as AniList's start dates are. No titles exist in this
+    mode.
     """
     needs_schedule = (not is_extra) or media.status in RUNNING
     schedule = clients.anilist.schedule(media.anilist_id) if needs_schedule else None
@@ -200,8 +202,8 @@ def write_seasons(
     later watch events hang off them). To renumber without tripping the unique
     ``(title, number)`` constraint every season first gets a unique negative
     number (its position among the title's seasons, which always fits the
-    ``number`` column). Seasons the franchise no longer contains end up after the others as
-    extras.
+    ``number`` column). Seasons the franchise no longer contains end up after
+    the others as extras.
     """
     existing = list(title.seasons.order_by('pk'))
     for position, season in enumerate(existing, start=1):
