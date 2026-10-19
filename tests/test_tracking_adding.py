@@ -2,6 +2,7 @@ from datetime import timedelta
 
 import pytest
 from catalog.models import ExternalId, Title
+from django.db import IntegrityError
 from django.utils import timezone
 from tracking import adding
 from tracking.models import AddRequest, LibraryEntry
@@ -56,20 +57,47 @@ def test_the_same_pending_request_is_reused(alice, bob, capture_on_commit, queue
     assert queued == [first.pk, other.pk]
 
 
-def test_a_lost_race_returns_the_winners_request(alice, monkeypatch, queued):
+def hide_the_winner_until_the_insert(monkeypatch, winner):
+    """Make the first look miss ``winner``, as if it committed a moment later."""
+    state = {'hidden': True, 'creates': 0}
+    real_for_user = AddRequest.objects.for_user
+    real_create = AddRequest.objects.create
+
+    def for_user(user):
+        rows = real_for_user(user)
+        return rows.exclude(pk=winner.pk) if state['hidden'] else rows
+
+    def create(**kwargs):
+        state['hidden'] = False
+        state['creates'] += 1
+        return real_create(**kwargs)
+
+    monkeypatch.setattr(AddRequest.objects, 'for_user', for_user)
+    monkeypatch.setattr(AddRequest.objects, 'create', create)
+    return state
+
+
+def test_a_lost_race_returns_the_winners_request(alice, monkeypatch):
     winner = AddRequest.objects.create(
         user=alice, provider='tmdb_tv', external_id='1396', status='planned'
     )
-    real = AddRequest.objects.for_user
-
-    def blind_first_look(user):
-        # The first look happens before the winner commits, so it finds nothing.
-        monkeypatch.setattr(AddRequest.objects, 'for_user', real)
-        return AddRequest.objects.none()
-
-    monkeypatch.setattr(AddRequest.objects, 'for_user', blind_first_look)
+    state = hide_the_winner_until_the_insert(monkeypatch, winner)
     assert adding.request_add(alice, 'tmdb_tv', '1396', 'watching') == winner
+    assert state['creates'] == 1
     assert AddRequest.objects.count() == 1
+
+
+def test_a_lost_race_is_retried_only_once(alice, monkeypatch):
+    calls = []
+
+    def always_conflict(**kwargs):
+        calls.append(kwargs)
+        raise IntegrityError('unique_pending_add_request')
+
+    monkeypatch.setattr(AddRequest.objects, 'create', always_conflict)
+    with pytest.raises(IntegrityError):
+        adding.request_add(alice, 'tmdb_tv', '1396', 'watching')
+    assert len(calls) == 2
 
 
 def test_pending_limit(alice, bob):
@@ -96,6 +124,10 @@ def test_forged_values_are_rejected(alice):
         ('tmdb_tv', '', 'planned'),
         ('tmdb_tv', '-1', 'planned'),
         ('tmdb_tv', '١٢٣', 'planned'),
+        ('tmdb_tv', '+1', 'planned'),
+        ('tmdb_tv', ' 1', 'planned'),
+        ('tmdb_tv', '1\n', 'planned'),
+        ('tmdb_tv', None, 'planned'),
         ('tmdb_tv', '1' * 11, 'planned'),
         ('tmdb_tv', '1', 'hacked'),
     ]:
@@ -269,3 +301,153 @@ def test_cleanup_times_out_stale_requests_and_deletes_old_ones(alice, bob):
     assert remaining == {stale.pk, fresh.pk, recent.pk}
     assert old_done.pk not in remaining and old_failed.pk not in remaining
     assert adding.cleanup_add_requests.call_local() == 0
+
+
+def test_a_numeric_id_is_accepted_as_a_string(alice):
+    assert adding.request_add(alice, 'tmdb_tv', 1396, 'planned').external_id == '1396'
+
+
+def make_pending(user, external_id, age):
+    request = AddRequest.objects.create(
+        user=user, provider='tmdb_tv', external_id=external_id, status='planned'
+    )
+    AddRequest.objects.for_user(user).filter(pk=request.pk).update(
+        created_at=timezone.now() - age
+    )
+    return request
+
+
+def test_a_stale_request_is_not_reused_and_does_not_count(alice):
+    stale = [
+        make_pending(alice, str(100 + n), timedelta(hours=2))
+        for n in range(adding.MAX_PENDING)
+    ]
+    fresh = adding.request_add(alice, 'tmdb_tv', '100', 'planned')
+    assert fresh.pk not in {request.pk for request in stale}
+    assert fresh.state == 'pending'
+    assert adding.request_add(alice, 'tmdb_tv', '999', 'planned')
+    for request in AddRequest.objects.for_user(alice).filter(
+        pk__in=[r.pk for r in stale]
+    ):
+        assert (request.state, request.error) == ('failed', 'timeout')
+        assert request.finished_at is not None
+
+
+def test_a_request_just_inside_the_timeout_is_reused(alice):
+    request = make_pending(alice, '1396', timedelta(minutes=59))
+    assert adding.request_add(alice, 'tmdb_tv', '1396', 'planned') == request
+
+
+def test_stale_requests_of_other_users_are_left_alone(alice, bob):
+    request = make_pending(bob, '1396', timedelta(hours=2))
+    adding.request_add(alice, 'tmdb_tv', '1396', 'planned')
+    request.refresh_from_db()
+    assert request.state == 'pending'
+
+
+def test_an_unexpected_failure_fails_the_request_and_propagates(
+    alice, fake_clients, monkeypatch, caplog
+):
+    def boom(title, clients):
+        raise RuntimeError('boom')
+
+    monkeypatch.setattr(adding, 'sync_title', boom)
+    request = AddRequest.objects.create(
+        user=alice, provider='tmdb_movie', external_id='603', status='planned'
+    )
+    with pytest.raises(RuntimeError, match='boom'):
+        adding.add_title_task.call_local(request.pk)
+    request.refresh_from_db()
+    assert (request.state, request.error) == ('failed', 'unexpected')
+    assert request.finished_at is not None
+    assert not Title.objects.exists() and not LibraryEntry.objects.exists()
+    assert 'boom' in caplog.text
+    # The user can try again at once.
+    assert adding.request_add(alice, 'tmdb_movie', '603', 'planned').pk != request.pk
+
+
+def test_the_placeholder_is_named_after_the_validated_ids(
+    alice, fake_clients, monkeypatch
+):
+    seen = []
+    monkeypatch.setattr(
+        adding, 'sync_title', lambda t, c: seen.append(t.original_title)
+    )
+    request = AddRequest.objects.create(
+        user=alice, provider='tmdb_movie', external_id='603', status='planned'
+    )
+    adding.add_title_task.call_local(request.pk)
+    assert seen == ['tmdb_movie:603']
+
+
+@pytest.mark.parametrize(
+    ('other_state', 'survives'),
+    [('pending', True), ('failed', False), ('done', False)],
+)
+def test_the_placeholder_stays_while_another_job_waits_for_it(
+    alice, bob, failing_clients, other_state, survives
+):
+    other = AddRequest.objects.create(
+        user=bob,
+        provider='tmdb_movie',
+        external_id='7',
+        status='planned',
+        state=other_state,
+    )
+    request = AddRequest.objects.create(
+        user=alice, provider='tmdb_movie', external_id='7', status='planned'
+    )
+    assert adding.add_title_task.call_local(request.pk) == 'failed'
+    assert Title.objects.exists() is survives
+    assert ExternalId.objects.exists() is survives
+    other.refresh_from_db()
+    assert other.state == other_state
+
+
+def test_a_request_for_another_id_does_not_keep_the_placeholder(
+    alice, bob, failing_clients
+):
+    AddRequest.objects.create(
+        user=bob, provider='tmdb_movie', external_id='8', status='planned'
+    )
+    request = AddRequest.objects.create(
+        user=alice, provider='tmdb_movie', external_id='7', status='planned'
+    )
+    adding.add_title_task.call_local(request.pk)
+    assert not Title.objects.exists()
+
+
+def test_a_late_success_overrides_the_timeout(alice, fake_clients, monkeypatch):
+    request = AddRequest.objects.create(
+        user=alice, provider='tmdb_movie', external_id='603', status='planned'
+    )
+    real_sync = adding.sync_title
+
+    def sync_after_the_timeout(title, clients):
+        AddRequest.objects.for_user(alice).update(
+            state='failed', error='timeout', finished_at=timezone.now()
+        )
+        real_sync(title, clients)
+
+    monkeypatch.setattr(adding, 'sync_title', sync_after_the_timeout)
+    assert adding.add_title_task.call_local(request.pk) == 'done'
+    request.refresh_from_db()
+    assert (request.state, request.error) == ('done', '')
+    assert request.title is not None
+    assert LibraryEntry.objects.for_user(alice).count() == 1
+
+
+def test_a_late_failure_never_overrides_done(alice, failing_clients, monkeypatch):
+    request = AddRequest.objects.create(
+        user=alice, provider='tmdb_movie', external_id='7', status='planned'
+    )
+    real_get = adding.get_or_create_title
+
+    def finish_elsewhere(hit, clients):
+        AddRequest.objects.for_user(alice).update(state='done')
+        return real_get(hit, clients)
+
+    monkeypatch.setattr(adding, 'get_or_create_title', finish_elsewhere)
+    adding.add_title_task.call_local(request.pk)
+    request.refresh_from_db()
+    assert (request.state, request.error) == ('done', '')

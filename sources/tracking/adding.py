@@ -6,7 +6,7 @@ from the provider, so a forged request cannot put data into the shared catalog.
 
 import logging
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from accounts.models import User
 from catalog.models import ExternalId, Title
@@ -51,7 +51,7 @@ def request_add(
     Args:
         user: Who adds the title.
         provider: ``tmdb_movie``, ``tmdb_tv`` or ``anilist``.
-        external_id: The id at that provider: 1 to 10 digits.
+        external_id: The id at that provider: 1 to 10 digits (an int is fine).
         status: The wanted ``LibraryEntry`` status. An entry that already exists
             keeps its own status.
 
@@ -64,6 +64,7 @@ def request_add(
         ValueError: The provider, the id or the status is not valid.
         TooManyPending: The user has ``MAX_PENDING`` other requests in progress.
     """
+    external_id = str(external_id)
     if provider not in PROVIDER_KIND:
         raise ValueError(f'Unknown provider: {provider!r}')
     if not EXTERNAL_ID.fullmatch(external_id):
@@ -71,8 +72,26 @@ def request_add(
     if status not in LibraryEntry.Status.values:
         raise ValueError(f'Unknown status: {status!r}')
     # "007" and "7" are the same provider id.
-    external_id = str(int(external_id))
+    return _request_add(user, provider, str(int(external_id)), status)
 
+
+def _expire_stale(user: User, now: datetime) -> int:
+    """Fail the user's pending requests that are older than ``PENDING_TIMEOUT``."""
+    return (
+        AddRequest.objects.for_user(user)
+        .filter(state=AddRequest.State.PENDING, created_at__lt=now - PENDING_TIMEOUT)
+        .update(
+            state=AddRequest.State.FAILED,
+            error=AddRequest.Error.TIMEOUT,
+            finished_at=now,
+        )
+    )
+
+
+def _request_add(
+    user: User, provider: str, external_id: str, status: str, retry: bool = True
+) -> LibraryEntry | AddRequest:
+    """Do the work of ``request_add`` on validated values."""
     link = (
         ExternalId.objects.select_related('title')
         .filter(
@@ -83,6 +102,8 @@ def request_add(
     if link is not None:
         return _add_to_library(user, link.title, status)
 
+    # A request whose job died must neither be reused nor count as pending.
+    _expire_stale(user, timezone.now())
     pending = AddRequest.objects.for_user(user).filter(state=AddRequest.State.PENDING)
     existing = pending.filter(provider=provider, external_id=external_id).first()
     if existing is not None:
@@ -95,23 +116,39 @@ def request_add(
                 user=user, provider=provider, external_id=external_id, status=status
             )
     except IntegrityError:
-        # A concurrent request for the same id won; if its job has already
-        # finished, the title is synced now and this call returns the entry.
-        return request_add(user, provider, external_id, status)
+        # A concurrent request for the same id won. Look once more: if its job
+        # has finished meanwhile, the title is synced now and this returns the
+        # entry. A second conflict is not expected, so it is raised.
+        if not retry:
+            raise
+        return _request_add(user, provider, external_id, status, retry=False)
     transaction.on_commit(lambda: add_title_task(request.pk))
     return request
 
 
-def _discard_placeholder(title: Title) -> None:
+def _discard_placeholder(title: Title, provider: str, external_id: str) -> None:
     """Delete a title that this job created and no provider ever described.
 
-    A title that was synced meanwhile or that someone already tracks is kept.
-    The checks and the delete are one statement, so a concurrent add cannot slip
-    in between.
+    A title that was synced meanwhile, that someone already tracks or that
+    another pending request for the same id is about to sync is kept. The title
+    row is locked first, and the delete itself re-checks "never synced" and "no
+    library entry" in one statement.
     """
-    Title.objects.filter(
-        pk=title.pk, synced_at__isnull=True, library_entries__isnull=True
-    ).delete()
+    with transaction.atomic():
+        locked = Title.objects.select_for_update().filter(pk=title.pk).first()
+        if locked is None:
+            return
+        # Other users' requests are reached through their owners.
+        awaited = User.objects.filter(
+            add_requests__provider=provider,
+            add_requests__external_id=external_id,
+            add_requests__state=AddRequest.State.PENDING,
+        ).exists()
+        if awaited:
+            return
+        Title.objects.filter(
+            pk=title.pk, synced_at__isnull=True, library_entries__isnull=True
+        ).delete()
 
 
 @db_task()
@@ -142,8 +179,9 @@ def add_title_task(request_id: int) -> str:
         provider=request.provider,
         external_id=request.external_id,
         kind=PROVIDER_KIND[request.provider],
+        # The sync fills in the real text; this only keeps the placeholder named.
         title='',
-        original_title='',
+        original_title=f'{request.provider}:{request.external_id}',
         year=None,
         poster_url='',
         overview='',
@@ -155,28 +193,40 @@ def add_title_task(request_id: int) -> str:
     try:
         title, created = get_or_create_title(hit, clients)
         sync_title(title, clients)
+        _add_to_library(user, title, request.status)
     except ProviderError as error:
         logger.warning('Adding %s:%s failed: %s', hit.provider, hit.external_id, error)
-        if created:
-            _discard_placeholder(title)
-        _finish(user, request, AddRequest.State.FAILED, None, AddRequest.Error.PROVIDER)
+        _fail(user, request, title if created else None, AddRequest.Error.PROVIDER)
         return 'failed'
-    _add_to_library(user, title, request.status)
-    _finish(user, request, AddRequest.State.DONE, title, AddRequest.Error.NONE)
+    except Exception:
+        logger.exception('Adding %s:%s crashed', hit.provider, hit.external_id)
+        _fail(user, request, title if created else None, AddRequest.Error.UNEXPECTED)
+        raise
+    # A success also overrides a timeout that happened while the job was running.
+    AddRequest.objects.for_user(user).filter(
+        pk=request.pk,
+        state__in=[AddRequest.State.PENDING, AddRequest.State.FAILED],
+    ).update(
+        state=AddRequest.State.DONE,
+        title=title,
+        error=AddRequest.Error.NONE,
+        finished_at=timezone.now(),
+    )
     return 'done'
 
 
-def _finish(
-    user: User,
-    request: AddRequest,
-    state: str,
-    title: Title | None,
-    error: str,
+def _fail(
+    user: User, request: AddRequest, placeholder: Title | None, error: str
 ) -> None:
-    """Close a request, unless something else (the timeout) closed it first."""
+    """Fail a pending request, then drop the placeholder title this job created.
+
+    A request that is no longer pending (finished or timed out) is not touched.
+    """
     AddRequest.objects.for_user(user).filter(
         pk=request.pk, state=AddRequest.State.PENDING
-    ).update(state=state, title=title, error=error, finished_at=timezone.now())
+    ).update(state=AddRequest.State.FAILED, error=error, finished_at=timezone.now())
+    if placeholder is not None:
+        _discard_placeholder(placeholder, request.provider, request.external_id)
 
 
 @db_periodic_task(crontab(hour='4', minute='10'))
@@ -197,17 +247,7 @@ def cleanup_add_requests() -> int:
         add_requests__created_at__lt=now - PENDING_TIMEOUT,
     ).distinct()
     for user in stale:
-        touched += (
-            AddRequest.objects.for_user(user)
-            .filter(
-                state=AddRequest.State.PENDING, created_at__lt=now - PENDING_TIMEOUT
-            )
-            .update(
-                state=AddRequest.State.FAILED,
-                error=AddRequest.Error.TIMEOUT,
-                finished_at=now,
-            )
-        )
+        touched += _expire_stale(user, now)
     old = User.objects.filter(
         add_requests__state__in=[AddRequest.State.DONE, AddRequest.State.FAILED],
         add_requests__finished_at__lt=now - FINISHED_RETENTION,
