@@ -15,7 +15,12 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 from tracking.models import LibraryEntry, WatchEvent
-from tracking.queries import main_episodes, progress, watched_episode_ids
+from tracking.queries import (
+    main_episodes,
+    next_episode,
+    progress,
+    watched_episode_ids,
+)
 
 Status = LibraryEntry.Status
 
@@ -41,15 +46,28 @@ def _aired(episodes: Iterable[Episode], today: date) -> list[Episode]:
     return [episode for episode in episodes if is_aired(episode, today)]
 
 
-def _lock_entry(user, title: Title) -> LibraryEntry:
-    """Return the user's entry for ``title`` locked for update.
+def _lock_entry(user, title: Title) -> tuple[LibraryEntry, bool]:
+    """Return the user's entry for ``title`` locked for update, and if it is new.
 
-    A missing entry is created as Watching. Must run inside a transaction.
+    A missing entry is created as Watching: the row is the lock that makes the
+    "already watched" check safe. A caller that ends up adding nothing must pass
+    the result to ``_discard_unused``. Must run inside a transaction.
     """
-    entry, _ = LibraryEntry.objects.get_or_create(
+    entry, created = LibraryEntry.objects.get_or_create(
         user=user, title=title, defaults={'status': Status.WATCHING}
     )
-    return LibraryEntry.objects.for_user(user).select_for_update().get(pk=entry.pk)
+    locked = LibraryEntry.objects.for_user(user).select_for_update().get(pk=entry.pk)
+    return locked, created
+
+
+def _discard_unused(user, entry: LibraryEntry, created: bool) -> None:
+    """Delete an entry that ``_lock_entry`` created for an action that did nothing.
+
+    The delete happens in the same transaction, so a concurrent caller waiting on
+    the row sees either the final entry or none.
+    """
+    if created:
+        LibraryEntry.objects.for_user(user).filter(pk=entry.pk).delete()
 
 
 def _lock_existing_entry(user, title: Title) -> LibraryEntry | None:
@@ -100,18 +118,12 @@ def _add_viewings(user, title: Title, episodes: list[Episode], now: datetime) ->
     return len(events)
 
 
-def _delete_latest_viewing(user, title: Title, episode: Episode | None) -> bool:
-    """Delete the user's most recent viewing of ``episode`` (None: the movie)."""
-    latest = (
-        WatchEvent.objects.for_user(user)
-        .filter(title=title, episode=episode)
-        .order_by('-watched_at', '-pk')
-        .first()
+def _delete_viewings(user, title: Title, episode: Episode | None) -> int:
+    """Delete every viewing of ``episode`` (None: the movie) and return how many."""
+    deleted, _ = (
+        WatchEvent.objects.for_user(user).filter(title=title, episode=episode).delete()
     )
-    if latest is None:
-        return False
-    latest.delete()
-    return True
+    return deleted
 
 
 def set_status(
@@ -234,9 +246,10 @@ def set_episode_watched(
 ) -> None:
     """Mark one episode watched or unwatched.
 
-    Watching is idempotent: an episode that already has a viewing gets none
-    unless ``again`` is set, which records one more. Unwatching deletes the
-    most recent viewing. Watching makes a missing, Planned or Dropped entry
+    Both states are idempotent: an episode that already has a viewing gets none
+    unless ``again`` is set, which records one more, and unwatching deletes every
+    viewing of the episode. A call that adds nothing changes nothing, entry
+    included. Adding a viewing makes a missing, Planned or Dropped entry
     Watching.
 
     Args:
@@ -254,20 +267,22 @@ def set_episode_watched(
     if not watched:
         with transaction.atomic():
             _lock_existing_entry(user, title)
-            _delete_latest_viewing(user, title, episode)
+            _delete_viewings(user, title, episode)
         return
     now = now or timezone.now()
     today = today or timezone.localdate()
     if not is_aired(episode, today):
         raise NotAired(episode.pk)
     with transaction.atomic():
-        entry = _lock_entry(user, title)
+        entry, created = _lock_entry(user, title)
         seen = WatchEvent.objects.for_user(user).filter(episode=episode).exists()
         if again or not seen:
             WatchEvent.objects.create(
                 user=user, title=title, episode=episode, watched_at=now
             )
             _after_watching(user, entry, title)
+        else:
+            _discard_unused(user, entry, created)
 
 
 def mark_episodes(
@@ -289,17 +304,31 @@ def mark_episodes(
 
     Returns:
         The number of viewings added.
+
+    Raises:
+        ValueError: If an episode does not belong to ``title``; nothing is
+            written then.
     """
     now = now or timezone.now()
     today = today or timezone.localdate()
+    episodes = list(episodes)
+    foreign = (
+        Episode.objects.filter(pk__in=[episode.pk for episode in episodes])
+        .exclude(season__title=title)
+        .exists()
+    )
+    if foreign:
+        raise ValueError(f'Episodes of another title given for title {title.pk}')
     aired = _aired(episodes, today)
     if not aired:
         return 0
     with transaction.atomic():
-        entry = _lock_entry(user, title)
+        entry, created = _lock_entry(user, title)
         added = _add_viewings(user, title, aired, now)
         if added:
             _after_watching(user, entry, title)
+        else:
+            _discard_unused(user, entry, created)
         return added
 
 
@@ -421,23 +450,24 @@ def _set_movie_watched(
     if not watched:
         with transaction.atomic():
             _lock_existing_entry(user, title)
-            return int(_delete_latest_viewing(user, title, None))
+            return int(_delete_viewings(user, title, None) > 0)
     if title.release_date is None or title.release_date > today:
         raise NotAired(title.pk)
     with transaction.atomic():
-        entry = _lock_entry(user, title)
+        entry, created = _lock_entry(user, title)
         seen = (
             WatchEvent.objects.for_user(user)
             .filter(title=title, episode__isnull=True)
             .exists()
         )
-        added = again or not seen
-        if added:
-            WatchEvent.objects.create(user=user, title=title, watched_at=now)
+        if not again and seen:
+            _discard_unused(user, entry, created)
+            return 0
+        WatchEvent.objects.create(user=user, title=title, watched_at=now)
         if entry.status != Status.COMPLETED:
             entry.status = Status.COMPLETED
             entry.save(update_fields=['status', 'updated_at'])
-        return int(added)
+        return 1
 
 
 def set_movie_watched(
@@ -451,9 +481,10 @@ def set_movie_watched(
 ) -> None:
     """Mark a movie watched or unwatched.
 
-    Watching sets the entry to Completed, creating it if needed, and records a
-    viewing unless there is one already and ``again`` is not set. Unwatching
-    deletes the latest viewing and leaves the status alone.
+    Watching records a viewing and sets the entry to Completed, creating it if
+    needed. When there is a viewing already and ``again`` is not set, nothing
+    changes, entry included. Unwatching deletes every viewing and leaves the
+    status alone, so repeating it changes nothing.
 
     Args:
         user: The viewer.
@@ -484,7 +515,10 @@ def mark_next(
     now: datetime | None = None,
     today: date | None = None,
 ) -> Episode | None:
-    """Mark the first unwatched aired main episode as watched.
+    """Mark the next main episode as watched when it has aired.
+
+    The next episode is the first unwatched main episode, the one the UI shows,
+    whether or not it has aired.
 
     Args:
         user: The viewer.
@@ -493,17 +527,17 @@ def mark_next(
         today: The current date; defaults to ``timezone.localdate()``.
 
     Returns:
-        The episode marked, or None when every aired main episode is watched.
+        The episode marked, or None when there is no next episode or it has not
+        aired (nothing is written then).
     """
     now = now or timezone.now()
     today = today or timezone.localdate()
-    aired = main_episodes(title).filter(air_date__lte=today).select_related('season')
-    if not aired.exists():
-        return None
     with transaction.atomic():
-        entry = _lock_entry(user, title)
-        episode = aired.exclude(pk__in=watched_episode_ids(user, title)).first()
-        if episode is not None:
-            _add_viewings(user, title, [episode], now)
-            _after_watching(user, entry, title)
+        entry, created = _lock_entry(user, title)
+        episode = next_episode(user, title)
+        if episode is None or not is_aired(episode, today):
+            _discard_unused(user, entry, created)
+            return None
+        _add_viewings(user, title, [episode], now)
+        _after_watching(user, entry, title)
         return episode
