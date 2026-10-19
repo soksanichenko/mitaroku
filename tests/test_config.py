@@ -76,3 +76,21 @@ def test_provider_token_comes_from_the_environment_and_stays_secret(monkeypatch)
     providers = Settings().providers
     assert providers.tmdb_token.get_secret_value() == 'tmdb-secret'
     assert 'tmdb-secret' not in repr(providers)
+
+
+@pytest.mark.parametrize('value', ['', '   '])
+def test_an_empty_provider_token_counts_as_not_configured(monkeypatch, value):
+    monkeypatch.setenv('MITAROKU_PROVIDERS__TMDB_TOKEN', value)
+    assert Settings().providers.tmdb_token is None
+
+
+def test_an_empty_token_degrades_the_default_clients(monkeypatch):
+    from catalog.sync.common import default_clients
+    from mitaroku.config import load_settings
+
+    monkeypatch.setenv('MITAROKU_PROVIDERS__TMDB_TOKEN', '')
+    load_settings.cache_clear()
+    try:
+        assert default_clients().tmdb is None
+    finally:
+        load_settings.cache_clear()

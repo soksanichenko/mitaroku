@@ -55,6 +55,14 @@ class ProvidersConfig(BaseModel):
         'anime-list-full.json'
     )
 
+    @field_validator('tmdb_token', mode='before')
+    @classmethod
+    def _blank_token_is_none(cls, value: object) -> object:
+        """Treat an empty token (such as an unset ``${VAR}``) as not configured."""
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
 
 class AuthConfig(BaseModel):
     """How users are authenticated.
