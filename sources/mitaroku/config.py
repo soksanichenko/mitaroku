@@ -33,6 +33,29 @@ class RedisConfig(BaseModel):
     password: SecretStr | None = None
 
 
+class ProvidersConfig(BaseModel):
+    """Settings for the external metadata providers.
+
+    Attributes:
+        tmdb_token: TMDB API read access token (Bearer). Without it the TMDB
+            client refuses to start; AniList and Fribb need no key.
+        contact: Address or URL sent in the ``User-Agent`` so providers can reach
+            the operator. Empty sends the bare application name.
+        tmdb_min_interval: Minimum seconds between TMDB requests.
+        anilist_min_interval: Minimum seconds between AniList requests.
+        fribb_url: Where the Fribb/anime-lists dataset is downloaded from.
+    """
+
+    tmdb_token: SecretStr | None = None
+    contact: str = ''
+    tmdb_min_interval: float = 0.05
+    anilist_min_interval: float = 2.0
+    fribb_url: str = (
+        'https://raw.githubusercontent.com/Fribb/anime-lists/master/'
+        'anime-list-full.json'
+    )
+
+
 class AuthConfig(BaseModel):
     """How users are authenticated.
 
@@ -77,6 +100,7 @@ class Settings(BaseSettings):
     auth: AuthConfig = AuthConfig()
     database: DatabaseConfig
     redis: RedisConfig = RedisConfig()
+    providers: ProvidersConfig = ProvidersConfig()
 
     @classmethod
     def settings_customise_sources(
