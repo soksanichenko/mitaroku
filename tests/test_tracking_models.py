@@ -63,5 +63,6 @@ def test_for_user_returns_only_own_rows(alice, bob):
 
 
 def test_tracking_data_is_not_in_the_admin():
+    assert admin.site._registry
     assert LibraryEntry not in admin.site._registry
     assert WatchEvent not in admin.site._registry
