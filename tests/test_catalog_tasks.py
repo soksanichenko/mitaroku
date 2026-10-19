@@ -137,3 +137,69 @@ def test_command_reports_a_provider_failure(monkeypatch, command_clients):
     monkeypatch.setattr('catalog.management.commands.sync_title.sync_title', boom)
     with pytest.raises(CommandError, match='not configured'):
         call_command('sync_title', 'anilist', '1')
+
+
+def test_the_scheduler_queues_with_force_and_leases_the_title(queued):
+    never = make_title()
+    before = timezone.now()
+    tasks.sync_due_titles.call_local()
+    assert queued == [(never.pk, True)]
+    never.refresh_from_db()
+    assert never.synced_at is None
+    assert never.next_sync_at >= before + tasks.LEASE - timedelta(seconds=5)
+
+
+def test_a_leased_title_is_not_queued_again_until_the_lease_expires(queued):
+    make_title()
+    tasks.sync_due_titles.call_local()
+    tasks.sync_due_titles.call_local()
+    assert len(queued) == 1
+
+
+def test_titles_that_always_fail_do_not_starve_the_others(queued):
+    now = timezone.now()
+    for _ in range(tasks.DUE_BATCH):
+        make_title()  # never synced, and their sync keeps failing
+    ordinary = make_title(
+        synced_at=now - timedelta(days=2), next_sync_at=now - timedelta(minutes=1)
+    )
+    for _ in range(3):
+        tasks.sync_due_titles.call_local()
+    assert ordinary.pk in {pk for pk, _ in queued}
+
+
+def test_a_title_whose_lease_has_expired_is_synced_without_force(synced):
+    title = make_title(next_sync_at=timezone.now() - timedelta(minutes=1))
+    assert tasks.sync_title_task.call_local(title.pk) == 'synced'
+
+
+def test_command_rejects_a_non_numeric_id(command_clients):
+    with pytest.raises(CommandError, match='invalid int value'):
+        call_command('sync_title', 'tmdb_tv', 'abc')
+
+
+def test_command_removes_the_placeholder_it_created_when_the_first_sync_fails(
+    monkeypatch, command_clients
+):
+    def boom(title, clients):
+        raise ProviderError('TMDB does not know show 1000')
+
+    monkeypatch.setattr('catalog.management.commands.sync_title.sync_title', boom)
+    with pytest.raises(CommandError, match='does not know'):
+        call_command('sync_title', 'tmdb_tv', '1000')
+    assert not Title.objects.exists() and not ExternalId.objects.exists()
+
+
+def test_command_keeps_a_title_that_already_existed_when_its_sync_fails(
+    monkeypatch, command_clients
+):
+    title = make_title()
+    ExternalId.objects.create(title=title, provider='tmdb_tv', external_id='1000')
+
+    def boom(title, clients):
+        raise ProviderError('down')
+
+    monkeypatch.setattr('catalog.management.commands.sync_title.sync_title', boom)
+    with pytest.raises(CommandError):
+        call_command('sync_title', 'tmdb_tv', '1000')
+    assert Title.objects.filter(pk=title.pk).exists()

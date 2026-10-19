@@ -14,12 +14,12 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser) -> None:
         parser.add_argument('provider', choices=sorted(KIND_BY_PROVIDER))
-        parser.add_argument('external_id')
+        parser.add_argument('external_id', type=int)
 
-    def handle(self, *args, provider: str, external_id: str, **options) -> None:
+    def handle(self, *args, provider: str, external_id: int, **options) -> None:
         hit = SearchHit(
             provider=provider,
-            external_id=external_id,
+            external_id=str(external_id),
             kind=KIND_BY_PROVIDER[provider],
             title=f'{provider}:{external_id}',
             original_title=f'{provider}:{external_id}',
@@ -29,10 +29,14 @@ class Command(BaseCommand):
         )
         # One set of clients per run: each one opens a connection that is not closed.
         clients = default_clients()
+        created = False
         try:
             title, created = get_or_create_title(hit, clients)
             sync_title(title, clients)
         except ProviderError as error:
+            if created:
+                # Do not leave a placeholder that no provider has ever described.
+                title.delete()
             raise CommandError(str(error)) from error
         title.refresh_from_db()
         seasons = title.seasons.count()
