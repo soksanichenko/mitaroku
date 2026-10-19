@@ -7,9 +7,10 @@ WANTED state (hx-vals watched), so a repeated request changes nothing.
 Variables: prefix ("ep", "grp" or "all"), scope ("episode", "season" or "title"),
 object_id, state (watched, partly, unwatched or unaired), name (what the control
 acts on), code (episode scope: "S1E3"), grp (season pk, for the swap target),
-post_url. A state "unaired" renders the button disabled and without hx-post.
+post_url. A newer click in a group aborts the older request of that group (hx-sync).
+A state "unaired" renders the button disabled and without hx-post.
 {% endcomment %}{% load i18n %}{% if scope == 'episode' %}{% if state == 'watched' %}{% blocktrans asvar label %}Mark as unwatched: {{ code }} · {{ name }}{% endblocktrans %}{% else %}{% blocktrans asvar label %}Mark as watched: {{ code }} · {{ name }}{% endblocktrans %}{% endif %}{% elif scope == 'season' %}{% if state == 'watched' %}{% blocktrans asvar label %}Mark all aired episodes as unwatched: {{ name }}{% endblocktrans %}{% else %}{% blocktrans asvar label %}Mark all aired episodes as watched: {{ name }}{% endblocktrans %}{% endif %}{% elif state == 'watched' %}{% trans 'Mark whole show as unwatched' as label %}{% else %}{% trans 'Mark whole show as watched' as label %}{% endif %}
 <button type="button" id="mark-{{ prefix }}{% if prefix != 'all' %}-{{ object_id }}{% endif %}" class="mt-check-btn mt-touch" aria-label="{{ label }}" aria-pressed="{% if state == 'watched' %}true{% elif state == 'partly' %}mixed{% else %}false{% endif %}"
-        {% if state == 'unaired' %}disabled aria-disabled="true" title="{% trans 'Not aired yet' %}"{% else %}hx-post="{{ post_url }}" hx-vals='{"watched": "{% if state == 'watched' %}0{% else %}1{% endif %}"}' hx-target="{% if scope == 'title' %}#episodes{% else %}#grp-{{ grp }}{% endif %}" hx-swap="outerHTML"{% endif %}>
+        {% if state == 'unaired' %}disabled aria-disabled="true" title="{% trans 'Not aired yet' %}"{% else %}hx-post="{{ post_url }}" hx-vals='{"watched": "{% if state == 'watched' %}0{% else %}1{% endif %}"}' hx-target="{% if scope == 'title' %}#episodes{% else %}#grp-{{ grp }}{% endif %}" hx-swap="outerHTML"{% if scope != 'title' %} hx-sync="closest section.mt-grp:replace"{% endif %}{% endif %}>
   <span class="mt-check mt-check--{{ state }}" id="check-{{ prefix }}-{{ object_id }}" data-scope="{{ scope }}" data-id="{{ object_id }}" aria-hidden="true">{% if state == 'watched' %}<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></svg>{% endif %}</span>
 </button>

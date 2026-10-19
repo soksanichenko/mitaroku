@@ -91,7 +91,10 @@ def make_two_seasons() -> tuple[Title, Season, Season]:
 def movie(db, today) -> Title:
     """Return a synced movie released before ``TODAY``."""
     title = make_movie('Released', release_offset=-10)
-    Title.objects.filter(pk=title.pk).update(synced_at=timezone.now())
+    now = timezone.now()
+    Title.objects.filter(pk=title.pk).update(
+        synced_at=now, next_sync_at=now + timedelta(hours=1)
+    )
     title.refresh_from_db()
     return title
 
@@ -396,7 +399,10 @@ def test_an_unreleased_movie_is_refused_and_its_control_is_disabled(
     client, portal_headers, alice, today
 ):
     movie = make_movie('Soon', release_offset=20, status='upcoming')
-    Title.objects.filter(pk=movie.pk).update(synced_at=timezone.now())
+    now = timezone.now()
+    Title.objects.filter(pk=movie.pk).update(
+        synced_at=now, next_sync_at=now + timedelta(hours=1)
+    )
     response = act(client, portal_headers, f'/titles/{movie.pk}/movie/', watched='1')
     assert response.status_code == 409
     assert not WatchEvent.objects.exists()
@@ -429,12 +435,18 @@ def test_movie_and_series_actions_do_not_cross_over(
     assert not WatchEvent.objects.exists()
 
 
+def go_on(client, headers, title, episode=None, **data):
+    """POST the continue action with the episode the button showed as next."""
+    if episode is not None:
+        data['episode'] = getattr(episode, 'pk', episode)
+    return act(client, headers, f'/titles/{title.pk}/continue/', **data)
+
+
 def test_continue_marks_the_next_aired_episode(
     client, portal_headers, alice, synced_show
 ):
-    path = f'/titles/{synced_show.pk}/continue/'
-    first = mains(synced_show)[0]
-    response = act(client, portal_headers, path)
+    first, second, third, fourth = mains(synced_show)[:4]
+    response = go_on(client, portal_headers, synced_show, first)
     assert response.status_code == 200
     html = response.content.decode()
     assert WatchEvent.objects.for_user(alice).get().episode_id == first.pk
@@ -442,13 +454,116 @@ def test_continue_marks_the_next_aired_episode(
     assert 'hx-swap-oob="true"' in tag(html, 'title-progress')
     assert 'hx-swap-oob="true"' in tag(html, 'continue-bar')
     assert 'hx-swap-oob="true"' in tag(html, 'library-panel')
+    assert 'data-armed="true"' in tag(html, 'mark-up-to-hint')
     assert_unique_ids(html)
-    act(client, portal_headers, path)
-    act(client, portal_headers, path)
+    go_on(client, portal_headers, synced_show, second)
+    go_on(client, portal_headers, synced_show, third)
     assert WatchEvent.objects.for_user(alice).count() == 3
     # the next one (S1E4) has not aired: refused, nothing changes
-    assert act(client, portal_headers, path).status_code == 409
+    assert go_on(client, portal_headers, synced_show, fourth).status_code == 409
     assert WatchEvent.objects.for_user(alice).count() == 3
+
+
+def test_continue_is_idempotent(client, portal_headers, alice, synced_show):
+    first = mains(synced_show)[0]
+    for _ in range(2):
+        assert go_on(client, portal_headers, synced_show, first).status_code == 200
+    assert WatchEvent.objects.for_user(alice).count() == 1
+
+
+def test_continue_after_another_device_advanced_writes_nothing(
+    client, portal_headers, alice, synced_show
+):
+    first, second, third = mains(synced_show)[:3]
+    track(alice, synced_show, status='watching')
+    watch(alice, first, second)  # the page still shows the first as next
+    response = go_on(client, portal_headers, synced_show, first)
+    assert response.status_code == 200
+    html = response.content.decode()
+    assert WatchEvent.objects.for_user(alice).count() == 2
+    assert f'id="grp-{first.season_id}"' in html
+    assert 'hx-swap-oob' not in tag(html, f'grp-{first.season_id}')
+    assert 'Continue: S1E3' in html[html.index('id="continue-bar"') :]
+    assert 'mark-up-to-hint' not in html  # nothing was marked
+    assert_unique_ids(html)
+
+
+def test_continue_after_an_unwatch_marks_nothing_and_keeps_the_posted_group(
+    client, portal_headers, alice
+):
+    title, first, second = make_two_seasons()
+    track(alice, title, status='watching')
+    s1e1, s1e2, s2e1, _ = mains(title)
+    watch(alice, s1e1, s1e2)  # the page shows s2e1 as next
+    watch_episode(client, portal_headers, s1e2, watched='0')  # another device
+    response = go_on(client, portal_headers, title, s2e1)
+    assert response.status_code == 200
+    html = response.content.decode()
+    assert WatchEvent.objects.for_user(alice).count() == 1  # no write
+    assert f'id="grp-{second.pk}"' in html
+    assert 'hx-swap-oob' not in tag(html, f'grp-{second.pk}')
+    assert f'id="grp-{first.pk}"' not in html  # the real next group is not sent
+    assert 'Continue: S1E2' in html[html.index('id="continue-bar"') :]
+    assert_unique_ids(html)
+
+
+def test_continue_with_nothing_left_is_a_200_without_a_write(
+    client, portal_headers, alice
+):
+    title, first, second = make_two_seasons()
+    watch(alice, *mains(title))
+    last = mains(title)[-1]
+    response = go_on(client, portal_headers, title, last)
+    assert response.status_code == 200
+    assert WatchEvent.objects.for_user(alice).count() == 4
+    assert f'id="grp-{second.pk}"' in response.content.decode()
+
+
+def test_continue_validates_the_episode(client, portal_headers, alice, synced_show):
+    other, _, _ = make_two_seasons()
+    foreign = mains(other)[0]
+    extra = Episode.objects.get(season__title=synced_show, season__is_extra=True)
+    future = future_episode(synced_show)
+    assert go_on(client, portal_headers, synced_show).status_code == 400
+    for bad in ('', 'x', '1.5', '-1', '１'):
+        assert (
+            go_on(client, portal_headers, synced_show, episode=bad).status_code == 400
+        )
+    assert go_on(client, portal_headers, synced_show, foreign).status_code == 404
+    assert go_on(client, portal_headers, synced_show, extra).status_code == 404
+    assert go_on(client, portal_headers, synced_show, episode=99999).status_code == 404
+    assert go_on(client, portal_headers, synced_show, future).status_code == 409
+    assert not WatchEvent.objects.exists()
+
+
+def test_the_continue_button_names_the_episode(
+    client, portal_headers, alice, synced_show
+):
+    first = mains(synced_show)[0]
+    html = open_title(client, portal_headers, synced_show)
+    button = tag(html, 'continue-btn')
+    assert f'hx-vals=\'{{"episode": "{first.pk}"}}\'' in button
+    assert f'hx-target="#grp-{first.season_id}"' in button
+
+
+def test_only_up_to_resends_the_earlier_groups(client, portal_headers, alice):
+    title, first, second = make_two_seasons()
+    s1e1, s1e2, s2e1, s2e2 = mains(title)
+    earlier = f'id="grp-{first.pk}"'
+    for path, data in (
+        (f'/episodes/{s2e1.pk}/watch/', {'watched': '1'}),
+        (f'/episodes/{s2e2.pk}/watch/', {'watched': '1', 'again': '1'}),
+        (f'/seasons/{second.pk}/watch/', {'watched': '1'}),
+        (f'/seasons/{second.pk}/watch/', {'watched': '0'}),
+        (f'/titles/{title.pk}/continue/', {'episode': s1e1.pk}),
+    ):
+        html = act(client, portal_headers, path, **data).content.decode()
+        if 'continue' in path:
+            assert 'hx-swap-oob' not in tag(html, f'grp-{first.pk}')  # the posted one
+        else:
+            assert earlier not in html, path
+    up_to = act(client, portal_headers, f'/episodes/{s2e1.pk}/up-to/')
+    assert 'hx-swap-oob="true"' in tag(up_to.content.decode(), f'grp-{first.pk}')
 
 
 def test_unknown_objects_are_404_and_get_is_405(
@@ -628,8 +743,10 @@ def test_the_continue_bar_states(client, portal_headers, alice, synced_show):
     first = mains(synced_show)[0]
     assert 'Continue: S1E1 · Episode 1' in bar
     assert f'hx-post="/titles/{synced_show.pk}/continue/"' in bar
+    assert f'"episode": "{first.pk}"' in bar
     assert f'hx-target="#grp-{first.season_id}"' in bar
-    assert 'hx-disabled-elt="this"' in bar
+    # a disabled button would lose the keyboard focus, so a second click is dropped
+    assert 'hx-sync="this:drop"' in bar and 'hx-disabled-elt' not in bar
 
     watch(alice, *mains(synced_show)[:3])
     html = open_title(client, portal_headers, synced_show)
@@ -705,7 +822,7 @@ def test_an_action_runs_a_constant_number_of_queries(
         f'/titles/{synced_show.pk}/continue/',
     ):
         with CaptureQueriesContext(connection) as ctx:
-            act(client, portal_headers, path, watched='1')
+            act(client, portal_headers, path, watched='1', episode=ep.pk)
         assert len(ctx) <= 30, path
 
 
@@ -722,3 +839,83 @@ def test_pages_and_responses_never_repeat_a_dom_id(
     assert html.count('hx-swap-oob') == 1
     assert 'hx-swap-oob="true"' in tag(html, 'episodes')
     assert_unique_ids(html)
+
+
+def test_status_completed_refreshes_the_movie_block(
+    client, portal_headers, alice, movie
+):
+    html = act(
+        client, portal_headers, f'/titles/{movie.pk}/status/', status='completed'
+    ).content.decode()
+    assert WatchEvent.objects.for_user(alice).count() == 1
+    assert 'hx-swap-oob="true"' in tag(html, 'movie-watch')
+    assert 'Watched 1 time' in html
+    assert html.count('hx-swap-oob') == 1  # the panel is the main fragment
+    assert_unique_ids(html)
+
+
+def test_status_on_an_unreleased_movie_keeps_the_not_released_state(
+    client, portal_headers, alice, today
+):
+    soon = make_movie('Soon', release_offset=20, status='upcoming')
+    now = timezone.now()
+    Title.objects.filter(pk=soon.pk).update(
+        synced_at=now, next_sync_at=now + timedelta(hours=1)
+    )
+    html = act(
+        client, portal_headers, f'/titles/{soon.pk}/status/', status='completed'
+    ).content.decode()
+    assert not WatchEvent.objects.exists()
+    assert 'Not released yet' in html and 'disabled' in html
+    assert 'Watched 1 time' not in html
+
+
+def test_status_on_a_series_does_not_send_a_movie_block(
+    client, portal_headers, alice, synced_show
+):
+    html = act(
+        client, portal_headers, f'/titles/{synced_show.pk}/status/', status='planned'
+    ).content.decode()
+    assert 'movie-watch' not in html
+
+
+def test_the_group_and_row_checks_replace_their_older_request(
+    client, portal_headers, alice
+):
+    title, first, second = make_two_seasons()
+    watch(alice, mains(title)[0])
+    html = open_title(client, portal_headers, title)
+    for button_id in (
+        f'mark-ep-{mains(title)[1].pk}',
+        f'mark-grp-{first.pk}',
+    ):
+        button = tag(html, button_id)
+        assert 'hx-sync="closest section.mt-grp:replace"' in button, button_id
+    # the whole-show control is not inside a group: no group sync there
+    assert 'hx-sync' not in tag(html, 'mark-all')
+    assert html.count('hx-sync="closest section.mt-grp:replace"') >= 8
+
+
+def test_menu_actions_hand_the_focus_to_the_row_check(
+    client, portal_headers, alice, synced_show
+):
+    ep = first_episode(synced_show)
+    watch(alice, ep)
+    html = open_title(client, portal_headers, synced_show)
+    row = re.search(rf'<li[^>]*id="ep-{ep.pk}".*?</li>', html, re.S).group()
+    assert row.count(f"focusAfter = 'mark-ep-{ep.pk}'") == 2  # up to here, again
+    root = tag(html, 'episodes') + html[html.index('id="episodes"') :][:2500]
+    assert '@htmx:after-settle=' in root
+    assert 'focusAfter' in root
+    assert '@htmx:response-error=' in root
+
+
+def test_movie_and_continue_buttons_have_stable_ids(
+    client, portal_headers, alice, movie
+):
+    html = open_title(client, portal_headers, movie)
+    assert 'id="movie-watch-toggle"' in html
+    watch_url = f'/titles/{movie.pk}/movie/'
+    html = act(client, portal_headers, watch_url, watched='1').content.decode()
+    assert 'id="movie-watch-toggle"' in html and 'id="movie-watch-again"' in html
+    assert 'hx-disabled-elt' not in html and 'hx-sync="this:drop"' in html

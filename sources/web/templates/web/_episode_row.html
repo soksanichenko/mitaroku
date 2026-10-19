@@ -22,9 +22,9 @@ of #episodes (menu, pressStart, pressEnd, pressMenu).
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></svg>
   </button>
   <div class="mt-ep-menu" role="menu" x-show="menu === {{ ep.pk }}" x-cloak>
-    <button type="button" role="menuitem" class="mt-picker-item mt-touch" hx-post="{% url 'episode_up_to' ep.pk %}" hx-target="#grp-{{ ep.season_id }}" hx-swap="outerHTML" @click="menu = null; $dispatch('mt-up-to')">{% trans 'Mark all up to here as watched' %}</button>
+    <button type="button" role="menuitem" class="mt-picker-item mt-touch" hx-post="{% url 'episode_up_to' ep.pk %}" hx-target="#grp-{{ ep.season_id }}" hx-swap="outerHTML" hx-sync="closest section.mt-grp:replace" @click="menu = null; focusAfter = 'mark-ep-{{ ep.pk }}'; $dispatch('mt-up-to')">{% trans 'Mark all up to here as watched' %}</button>
     {% if rv.row.views %}
-    <button type="button" role="menuitem" class="mt-picker-item mt-touch" hx-post="{{ watch_url }}" hx-vals='{"watched": "1", "again": "1"}' hx-target="#grp-{{ ep.season_id }}" hx-swap="outerHTML" @click="menu = null">{% trans 'Watched again' %}</button>
+    <button type="button" role="menuitem" class="mt-picker-item mt-touch" hx-post="{{ watch_url }}" hx-vals='{"watched": "1", "again": "1"}' hx-target="#grp-{{ ep.season_id }}" hx-swap="outerHTML" hx-sync="closest section.mt-grp:replace" @click="menu = null; focusAfter = 'mark-ep-{{ ep.pk }}'">{% trans 'Watched again' %}</button>
     {% endif %}
   </div>
   {% endif %}

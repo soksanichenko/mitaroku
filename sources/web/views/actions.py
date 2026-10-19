@@ -11,7 +11,7 @@ from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-from tracking import services
+from tracking import queries, services
 from tracking.models import LibraryEntry
 from web.views.titles import page_context
 
@@ -46,6 +46,7 @@ def _respond(
     mode: str,
     season: Season | None = None,
     hint: bool = False,
+    up_to: bool = False,
 ) -> HttpResponse:
     """Render the result of an action from the freshly computed page state.
 
@@ -57,6 +58,8 @@ def _respond(
             ``episodes`` (the whole episode section) or ``movie`` (the movie block).
         season: The season whose group is the main fragment (``group`` mode).
         hint: Whether to arm the one-time "up to here" tip.
+        up_to: Whether the earlier main groups changed too (only "up to here"
+            marks more than one season), so they are sent out of band.
 
     Returns:
         The HTML fragments; the library panel is added out of band only when
@@ -70,11 +73,11 @@ def _respond(
     if mode == 'group':
         groups = context['groups']
         context['group'] = next(g for g in groups if g.group.season.pk == season.pk)
-        # "Up to here" also marks the earlier main seasons.
         context['earlier'] = [
             g
             for g in groups
-            if not g.group.season.is_extra
+            if up_to
+            and not g.group.season.is_extra
             and not season.is_extra
             and g.group.season.number < season.number
         ]
@@ -135,7 +138,7 @@ def episode_up_to(request: HttpRequest, pk: int) -> HttpResponse:
         return HttpResponse(NOT_AIRED, status=409)
     before = _status(request.user, title)
     services.mark_up_to(request.user, episode)
-    return _respond(request, title, before, 'group', episode.season)
+    return _respond(request, title, before, 'group', episode.season, up_to=True)
 
 
 @require_POST
@@ -221,27 +224,49 @@ def title_movie_watch(request: HttpRequest, pk: int) -> HttpResponse:
 
 @require_POST
 def title_continue(request: HttpRequest, pk: int) -> HttpResponse:
-    """Mark the next unwatched main episode as watched when it has aired.
+    """Mark the episode a "Continue" button showed as next, if it still is.
 
-    The Library cards post here too, from any page, so the response is made of
-    parts that a page may or may not contain: the htmx target decides which one
-    is swapped in and the out-of-band parts that find no target are ignored.
+    The request names that episode (``episode=<pk>``), so posting twice or from
+    a stale page cannot advance further: the episode is marked only while it is
+    the user's next one, otherwise nothing is written. Either way the answer is
+    a 200 with refreshed parts (htmx does not swap 4xx), and the main fragment
+    is always the posted episode's group, which is what the button targets.
+
+    The Library cards post here too. Their page has no group, progress, bar,
+    tip or panel with these ids, so the cleanest use is ``hx-swap="none"``:
+    the main fragment is dropped, the out-of-band parts find no target and are
+    ignored, and the card refreshes itself (for example by re-fetching its own
+    markup after the request).
 
     Args:
-        request: The request (no fields).
+        request: The request with ``episode``.
         pk: Primary key of a series or anime title.
 
     Returns:
-        The group fragment of the marked episode (``section#grp-<season pk>``),
-        then out of band ``#title-progress``, ``#continue-bar``,
-        ``#mark-up-to-hint`` (armed) and, if the status changed,
-        ``#library-panel``; 409 when there is no aired episode left to mark.
+        The group fragment ``section#grp-<posted season pk>``; out of band
+        ``#title-progress``, ``#continue-bar``, ``#mark-up-to-hint`` (armed, only
+        when an episode was marked) and, if the status changed,
+        ``#library-panel``. 400 for a missing or non-integer ``episode``, 404 for
+        an episode that is not a main episode of this title, 409 for one that has
+        not aired.
     """
     title = get_object_or_404(Title.objects.exclude(kind=Title.Kind.MOVIE), pk=pk)
+    value = request.POST.get('episode', '')
+    if not (value.isascii() and value.isdecimal() and len(value) <= 18):
+        return HttpResponseBadRequest('episode must be an episode id')
+    episode = get_object_or_404(
+        Episode.objects.select_related('season'),
+        pk=int(value),
+        season__title=title,
+        season__is_extra=False,
+    )
     if title.synced_at is None:
         return HttpResponse(NOT_READY, status=409)
+    if not services.is_aired(episode, timezone.localdate()):
+        return HttpResponse(NOT_AIRED, status=409)
     before = _status(request.user, title)
-    episode = services.mark_next(request.user, title)
-    if episode is None:
-        return HttpResponse('There is nothing to continue with', status=409)
-    return _respond(request, title, before, 'group', episode.season, hint=True)
+    following = queries.next_episode(request.user, title)
+    marked = following is not None and following.pk == episode.pk
+    if marked:
+        services.set_episode_watched(request.user, episode, True)
+    return _respond(request, title, before, 'group', episode.season, hint=marked)

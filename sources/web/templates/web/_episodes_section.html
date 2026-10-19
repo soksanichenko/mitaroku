@@ -7,15 +7,18 @@ progress, has_views (the user has a viewing of the title: the bar shows without 
 whole, has_rows, next_row (see _title_progress.html and _continue_bar.html); oob
 (optional): send it as an out-of-band swap of #episodes. It holds #title-progress,
 #continue-bar and #mark-up-to-hint, so a response with the section sends none of them
-separately. The Alpine scope also keeps the open row menu (menu) and the long press.
+separately. The Alpine scope also keeps the open row menu (menu), the long press and the
+control that gets the focus once a menu action has been swapped in (focusAfter).
 {% endcomment %}{% load i18n web_extras %}
 <section id="episodes" class="mt-section mt-episodes" aria-labelledby="episodes-heading"{% if oob %} hx-swap-oob="true"{% endif %}
          x-data="{ open: [{{ open_ids|join:', ' }}], has(id) { return this.open.includes(id) }, toggle(id) { this.open = this.has(id) ? this.open.filter(i => i !== id) : [...this.open, id] }, show(id) { if (!this.has(id)) this.open.push(id); this.$nextTick(() => document.getElementById('grp-' + id).scrollIntoView({ block: 'start' })) },
-                  menu: null, held: false, timer: null,
+                  menu: null, held: false, timer: null, focusAfter: null,
                   pressStart(id) { this.held = false; clearTimeout(this.timer); this.timer = setTimeout(() => { this.held = true; this.menu = id }, 500) },
                   pressEnd() { clearTimeout(this.timer); setTimeout(() => { this.held = false }, 400) },
                   pressMenu(e) { if (this.held) e.preventDefault() },
                   pressClick(e) { if (this.held) { e.stopPropagation(); e.preventDefault() } } }"
+         @htmx:after-settle="if (focusAfter) { const el = document.getElementById(focusAfter); focusAfter = null; if (el) el.focus() }"
+         @htmx:response-error="focusAfter = null"
          @click.window="if (!$event.target.closest('.mt-ep-menu, .mt-ep-more')) menu = null"
          @keydown.escape.window="if (menu) { document.getElementById('more-ep-' + menu).focus(); menu = null }">
   <div class="mt-episodes-head">

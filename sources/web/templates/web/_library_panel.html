@@ -2,7 +2,8 @@
 The user's library panel: status picker, five-star score and private note. It is
 the target of the three actions, which replace it (outerHTML).
 Context: title, entry (LibraryEntry or None); oob (optional): send the panel out of
-band as a swap of itself; oob_episodes (optional): also send
+band as a swap of itself; oob_movie (optional): also send the movie block (then
+movie_views, movie_released); oob_episodes (optional): also send
 the episode list as an out-of-band swap, for actions that change what was watched
 (then also groups, multi, open_ids, chips, progress).
 {% endcomment %}{% load i18n web_extras %}
@@ -34,3 +35,4 @@ the episode list as an out-of-band swap, for actions that change what was watche
   {% endif %}
 </section>
 {% if oob_episodes %}{% include 'web/_episodes_section.html' with oob=True %}{% endif %}
+{% if oob_movie %}{% include 'web/_movie_watch.html' with oob=True %}{% endif %}

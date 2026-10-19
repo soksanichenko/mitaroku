@@ -291,8 +291,9 @@ def _panel(request: HttpRequest, title: Title, entry: LibraryEntry | None):
 def title_status(request: HttpRequest, pk: int) -> HttpResponse:
     """Set the status of the user's entry, or remove it with ``status=remove``.
 
-    Completing a series marks its episodes, so the response carries the episode
-    list too (an out-of-band swap).
+    Completing a series marks its episodes and completing a released movie adds
+    a viewing, so the response carries the episode list or the movie block too
+    (an out-of-band swap).
 
     Args:
         request: The request with ``status``.
@@ -311,7 +312,11 @@ def title_status(request: HttpRequest, pk: int) -> HttpResponse:
         request.user, title, None if status == REMOVE else status
     )
     context = page_context(request, title)
-    context.update(entry=entry, oob_episodes=context.get('has_episodes', False))
+    context.update(
+        entry=entry,
+        oob_episodes=context.get('has_episodes', False),
+        oob_movie=title.kind == Title.Kind.MOVIE,
+    )
     return render(request, 'web/_library_panel.html', context)
 
 
