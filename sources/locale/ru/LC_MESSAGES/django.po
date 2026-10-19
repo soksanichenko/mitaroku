@@ -1,0 +1,59 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: ru\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+msgid "Skip to content"
+msgstr "Перейти к содержимому"
+
+msgid "mitaroku, go to library"
+msgstr "mitaroku, перейти в библиотеку"
+
+msgid "Main"
+msgstr "Главное меню"
+
+msgid "Library"
+msgstr "Библиотека"
+
+msgid "Upcoming"
+msgstr "Скоро"
+
+msgid "Account"
+msgstr "Аккаунт"
+
+msgid "Language"
+msgstr "Язык"
+
+msgid "Log out"
+msgstr "Выйти"
+
+msgid "Switch to dark theme"
+msgstr "Включить тёмную тему"
+
+msgid "Switch to light theme"
+msgstr "Включить светлую тему"
+
+msgid "Your titles will appear here."
+msgstr "Здесь появятся ваши тайтлы."
+
+msgid "Upcoming episodes and premieres will appear here."
+msgstr "Здесь появятся ближайшие серии и премьеры."
+
+msgid "Sign in"
+msgstr "Войти"
+
+msgid "Local account. Use this when the portal sign-in is not available."
+msgstr "Локальная учётная запись. Используйте её, когда вход через портал недоступен."
+
+msgid "The username or password is wrong. Try again."
+msgstr "Неверное имя пользователя или пароль. Попробуйте ещё раз."
+
+msgid "Username"
+msgstr "Имя пользователя"
+
+msgid "Password"
+msgstr "Пароль"
+
+msgid "Forgot your password? Ask the administrator of this server to reset it."
+msgstr "Забыли пароль? Попросите администратора сервера сбросить его."

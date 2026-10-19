@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/styles.css">
+<script src="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/_ds_bundle.js"></script>
+<script src="mitaroku-data.js"></script>
+</helmet>
+<article style="display:grid;gap:8px;align-content:start;min-width:0">
+  <a href="{{ t.href }}" class="grayscale" style="display:grid;gap:8px;color:var(--color-text);text-decoration:none;transition:filter .2s" style-hover="filter:none;text-decoration:none;color:var(--color-text)" style-focus="filter:none">
+    <span style="position:relative;display:block;aspect-ratio:2/3;overflow:hidden">
+    <span style="position:absolute;inset:0;background-color:{{ t.tint }};background-image:repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-text) 10%, transparent) 0 1px, transparent 1px 9px)"></span>
+    <span style="position:absolute;left:6px;top:6px;display:flex"><dc-import name="Rating Badge" source="{{ t.src }}" value="{{ t.val }}" size="sm" hint-size="52px,22px"></dc-import></span>
+    <sc-if value="{{ t.hasAiring }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;left:6px;bottom:6px;font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 5px;background:var(--color-bg);color:var(--color-text)">{{ t.airing }}</span></sc-if>
+    </span>
+    <span style="display:grid;gap:1px;align-content:start;min-height:44px;line-height:1.3;min-width:0">
+      <span style="font-size:14px;font-weight:800;overflow-wrap:break-word">{{ t.title }}</span>
+      <span style="font-size:12px;color:var(--mt-muted)">{{ t.meta }}</span>
+    </span>
+  </a>
+  <sc-if value="{{ hasProgress }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div role="progressbar" aria-label="{{ progressLabel }}" aria-valuemin="0" aria-valuemax="{{ total }}" aria-valuenow="{{ watched }}" style="flex:1;height:3px;background:color-mix(in srgb, var(--color-text) 14%, transparent)"><div style="height:100%;width:{{ pct }};background:var(--color-text)"></div></div>
+      <span style="font-size:12px;font-weight:800;font-variant-numeric:tabular-nums">{{ progressText }}</span>
+    </div>
+  </sc-if>
+  <sc-if value="{{ hasNext }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;line-height:1.35;color:var(--mt-muted)">{{ nextText }}</span></sc-if>
+  <dc-import name="Status Picker" title-id="{{ titleId }}" align="{{ menuAlign }}" hint-size="100%,44px"></dc-import>
+</article>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:180,&quot;height&quot;:420},&quot;titleId&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;salt-signal&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;variant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;browse&quot;,&quot;library&quot;],&quot;default&quot;:&quot;library&quot;,&quot;tsType&quot;:&quot;'browse'|'library'&quot;},&quot;menuAlign&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;left&quot;,&quot;right&quot;],&quot;default&quot;:&quot;left&quot;,&quot;tsType&quot;:&quot;'left'|'right'&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;}}">
+class Component extends DCLogic {
+  componentDidMount() { this._u = window.MT ? MT.sub(() => this.forceUpdate()) : null; }
+  componentWillUnmount() { this._u && this._u(); }
+  renderVals() {
+    const MT = window.MT;
+    const id = this.props.titleId || 'salt-signal';
+    const t = MT && MT.title(id);
+    if (!t) return { t: {}, titleId: id };
+    const dark = this.props.theme === 'dark';
+    const lib = this.props.variant === 'library';
+    const film = t.type === 'film';
+    const p = MT.progress(id), n = MT.next(id);
+    let nextText = '';
+    if (lib) {
+      if (film) nextText = t.runtime;
+      else if (n) nextText = !n.d ? 'Next: date not announced' : n.aired ? n.code + ' available' : 'Next ' + n.code + ' · ' + MT.fmtShort(n.d);
+    }
+    return {
+      titleId: id, menuAlign: this.props.menuAlign || 'left',
+      t: { title: t.title, href: MT.hrefFor(t), tint: MT.tint(t.hue, dark), src: t.rating.source, val: t.rating.value, meta: t.year + ' · ' + MT.TYPE_LABEL[t.type], airing: t.airing, hasAiring: !film },
+      hasProgress: lib && !film && !!MT.statusOf(id), pct: Math.round(p / t.eps * 100) + '%', progressText: p + '/' + t.eps,
+      total: t.eps, watched: p, progressLabel: t.title + ': ' + p + ' of ' + t.eps + ' episodes watched',
+      hasNext: !!nextText, nextText,
+    };
+  }
+}
+</script>
+</body>
+</html>

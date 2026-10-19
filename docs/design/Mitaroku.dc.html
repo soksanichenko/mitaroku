@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/styles.css">
+<script src="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/_ds_bundle.js"></script>
+<script src="mitaroku-data.js"></script>
+<style>
+html{--mt-link:var(--color-text);--mt-muted:color-mix(in srgb,var(--color-text) 72%,transparent)}
+html:has([data-mt-links="blue"]){--mt-link:oklch(0.46 0.11 255)}
+html:has([data-mt-theme="dark"]){--color-bg:#1c1a19;--color-surface:#282625;--color-text:#ecebea;--color-accent:#ff563c;--color-divider:color-mix(in srgb,#ecebea 30%,transparent);color-scheme:dark}
+html:has([data-mt-theme="dark"][data-mt-links="blue"]){--mt-link:oklch(0.8 0.08 255)}
+body{margin:0;background:var(--color-bg)}
+a{color:var(--mt-link);text-decoration:none;text-underline-offset:3px}
+a:hover{color:var(--mt-link);text-decoration:underline}
+button{font-family:inherit}
+button:disabled{cursor:default!important}
+[data-mt-scroller]::-webkit-scrollbar{display:none}
+</style>
+</helmet>
+<div data-mt-theme="{{ theme }}" data-mt-links="{{ links }}" style="min-height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);padding-bottom:{{ bottomPad }}">
+
+<header style="border-bottom:2px solid var(--color-divider)">
+  <div style="max-width:960px;margin:0 auto;padding:6px 16px;display:flex;align-items:center;gap:8px">
+    <a href="#/library" aria-label="mitaroku, go to library" style="flex:none;min-height:44px;display:flex;align-items:center;gap:8px;margin-right:12px;white-space:nowrap;color:var(--color-text);text-decoration:none" style-hover="text-decoration:none;color:var(--color-text)">
+      <span style="font-weight:800;font-size:18px;letter-spacing:-0.01em">見た録</span>
+      <sc-if value="{{ wide }}" hint-placeholder-val="{{ false }}"><span style="font-weight:600;font-size:13px;color:var(--mt-muted)">mitaroku</span></sc-if>
+    </a>
+    <sc-if value="{{ wideNav }}" hint-placeholder-val="{{ false }}">
+      <nav aria-label="Main" style="display:flex;gap:2px;flex:none">
+        <sc-for list="{{ mainNav }}" as="n" hint-placeholder-count="2">
+          <a href="{{ n.href }}" aria-current="{{ n.current }}" style="min-height:44px;display:flex;align-items:center;padding:0 10px;border-bottom:2px solid {{ n.line }};color:var(--color-text);font-size:14px;font-weight:{{ n.weight }};white-space:nowrap;text-decoration:none" style-hover="border-bottom-color:var(--color-text);text-decoration:none;color:var(--color-text)">{{ n.label }}</a>
+        </sc-for>
+      </nav>
+      <form role="search" onSubmit="{{ onSearchSubmit }}" style="flex:1 1 auto;min-width:120px;max-width:360px;margin-left:auto;position:relative;display:flex">
+        <svg viewBox="0 0 24 24" aria-hidden="true" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;fill:none;stroke:var(--mt-muted);stroke-width:2.5;stroke-linecap:round;pointer-events:none"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+        <input type="search" class="input" aria-label="{{ t.searchLabel }}" placeholder="{{ t.searchPlaceholder }}" value="{{ draft }}" onChange="{{ onDraft }}" style="width:100%;min-height:40px;padding-left:34px;font-size:14px">
+      </form>
+      <a href="#/notifications" aria-label="{{ bellLabel }}" title="{{ bellLabel }}" aria-current="{{ bellCurrent }}" style="flex:none;position:relative;width:44px;height:44px;display:grid;place-items:center;color:var(--color-text)" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent);color:var(--color-text)">
+        <svg viewBox="0 0 24 24" aria-hidden="true" style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
+        <sc-if value="{{ hasUnread }}" hint-placeholder-val="{{ true }}"><span aria-hidden="true" style="position:absolute;top:4px;right:2px;min-width:18px;height:18px;padding:0 4px;display:grid;place-items:center;background:var(--color-accent-700);color:var(--color-neutral-100);font-size:11px;font-weight:800;line-height:1">{{ unread }}</span></sc-if>
+      </a>
+    </sc-if>
+    <sc-if value="{{ narrowNav }}" hint-placeholder-val="{{ true }}">
+      <span style="flex:1"></span>
+      <a href="#/search" aria-label="{{ t.search }}" title="{{ t.search }}" style="flex:none;width:44px;height:44px;display:grid;place-items:center;color:var(--color-text)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.25;stroke-linecap:round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg></a>
+    </sc-if>
+    <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ false }}"><span style="flex:1"></span></sc-if>
+    <button type="button" class="btn btn-icon btn-secondary" aria-label="{{ themeLabel }}" title="{{ themeLabel }}" onClick="{{ toggleTheme }}" style="flex:none;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;display:grid;place-items:center">
+      <sc-if value="{{ isDark }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg></sc-if>
+      <sc-if value="{{ isLight }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg></sc-if>
+    </button>
+    <sc-if value="{{ wideNav }}" hint-placeholder-val="{{ false }}">
+      <div data-mt-user="1" style="position:relative;flex:none">
+        <button type="button" aria-haspopup="menu" aria-expanded="{{ userExpanded }}" aria-label="{{ t.account }}" title="{{ t.account }}" onClick="{{ toggleUser }}" style="height:44px;display:flex;align-items:center;gap:4px;padding:0 4px;background:none;border:0;color:var(--color-text);cursor:pointer" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent)">
+          <span aria-hidden="true" style="width:32px;height:32px;display:grid;place-items:center;background:var(--color-text);color:var(--color-bg);font-size:12px;font-weight:800">KM</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"><path d="m6 9 6 6 6-6"></path></svg>
+        </button>
+        <sc-if value="{{ userOpen }}" hint-placeholder-val="{{ false }}">
+          <div role="menu" aria-label="{{ t.account }}" style="position:absolute;right:0;top:calc(100% + 6px);z-index:60;width:240px;background:var(--color-bg);border:1px solid var(--color-text);box-shadow:var(--shadow-md);display:grid;padding:4px 0">
+            <div style="padding:10px 14px;display:grid;gap:2px;border-bottom:1px solid var(--color-divider)"><strong style="font-size:14px">Kira Mori</strong><span style="font-size:12px;color:var(--mt-muted);overflow-wrap:anywhere">kira.mori@home-portal.example</span></div>
+            <a href="#/settings" role="menuitem" onClick="{{ closeUser }}" style="min-height:44px;display:flex;align-items:center;padding:0 14px;font-size:14px;color:var(--color-text);text-decoration:none" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent);color:var(--color-text);text-decoration:none">{{ t.profileSettings }}</a>
+            <a href="#/import" role="menuitem" onClick="{{ closeUser }}" style="min-height:44px;display:flex;align-items:center;padding:0 14px;font-size:14px;color:var(--color-text);text-decoration:none" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent);color:var(--color-text);text-decoration:none">{{ t.importExport }}</a>
+            <div role="group" aria-label="{{ t.language }}" style="display:flex;align-items:center;gap:8px;padding:6px 14px;border-top:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider)">
+              <span style="flex:1;font-size:14px">{{ t.language }}</span>
+              <div style="display:flex;border:1px solid var(--color-divider)">
+                <sc-for list="{{ langs }}" as="l"><button type="button" role="menuitemradio" aria-checked="{{ l.checked }}" lang="{{ l.code }}" onClick="{{ l.onClick }}" style="min-width:44px;height:36px;padding:0 8px;border:0;background:{{ l.bg }};color:{{ l.fg }};font-size:13px;font-weight:700;cursor:pointer">{{ l.label }}</button></sc-for>
+              </div>
+            </div>
+            <a href="#/login" role="menuitem" onClick="{{ closeUser }}" style="min-height:44px;display:flex;align-items:center;gap:8px;padding:0 14px;font-size:14px;color:var(--color-text);text-decoration:none" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent);color:var(--color-text);text-decoration:none"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>{{ t.logout }}</a>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+  </div>
+</header>
+
+<sc-if value="{{ r.library }}" hint-placeholder-val="{{ true }}"><dc-import name="Library" theme="{{ theme }}" vw="{{ vw }}" view-state="{{ demo }}" hint-size="100%,1200px"></dc-import></sc-if>
+<sc-if value="{{ r.upcoming }}" hint-placeholder-val="{{ false }}"><dc-import name="Upcoming" theme="{{ theme }}" view-state="{{ demo }}" hint-size="100%,900px"></dc-import></sc-if>
+<sc-if value="{{ r.search }}" hint-placeholder-val="{{ false }}"><dc-import name="Search" theme="{{ theme }}" vw="{{ vw }}" query="{{ query }}" view-state="{{ demo }}" hint-size="100%,700px"></dc-import></sc-if>
+<sc-if value="{{ r.notifications }}" hint-placeholder-val="{{ false }}"><dc-import name="Notifications" view-state="{{ demo }}" hint-size="100%,900px"></dc-import></sc-if>
+<sc-if value="{{ r.settings }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings" vw="{{ vw }}" role="{{ role }}" telegram-state="{{ tgState }}" tg-simulate="{{ tgSimulate }}" view-state="{{ demo }}" hint-size="100%,1200px"></dc-import></sc-if>
+<sc-if value="{{ r.importExport }}" hint-placeholder-val="{{ false }}"><dc-import name="Import Export" mode="{{ ieMode }}" theme="{{ theme }}" vw="{{ vw }}" view-state="{{ demo }}" hint-size="100%,1100px"></dc-import></sc-if>
+<sc-if value="{{ r.login }}" hint-placeholder-val="{{ false }}"><dc-import name="Login" view-state="{{ demo }}" hint-size="100%,560px"></dc-import></sc-if>
+<sc-if value="{{ r.title }}" hint-placeholder-val="{{ false }}"><dc-import name="Title Page" screen="{{ titleScreen }}" theme="{{ theme }}" season-layout="{{ seasonLayout }}" numbering="{{ numbering }}" link-color="{{ links }}" hint-size="100%,2400px"></dc-import></sc-if>
+<sc-if value="{{ r.browse }}" hint-placeholder-val="{{ false }}"><dc-import name="Browse" params="{{ params }}" theme="{{ theme }}" vw="{{ vw }}" view-state="{{ demo }}" hint-size="100%,1400px"></dc-import></sc-if>
+<sc-if value="{{ r.collection }}" hint-placeholder-val="{{ false }}"><dc-import name="Collection" collection-id="{{ routeId }}" theme="{{ theme }}" vw="{{ vw }}" view-state="{{ demo }}" hint-size="100%,900px"></dc-import></sc-if>
+
+<aside aria-label="Design notes" style="max-width:960px;margin:0 auto;padding:0 16px 56px">
+  <details open="{{ true }}" style="border:1px dashed var(--color-divider);padding:0 16px">
+    <summary style="min-height:44px;display:flex;align-items:center;cursor:pointer;font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase">Design notes (not part of the UI)</summary>
+    <div style="display:grid;gap:14px;padding:4px 0 18px;font-size:14px;line-height:1.5;max-width:72ch">
+      <div><strong>Navigation.</strong> From 720 px the header holds the logo, Library, Upcoming, the search field, the notifications bell with its unread counter, the theme toggle and the user menu (Profile &amp; settings, Import / export, EN / RU, Log out). Below 720 px the header shrinks to the logo, a search icon and the theme toggle, and a fixed 56 px bottom tab bar holds Library, Upcoming, Search, Notifications and Profile. Pages get 72 px of bottom padding so the bar never covers content. Detail, Browse and Collection pages count as Library in the navigation.</div>
+      <div><strong>Screens and routes.</strong> Each screen is its own component under one shell, and the address is the state: <code>#/library</code>, <code>#/upcoming</code>, <code>#/search?q=</code>, <code>#/notifications</code>, <code>#/settings</code>, <code>#/import</code>, <code>#/export</code>, <code>#/login</code>, <code>#/title/show|anime|movie</code>, <code>#/browse?type=&amp;genre=&amp;country=&amp;year=</code> and <code>#/collection/&lt;id&gt;</code>. Each maps one-to-one to a Django view, with HTMX swaps for filters, Load more and status changes.</div>
+      <div><strong>Loading, empty and error.</strong> Every screen has all three. Preview them with Tweaks → Demo state; “Try again” goes from error to loading to the live view. Search also has a typing hint (one character), no results (try “zzz”) and a provider error (search for “error”). Skeletons copy the final layout so nothing jumps when content arrives.</div>
+      <div><strong>Shared components.</strong> Rating badge (source + value, tooltip “TMDB user score, out of 10”, accessible name; MAL on anime). Status picker: an ink chip with the current status, or an outlined “Add”; both open the same menu (Watching, Plan to watch, Completed, Dropped, Remove), with 44 px rows. Poster card: poster, rating badge, airing chip, title, year and the status picker; the Library variant adds the 3 px progress bar and the next air date. Round check: the same three-state control as the episode list.</div>
+      <div><strong>Browse and Collections.</strong> Every “See also” link opens Browse with its filters already in the address, and the page title is generated from those filters (“Drama series of 2025”). Removing a chip or adding a filter rewrites the address, so Back and shared links work. Collection cards open the collection page; the counts on the cards come from the collection’s own titles, so the card and the page always agree.</div>
+      <div><strong>Red on text surfaces.</strong> The bell counter, unread dot, TODAY tags, field errors and primary buttons (Continue, Search, Start import, Download, Sign in, Mark all as watched) all use accent-700 with light text: 6.6:1. Statuses everywhere else are ink chips, so red stays reserved for actions and new or urgent state.</div>
+      <div><strong>44 px touch targets.</strong> Every control is at least 44 × 44 px: the header theme toggle, bell and avatar, the detail-page section tabs (Description, Cast, Episodes, Similar, More), franchise and filter chips, status pickers, check buttons and bottom tabs. Icons stay at 18–22 px inside the larger hit area, so the header is still 56 px tall. On Library and Browse cards, the poster and the title block form one link, and the title block is at least 44 px tall.</div>
+      <div><strong>Telegram states.</strong> Not connected (Connect Telegram) → Waiting (one-time link to the bot, 10-minute countdown, Cancel) → Connected (“Connected as @kira_mori”, Disconnect with a confirmation step). Blocked: if the user blocks the bot, the block shows “Telegram notifications are off: the bot was blocked” with Reconnect, which starts a new one-time link. Preview each state with Tweaks → Telegram state; while Waiting, the Tweaks control “Simulate Start in Telegram” stands in for the bot callback and moves the block to Connected.</div>
+      <div><strong>Languages.</strong> The EN / RU switch in the user menu and the Interface language setting share one value. In this prototype it translates the global navigation; screen copy is English placeholder. Metadata language is a separate setting and controls titles and descriptions from TMDB and MyAnimeList.</div>
+      <div><strong>Prototype data.</strong> All screens read one in-memory store, so a status set in Search, Browse or a collection shows up in Library and Upcoming straight away. The demo date is Oct 8, 2026. Titles without their own placeholder page open the nearest of the three detail pages (show, anime or movie). The store resets on reload.</div>
+      <div style="border-top:1px solid var(--color-divider);padding-top:12px"><strong>Detail pages</strong></div>
+      <div><strong>Red accent.</strong> Only for user actions and state: the active watch status, the Continue button, Save, the TODAY tag and focus rings. Every red surface that carries text uses the deep step <code>--color-accent-700</code> (#AE1800) with light text <code>--color-neutral-100</code> (#F8F4F4), in both themes: <strong>6.6:1</strong>, against the 4.5:1 target for text under 24 px. Hover and pressed states go one step deeper (accent-800 #7C1405 at 9.9:1, accent-900 at about 14:1). The brighter accent (#EC3013 light, #FF563C dark) is kept only for text-free signals such as the focus ring; it measured 3.85:1 and 2.89:1 with light text. In the dark theme the active segment also gets a bold label and a check icon (from 480 px), so the filled state does not rely on color alone. External ratings are neutral ink blocks that name their source (TMDB user score for shows and films, MAL for anime). Each title carries one field, a source name plus a value, so another source such as IMDb can be added later without changing the layout. The badge has a tooltip (“TMDB user score, out of 10”) and an accessible name. Bullets, the nav underline and rating badges are ink.</div>
+      <div><strong>Imagery.</strong> Grayscale by default (the system’s <code>.grayscale</code> filter). An image switches to color (1) on hover or keyboard focus, and (2) when it is the active item: this page’s own backdrop or poster, and the selected trailer. Lists (Similar, Collections, trailer thumbnails, cast photos) stay grayscale until hovered or focused. Placeholders are tinted so you can see the switch.</div>
+      <div><strong>Secondary text.</strong> Ink at 72% opacity, applied to labels, dates, hints and counters: about 6:1 on the light ground. The dark theme keeps the same targets: secondary text about 8:1, body text about 15:1 and blue links about 9:1 on the dark ground. Watched episode titles switch from blue to muted ink at full opacity; they are never faded.</div>
+      <div><strong>Breakpoints.</strong> Below 480 px: no wordmark, short status labels, no check icon in the status control, and movie facts stacked. From 600 px: each episode row is one grid (number, title, date, stars, menu, check) across the full content width. The title column is capped at 420 px so the date and stars stay close to it. From 720 px: two-column hero (image left; status, rating and facts right; poster at most 240 px). Cast shows 2, 3 or 4 columns below 600 px, from 600 px and from 840 px.</div>
+      <div><strong>Episodes.</strong> Fully watched groups start collapsed, and the group with the next episode stays open. Single-entry groups (for example one movie) render as one row with a type tag. Continuation groups show the absolute number beside the season code (for example “7 · S2E1”); Tweaks can switch to per-season only or continuous only. The number column fits 4 digits. The “Mark all up to here” hint shows once, after your first check, and stays dismissed.</div>
+    </div>
+  </details>
+</aside>
+
+<sc-if value="{{ showBottom }}" hint-placeholder-val="{{ true }}">
+  <nav aria-label="Main" style="position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--color-bg);border-top:2px solid var(--color-divider);display:grid;grid-template-columns:repeat(5, minmax(0, 1fr));padding-bottom:env(safe-area-inset-bottom)">
+    <sc-for list="{{ tabs }}" as="b" hint-placeholder-count="5">
+      <a href="{{ b.href }}" aria-current="{{ b.current }}" aria-label="{{ b.aria }}" style="position:relative;min-height:56px;display:grid;justify-items:center;align-content:center;gap:3px;padding:4px 2px;margin-top:-2px;border-top:2px solid {{ b.line }};color:var(--color-text);font-size:11px;font-weight:{{ b.weight }};line-height:1.1;text-decoration:none;text-align:center;min-width:0" style-hover="background:color-mix(in srgb, var(--color-text) 6%, transparent);color:var(--color-text);text-decoration:none">
+        <span style="position:relative;display:grid;place-items:center">
+          <sc-if value="{{ b.isLib }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="m16 6 4 14M12 6v14M8 8v12M4 4v16"></path></svg></sc-if>
+          <sc-if value="{{ b.isUp }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><rect width="18" height="18" x="3" y="4"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg></sc-if>
+          <sc-if value="{{ b.isSearch }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg></sc-if>
+          <sc-if value="{{ b.isBell }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg></sc-if>
+          <sc-if value="{{ b.isUser }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><circle cx="12" cy="8" r="5"></circle><path d="M20 21a8 8 0 0 0-16 0"></path></svg></sc-if>
+          <sc-if value="{{ b.badge }}"><span aria-hidden="true" style="position:absolute;top:-4px;left:14px;min-width:17px;height:17px;padding:0 4px;display:grid;place-items:center;background:var(--color-accent-700);color:var(--color-neutral-100);font-size:10px;font-weight:800;line-height:1">{{ unread }}</span></sc-if>
+        </span>
+        <span style="max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.label }}</span>
+      </a>
+    </sc-for>
+  </nav>
+</sc-if>
+
+<template id="__bundler_thumbnail" data-bg-color="#f3f2f2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#ec3013"></rect><text x="30" y="64" font-family="Archivo, sans-serif" font-weight="800" font-size="34" fill="#f3f2f2">見</text></svg></template>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;screen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;library&quot;,&quot;upcoming&quot;,&quot;search&quot;,&quot;notifications&quot;,&quot;settings&quot;,&quot;import&quot;,&quot;export&quot;,&quot;login&quot;,&quot;title-show&quot;,&quot;title-anime&quot;,&quot;title-movie&quot;,&quot;browse&quot;,&quot;collection&quot;],&quot;default&quot;:&quot;library&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Screen&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;,&quot;section&quot;:&quot;Screen&quot;},&quot;demoState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;live&quot;,&quot;loading&quot;,&quot;empty&quot;,&quot;error&quot;],&quot;default&quot;:&quot;live&quot;,&quot;tsType&quot;:&quot;'live'|'loading'|'empty'|'error'&quot;,&quot;section&quot;:&quot;Screen&quot;},&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;member&quot;,&quot;admin&quot;],&quot;default&quot;:&quot;member&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Screen&quot;},&quot;telegramState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;not-connected&quot;,&quot;waiting&quot;,&quot;connected&quot;,&quot;blocked&quot;],&quot;default&quot;:&quot;not-connected&quot;,&quot;tsType&quot;:&quot;'not-connected'|'waiting'|'connected'|'blocked'&quot;,&quot;section&quot;:&quot;Telegram (Settings)&quot;},&quot;simulateTelegramStart&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Telegram (Settings)&quot;},&quot;seasonLayout&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;accordion&quot;,&quot;tabs&quot;],&quot;default&quot;:&quot;accordion&quot;,&quot;tsType&quot;:&quot;'accordion'|'tabs'&quot;,&quot;section&quot;:&quot;Episodes&quot;},&quot;numbering&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;both&quot;,&quot;season&quot;,&quot;continuous&quot;],&quot;default&quot;:&quot;both&quot;,&quot;tsType&quot;:&quot;'both'|'season'|'continuous'&quot;,&quot;section&quot;:&quot;Episodes&quot;},&quot;linkColor&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;blue&quot;,&quot;ink&quot;],&quot;default&quot;:&quot;blue&quot;,&quot;tsType&quot;:&quot;'blue'|'ink'&quot;,&quot;section&quot;:&quot;Style&quot;}}">
+const ROUTES = ['library', 'upcoming', 'search', 'notifications', 'settings', 'import', 'export', 'login', 'title', 'browse', 'collection'];
+const SCREEN_HASH = { library: '#/library', upcoming: '#/upcoming', search: '#/search?q=harbor', notifications: '#/notifications', settings: '#/settings', import: '#/import', export: '#/export', login: '#/login', 'title-show': '#/title/show', 'title-anime': '#/title/anime', 'title-movie': '#/title/movie', browse: '#/browse?type=series&genre=Drama&year=2025', collection: '#/collection/french-mysteries' };
+const I18N = {
+  en: { library: 'Library', upcoming: 'Upcoming', search: 'Search', notifications: 'Notifications', profile: 'Profile', profileSettings: 'Profile & settings', importExport: 'Import / export', language: 'Language', logout: 'Log out', searchLabel: 'Search shows, anime and movies', searchPlaceholder: 'Search shows, anime, movies', account: 'Account menu', unread: 'unread' },
+  ru: { library: 'Библиотека', upcoming: 'Скоро', search: 'Поиск', notifications: 'Уведомления', profile: 'Профиль', profileSettings: 'Профиль и настройки', importExport: 'Импорт / экспорт', language: 'Язык', logout: 'Выйти', searchLabel: 'Поиск сериалов, аниме и фильмов', searchPlaceholder: 'Сериалы, аниме, фильмы', account: 'Меню аккаунта', unread: 'непрочитанных' },
+};
+function parseRoute(hash) {
+  const h = (hash || '').replace(/^#\/?/, '');
+  if (!h) return null;
+  const qi = h.indexOf('?');
+  const path = qi < 0 ? h : h.slice(0, qi), qs = qi < 0 ? '' : h.slice(qi + 1);
+  const seg = path.split('/');
+  if (ROUTES.indexOf(seg[0]) < 0) return null;
+  return { name: seg[0], id: seg[1] || null, params: window.MT ? MT.parseQuery(qs) : {} };
+}
+class Component extends DCLogic {
+  state = { route: parseRoute(location.hash) || parseRoute(SCREEN_HASH[this.props.screen || 'library']), theme: null, vw: window.innerWidth, userOpen: false, draft: '' };
+  componentDidMount() {
+    this._u = window.MT ? MT.sub(() => this.forceUpdate()) : null;
+    { const r0 = parseRoute(location.hash); if (r0) this.setState({ route: r0, draft: r0.name === 'search' ? (r0.params.q || '') : '' }); }
+    this._hash = () => {
+      const r = parseRoute(location.hash);
+      if (!r) return;
+      const same = this.state.route && this.state.route.name === r.name && this.state.route.id === r.id;
+      this.setState({ route: r, userOpen: false, draft: r.name === 'search' ? (r.params.q || '') : this.state.draft });
+      if (!same) window.scrollTo(0, 0);
+    };
+    this._resize = () => { if (window.innerWidth !== this.state.vw) this.setState({ vw: window.innerWidth }); };
+    this._down = e => { if (this.state.userOpen && !(e.target.closest && e.target.closest('[data-mt-user]'))) this.setState({ userOpen: false }); };
+    this._key = e => { if (e.key === 'Escape' && this.state.userOpen) this.setState({ userOpen: false }); };
+    window.addEventListener('hashchange', this._hash);
+    window.addEventListener('resize', this._resize);
+    document.addEventListener('pointerdown', this._down);
+    document.addEventListener('keydown', this._key);
+  }
+  componentWillUnmount() {
+    this._u && this._u();
+    window.removeEventListener('hashchange', this._hash);
+    window.removeEventListener('resize', this._resize);
+    document.removeEventListener('pointerdown', this._down);
+    document.removeEventListener('keydown', this._key);
+  }
+  componentDidUpdate(pp) {
+    if (pp.screen !== this.props.screen && this.props.screen && SCREEN_HASH[this.props.screen]) location.hash = SCREEN_HASH[this.props.screen];
+    if (pp.theme !== this.props.theme) this.setState({ theme: null });
+  }
+  renderVals() {
+    const MT = window.MT;
+    const st = this.state;
+    const r = st.route || { name: 'library', params: {} };
+    const name = r.name;
+    const theme = st.theme || this.props.theme || 'light';
+    const dark = theme === 'dark';
+    const vw = st.vw || 390, wide = vw >= 720;
+    const lang = MT ? MT.state.lang : 'en';
+    const t = I18N[lang] || I18N.en;
+    const unread = MT ? MT.unread() : 0;
+    const isLogin = name === 'login';
+    const inLib = ['library', 'title', 'browse', 'collection'].indexOf(name) >= 0;
+    const tabDefs = [['lib', '#/library', t.library, inLib], ['up', '#/upcoming', t.upcoming, name === 'upcoming'], ['search', '#/search', t.search, name === 'search'], ['bell', '#/notifications', t.notifications, name === 'notifications'], ['user', '#/settings', t.profile, ['settings', 'import', 'export'].indexOf(name) >= 0]];
+    return {
+      theme, links: this.props.linkColor || 'blue', isDark: dark, isLight: !dark,
+      themeLabel: dark ? 'Switch to light theme' : 'Switch to dark theme',
+      toggleTheme: () => this.setState({ theme: dark ? 'light' : 'dark' }),
+      vw, wide, wideNav: wide && !isLogin, narrowNav: !wide && !isLogin, isLogin,
+      showBottom: !wide && !isLogin, bottomPad: !wide && !isLogin ? '72px' : '0',
+      t,
+      mainNav: [['#/library', t.library, inLib], ['#/upcoming', t.upcoming, name === 'upcoming']].map(([href, label, on]) => ({ href, label, current: on ? 'page' : 'false', weight: on ? '800' : '500', line: on ? 'var(--color-text)' : 'transparent' })),
+      draft: st.draft, onDraft: e => this.setState({ draft: e.target.value }),
+      onSearchSubmit: e => { e.preventDefault(); location.hash = '#/search?q=' + encodeURIComponent(st.draft.trim()); },
+      unread, hasUnread: unread > 0, bellLabel: t.notifications + (unread ? ', ' + unread + ' ' + t.unread : ''), bellCurrent: name === 'notifications' ? 'page' : 'false',
+      userOpen: st.userOpen, userExpanded: st.userOpen ? 'true' : 'false',
+      toggleUser: () => this.setState(s => ({ userOpen: !s.userOpen })), closeUser: () => this.setState({ userOpen: false }),
+      langs: [['en', 'EN'], ['ru', 'RU']].map(([code, label]) => ({ code, label, checked: lang === code ? 'true' : 'false', bg: lang === code ? 'var(--color-text)' : 'transparent', fg: lang === code ? 'var(--color-bg)' : 'var(--color-text)', onClick: () => MT && MT.set({ lang: code }) })),
+      tabs: tabDefs.map(([k, href, label, on]) => ({ href, label, current: on ? 'page' : 'false', weight: on ? '800' : '500', line: on ? 'var(--color-text)' : 'transparent', isLib: k === 'lib', isUp: k === 'up', isSearch: k === 'search', isBell: k === 'bell', isUser: k === 'user', badge: k === 'bell' && unread > 0, aria: k === 'bell' && unread ? label + ', ' + unread + ' ' + t.unread : label })),
+      r: { library: name === 'library', upcoming: name === 'upcoming', search: name === 'search', notifications: name === 'notifications', settings: name === 'settings', importExport: name === 'import' || name === 'export', login: isLogin, title: name === 'title', browse: name === 'browse', collection: name === 'collection' },
+      ieMode: name === 'export' ? 'export' : 'import',
+      titleScreen: ['show', 'anime', 'movie'].indexOf(r.id) >= 0 ? r.id : 'show',
+      routeId: r.id || 'french-mysteries', params: r.params || {}, query: (r.params && r.params.q) || '',
+      demo: this.props.demoState || 'live', role: this.props.role || 'member',
+      tgState: this.props.telegramState || 'not-connected', tgSimulate: !!this.props.simulateTelegramStart,
+      seasonLayout: this.props.seasonLayout || 'accordion', numbering: this.props.numbering || 'both',
+    };
+  }
+}
+</script>
+</body>
+</html>

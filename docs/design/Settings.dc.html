@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/styles.css">
+<script src="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/_ds_bundle.js"></script>
+<script src="mitaroku-data.js"></script>
+</helmet>
+<main style="max-width:960px;margin:0 auto;padding:0 16px 48px;color:var(--color-text);font-family:var(--font-body)">
+  <div style="padding:22px 0 14px">
+    <h1 style="margin:0;font-size:clamp(28px, 6vw, 40px)">Profile and settings</h1>
+  </div>
+
+  <sc-if value="{{ isLoading }}" hint-placeholder-val="{{ false }}">
+    <div aria-busy="true" aria-label="Loading settings" style="display:grid;gap:14px;border-top:2px solid var(--color-divider);padding-top:20px">
+      <sc-for list="{{ skel }}" as="k"><div style="display:grid;gap:8px"><div style="height:18px;width:160px;background:color-mix(in srgb, var(--color-text) 9%, transparent)"></div><div style="height:44px;width:min(360px, 100%);background:color-mix(in srgb, var(--color-text) 9%, transparent)"></div></div></sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isError }}" hint-placeholder-val="{{ false }}">
+    <div role="alert" style="display:grid;gap:10px;justify-items:start;padding:28px 0;border-top:2px solid var(--color-text)">
+      <h2 style="margin:0;font-size:20px">Couldn’t load your settings</h2>
+      <p style="margin:0;font-size:14px;color:var(--mt-muted)">Your preferences are safe. Try again in a moment.</p>
+      <button type="button" class="btn btn-secondary" onClick="{{ retry }}" style="min-height:44px">Try again</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isLive }}" hint-placeholder-val="{{ true }}">
+    <section aria-labelledby="set-acc" style="border-top:2px solid var(--color-divider);padding:20px 0;display:grid;grid-template-columns:{{ cols }};gap:12px 24px">
+      <h2 id="set-acc" style="margin:0;font-size:18px">Account</h2>
+      <div style="display:grid;gap:12px;min-width:0">
+        <div style="display:flex;align-items:center;gap:14px">
+          <span aria-hidden="true" style="flex:none;width:56px;height:56px;display:grid;place-items:center;background:var(--color-text);color:var(--color-bg);font-size:18px;font-weight:800">KM</span>
+          <div style="display:grid;gap:2px;line-height:1.3;min-width:0">
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px"><strong style="font-size:17px">Kira Mori</strong><span style="font-size:10px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;padding:3px 7px;border:1px solid var(--color-text)">{{ role }}</span></div>
+            <span style="font-size:13px;color:var(--mt-muted);overflow-wrap:anywhere">kira.mori@home-portal.example</span>
+          </div>
+        </div>
+        <dl style="display:grid;grid-template-columns:minmax(96px, max-content) minmax(0, 1fr);gap:6px 16px;margin:0;font-size:14px">
+          <dt style="color:var(--mt-muted)">Username</dt><dd style="margin:0">kmori</dd>
+          <dt style="color:var(--mt-muted)">Signed in with</dt><dd style="margin:0">Home portal (SSO)</dd>
+          <dt style="color:var(--mt-muted)">Member since</dt><dd style="margin:0">Mar 2, 2025</dd>
+        </dl>
+        <p style="margin:0;font-size:13px;line-height:1.5;color:var(--mt-muted);max-width:60ch">Your name, email and role come from the home portal and are read-only here. Change them in the portal.</p>
+      </div>
+    </section>
+
+    <section aria-labelledby="set-lang" style="border-top:2px solid var(--color-divider);padding:20px 0;display:grid;grid-template-columns:{{ cols }};gap:12px 24px">
+      <h2 id="set-lang" style="margin:0;font-size:18px">Language</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:16px;min-width:0">
+        <div class="field" style="display:grid;gap:6px;align-content:start">
+          <label for="set-ui">Interface language</label>
+          <select id="set-ui" class="input" value="{{ lang }}" onChange="{{ onLang }}" style="min-height:44px"><option value="en">English</option><option value="ru">Русский</option></select>
+          <span style="font-size:12px;color:var(--mt-muted)">Menus, buttons and messages.</span>
+        </div>
+        <div class="field" style="display:grid;gap:6px;align-content:start">
+          <label for="set-meta">Metadata language</label>
+          <select id="set-meta" class="input" value="{{ metaLang }}" onChange="{{ onMeta }}" style="min-height:44px"><option value="en">English</option><option value="ru">Русский</option><option value="ja">日本語</option><option value="orig">Original language</option></select>
+          <span style="font-size:12px;color:var(--mt-muted)">Titles, descriptions and episode names from TMDB and MyAnimeList.</span>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="set-notif" style="border-top:2px solid var(--color-divider);padding:20px 0;display:grid;grid-template-columns:{{ cols }};gap:12px 24px">
+      <h2 id="set-notif" style="margin:0;font-size:18px">Notifications</h2>
+      <div style="display:grid;min-width:0;border-top:1px solid var(--color-divider)">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--color-divider)">
+          <div style="flex:1;display:grid;gap:2px"><strong style="font-size:15px">On site</strong><span style="font-size:13px;color:var(--mt-muted)">Always on. The bell in the header shows unread items.</span></div>
+          <label style="min-height:44px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mt-muted)"><input type="checkbox" role="switch" checked="{{ true }}" disabled="{{ true }}" aria-label="On-site notifications, always on" style="width:18px;height:18px;accent-color:var(--color-text)">On</label>
+        </div>
+
+        <div style="display:grid;gap:10px;padding:12px 0;border-bottom:1px solid var(--color-divider)">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="flex:1;display:grid;gap:2px"><strong style="font-size:15px">Email</strong><span style="font-size:13px;color:var(--mt-muted)">One message per event, sent within a few minutes.</span></div>
+            <label style="min-height:44px;display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" role="switch" checked="{{ emailOn }}" onChange="{{ toggleEmail }}" aria-label="Email notifications" style="width:18px;height:18px;accent-color:var(--color-text)">{{ emailOnLabel }}</label>
+          </div>
+          <sc-if value="{{ emailOn }}" hint-placeholder-val="{{ true }}">
+            <div class="field" style="display:grid;gap:6px;max-width:420px">
+              <label for="set-email">Send to</label>
+              <input id="set-email" type="email" class="input" value="{{ email }}" onChange="{{ onEmail }}" style="min-height:44px">
+              <sc-if value="{{ usesPortal }}" hint-placeholder-val="{{ true }}"><span style="font-size:12px;line-height:1.45;color:var(--mt-muted)">This is your portal email. Enter another address to use it for mitaroku only.</span></sc-if>
+              <sc-if value="{{ customEmail }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;line-height:1.45;color:var(--mt-muted)">Notifications go to this address instead of your portal email. <button type="button" onClick="{{ resetEmail }}" style="padding:0;background:none;border:0;color:var(--mt-link);font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline">Use portal email</button></span></sc-if>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="display:grid;gap:10px;padding:12px 0;border-bottom:1px solid var(--color-divider)">
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px">
+            <div style="flex:1 1 200px;display:grid;gap:2px"><strong style="font-size:15px">Telegram</strong><span style="font-size:13px;color:var(--mt-muted)">{{ tgSub }}</span></div>
+            <sc-if value="{{ tgOff }}" hint-placeholder-val="{{ true }}"><button type="button" class="btn btn-secondary" onClick="{{ tgConnect }}" style="min-height:44px;gap:8px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg>Connect Telegram</button></sc-if>
+            <sc-if value="{{ tgOn }}" hint-placeholder-val="{{ false }}"><button type="button" class="btn btn-secondary" aria-expanded="{{ tgConfirmExpanded }}" onClick="{{ tgAskDisconnect }}" style="min-height:44px">Disconnect</button></sc-if>
+          </div>
+          <sc-if value="{{ tgConfirm }}" hint-placeholder-val="{{ false }}">
+            <div role="alertdialog" aria-labelledby="tg-cf" aria-describedby="tg-cfd" style="display:grid;gap:10px;padding:14px;border:2px solid var(--color-text);max-width:520px">
+              <strong id="tg-cf" style="font-size:15px">Disconnect Telegram?</strong>
+              <span id="tg-cfd" style="font-size:14px;line-height:1.45">You’ll stop getting notifications in Telegram. On-site and email notifications keep working, and you can reconnect at any time.</span>
+              <div style="display:flex;flex-wrap:wrap;gap:8px">
+                <button type="button" class="btn btn-primary" onClick="{{ tgDisconnect }}" style="min-height:44px;color:var(--color-neutral-100);background:var(--color-accent-700)" style-hover="background:var(--color-accent-800)" style-active="background:var(--color-accent-900)">Disconnect</button>
+                <button type="button" class="btn btn-secondary" onClick="{{ tgKeep }}" style="min-height:44px">Keep connected</button>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ tgBlocked }}" hint-placeholder-val="{{ false }}">
+            <div role="alert" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:12px 14px;border:2px solid var(--color-accent-700);max-width:620px">
+              <svg viewBox="0 0 24 24" aria-hidden="true" style="flex:none;width:20px;height:20px;fill:none;stroke:var(--color-accent-700);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4M12 17h.01"></path></svg>
+              <span style="flex:1 1 220px;font-size:14px;line-height:1.45"><strong>Telegram notifications are off:</strong> the bot was blocked.</span>
+              <button type="button" class="btn btn-secondary" onClick="{{ tgConnect }}" style="min-height:44px;gap:8px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg>Reconnect</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{ tgPending }}" hint-placeholder-val="{{ false }}">
+            <div role="status" style="display:grid;gap:10px;padding:14px;border:1px solid var(--color-text);max-width:520px">
+              <ol style="margin:0;padding-left:18px;display:grid;gap:6px;font-size:14px;line-height:1.45">
+                <li>Open the bot with your one-time link.</li>
+                <li>Press <strong>Start</strong> in Telegram. This page updates by itself.</li>
+              </ol>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+                <a href="https://t.me/mitaroku_home_bot?start=7F3KQ9WD" target="_blank" rel="noopener" onClick="{{ tgOpened }}" class="btn btn-primary" style="min-height:44px;gap:8px;color:var(--color-neutral-100);background:var(--color-accent-700);text-decoration:none" style-hover="background:var(--color-accent-800);color:var(--color-neutral-100);text-decoration:none">Open the bot<svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"><path d="M7 17 17 7M7 7h10v10"></path></svg></a>
+                <button type="button" class="btn btn-ghost" onClick="{{ tgCancel }}" style="min-height:44px">Cancel</button>
+              </div>
+              <span style="font-size:12px;color:var(--mt-muted);font-variant-numeric:tabular-nums">{{ tgWait }}</span>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="set-data" style="border-top:2px solid var(--color-divider);padding:20px 0;display:grid;grid-template-columns:{{ cols }};gap:12px 24px">
+      <h2 id="set-data" style="margin:0;font-size:18px">Your data</h2>
+      <div style="display:grid;gap:8px;justify-items:start">
+        <a href="#/import" style="min-height:44px;display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">Import from another service</a>
+        <a href="#/export" style="min-height:44px;display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">Export or back up your library</a>
+        <a href="#/login" class="btn btn-secondary" style="min-height:44px;gap:8px;text-decoration:none;margin-top:6px" style-hover="text-decoration:none"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>Log out</a>
+      </div>
+    </section>
+  </sc-if>
+</main>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;viewState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;live&quot;,&quot;loading&quot;,&quot;empty&quot;,&quot;error&quot;],&quot;default&quot;:&quot;live&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;member&quot;,&quot;admin&quot;],&quot;default&quot;:&quot;member&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;telegramState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;not-connected&quot;,&quot;waiting&quot;,&quot;connected&quot;,&quot;blocked&quot;],&quot;default&quot;:&quot;not-connected&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;tgSimulate&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;vw&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:390,&quot;tsType&quot;:&quot;number&quot;}}">
+const PORTAL_EMAIL = 'kira.mori@home-portal.example';
+class Component extends DCLogic {
+  state = { metaLang: 'en', emailOn: true, email: PORTAL_EMAIL, tg: 'off', confirm: false, left: 600, retry: null };
+  componentDidMount() { this._u = window.MT ? MT.sub(() => this.forceUpdate()) : null; this.applyTgProp(); }
+  applyTgProp() {
+    const map = { 'not-connected': 'off', waiting: 'pending', connected: 'connected', blocked: 'blocked' };
+    const tg = map[this.props.telegramState] || 'off';
+    if (tg === 'pending') this.startTg(); else this.stopTg(tg);
+  }
+  componentWillUnmount() { this._u && this._u(); clearInterval(this._i); clearTimeout(this._c); clearTimeout(this._r); }
+  componentDidUpdate(pp) {
+    if (pp.viewState !== this.props.viewState && this.state.retry) this.setState({ retry: null });
+    if (pp.telegramState !== this.props.telegramState) this.applyTgProp();
+    if (this.props.tgSimulate && !pp.tgSimulate && this.state.tg === 'pending') this.stopTg('connected');
+  }
+  retry() { this.setState({ retry: 'loading' }); clearTimeout(this._r); this._r = setTimeout(() => this.setState({ retry: 'live' }), 700); }
+  startTg() {
+    this.setState({ tg: 'pending', left: 600, confirm: false });
+    clearInterval(this._i);
+    this._i = setInterval(() => this.setState(s => { if (s.left <= 1) { clearInterval(this._i); return { tg: 'off', left: 600 }; } return { left: s.left - 1 }; }), 1000);
+  }
+  stopTg(tg) { clearInterval(this._i); this.setState({ tg, confirm: false }); }
+  renderVals() {
+    const MT = window.MT;
+    const st = this.state;
+    const vs = st.retry || this.props.viewState || 'live';
+    const vw = this.props.vw || 390;
+    const m = Math.floor(st.left / 60), s = String(st.left % 60).padStart(2, '0');
+    const live = vs !== 'loading' && vs !== 'error';
+    return {
+      isLoading: vs === 'loading', isError: vs === 'error', isLive: live, skel: [1, 2, 3, 4], retry: () => this.retry(),
+      cols: vw >= 720 ? '200px minmax(0, 1fr)' : 'minmax(0, 1fr)',
+      role: this.props.role === 'admin' ? 'Admin' : 'Member',
+      lang: MT ? MT.state.lang : 'en', onLang: e => MT && MT.set({ lang: e.target.value }),
+      metaLang: st.metaLang, onMeta: e => this.setState({ metaLang: e.target.value }),
+      emailOn: st.emailOn, emailOnLabel: st.emailOn ? 'On' : 'Off', toggleEmail: () => this.setState(x => ({ emailOn: !x.emailOn })),
+      email: st.email, onEmail: e => this.setState({ email: e.target.value }),
+      usesPortal: st.email.trim() === PORTAL_EMAIL, customEmail: st.email.trim() !== PORTAL_EMAIL,
+      resetEmail: () => this.setState({ email: PORTAL_EMAIL }),
+      tgOff: st.tg === 'off', tgPending: st.tg === 'pending', tgOn: st.tg === 'connected', tgBlocked: st.tg === 'blocked',
+      tgConfirm: st.tg === 'connected' && st.confirm, tgConfirmExpanded: st.confirm ? 'true' : 'false',
+      tgSub: st.tg === 'connected' ? 'Connected as @kira_mori. Messages come from @mitaroku_home_bot.' : st.tg === 'pending' ? 'Waiting for you to press Start in Telegram…' : st.tg === 'blocked' ? 'Was connected as @kira_mori.' : 'Not connected.',
+      tgConnect: () => this.startTg(),
+      tgOpened: () => {},
+      tgCancel: () => this.stopTg('off'),
+      tgAskDisconnect: () => this.setState(x => ({ confirm: !x.confirm })),
+      tgKeep: () => this.setState({ confirm: false }),
+      tgDisconnect: () => this.stopTg('off'),
+      tgWait: 'Waiting for confirmation. The link expires in ' + m + ':' + s + '.',
+    };
+  }
+}
+</script>
+</body>
+</html>

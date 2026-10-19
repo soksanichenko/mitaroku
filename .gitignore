@@ -6,3 +6,10 @@ venv/
 *.egg-info/
 dist/
 .env
+spikes/**/.cache/
+spikes/**/results.json
+config.yaml
+*.mo
+.pytest_cache/
+.ruff_cache/
+staticfiles/

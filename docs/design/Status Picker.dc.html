@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/styles.css">
+<script src="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/_ds_bundle.js"></script>
+<script src="mitaroku-data.js"></script>
+</helmet>
+<div ref="{{ rootRef }}" style="position:relative;min-width:0">
+  <sc-if value="{{ inLib }}" hint-placeholder-val="{{ false }}">
+    <button type="button" aria-haspopup="menu" aria-expanded="{{ exp }}" aria-label="{{ btnLabel }}" title="Change status" onClick="{{ toggle }}" style="width:100%;min-height:44px;display:flex;align-items:center;gap:6px;padding:0 8px 0 10px;background:color-mix(in srgb, var(--color-text) 9%, transparent);border:1px solid transparent;color:var(--color-text);font-size:13px;font-weight:700;line-height:1.2;cursor:pointer;white-space:nowrap;text-align:left" style-hover="border-color:var(--color-text)">
+      <svg viewBox="0 0 24 24" aria-hidden="true" style="flex:none;width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round"><path d="M20 6 9 17l-5-5"></path></svg>
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">{{ label }}</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true" style="flex:none;width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"><path d="m6 9 6 6 6-6"></path></svg>
+    </button>
+  </sc-if>
+  <sc-if value="{{ notInLib }}" hint-placeholder-val="{{ true }}">
+    <button type="button" aria-haspopup="menu" aria-expanded="{{ exp }}" aria-label="{{ btnLabel }}" title="Add to library" onClick="{{ toggle }}" style="width:100%;min-height:44px;display:flex;align-items:center;gap:6px;padding:0 8px 0 10px;background:transparent;border:1px solid var(--color-text);color:var(--color-text);font-size:13px;font-weight:700;line-height:1.2;cursor:pointer;white-space:nowrap;text-align:left" style-hover="background:color-mix(in srgb, var(--color-text) 8%, transparent)">
+      <svg viewBox="0 0 24 24" aria-hidden="true" style="flex:none;width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round"><path d="M5 12h14M12 5v14"></path></svg>
+      <span style="flex:1">Add</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true" style="flex:none;width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"><path d="m6 9 6 6 6-6"></path></svg>
+    </button>
+  </sc-if>
+  <sc-if value="{{ open }}" hint-placeholder-val="{{ false }}">
+    <div role="menu" aria-label="{{ menuLabel }}" style="position:absolute;left:{{ mLeft }};right:{{ mRight }};top:calc(100% + 4px);z-index:40;width:max-content;min-width:100%;background:var(--color-bg);border:1px solid var(--color-text);box-shadow:var(--shadow-md);padding:4px 0;display:grid">
+      <sc-for list="{{ opts }}" as="o">
+        <button type="button" role="menuitemradio" aria-checked="{{ o.checked }}" onClick="{{ o.onClick }}" style="min-height:44px;padding:0 14px 0 10px;display:flex;align-items:center;gap:8px;background:none;border:0;text-align:left;font-size:14px;font-weight:{{ o.weight }};color:var(--color-text);cursor:pointer;white-space:nowrap" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent)">
+          <span style="width:16px;display:grid;place-items:center"><sc-if value="{{ o.isOn }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round"><path d="M20 6 9 17l-5-5"></path></svg></sc-if></span>{{ o.label }}
+        </button>
+      </sc-for>
+      <sc-if value="{{ inLib }}">
+        <div style="height:1px;background:var(--color-divider);margin:4px 0"></div>
+        <button type="button" role="menuitem" onClick="{{ remove }}" style="min-height:44px;padding:0 14px 0 34px;background:none;border:0;text-align:left;font-size:14px;color:var(--color-text);cursor:pointer;white-space:nowrap" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent)">Remove from library</button>
+      </sc-if>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:220,&quot;height&quot;:260},&quot;titleId&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;quiet-meridian&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;align&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;left&quot;,&quot;right&quot;],&quot;default&quot;:&quot;left&quot;,&quot;tsType&quot;:&quot;'left'|'right'&quot;}}">
+class Component extends DCLogic {
+  state = { open: false };
+  rootRef = React.createRef();
+  componentDidMount() {
+    this._u = window.MT ? MT.sub(() => this.forceUpdate()) : null;
+    this._down = e => { if (this.state.open && this.rootRef.current && !this.rootRef.current.contains(e.target)) this.setState({ open: false }); };
+    this._key = e => { if (e.key === 'Escape' && this.state.open) this.setState({ open: false }); };
+    document.addEventListener('pointerdown', this._down);
+    document.addEventListener('keydown', this._key);
+  }
+  componentWillUnmount() {
+    this._u && this._u();
+    document.removeEventListener('pointerdown', this._down);
+    document.removeEventListener('keydown', this._key);
+  }
+  renderVals() {
+    const MT = window.MT;
+    if (!MT) return { rootRef: this.rootRef, notInLib: true, opts: [] };
+    const id = this.props.titleId || 'quiet-meridian';
+    const s = MT.statusOf(id), t = MT.title(id), name = t ? t.title : '';
+    const set = v => { MT.setStatus(id, v); this.setState({ open: false }); };
+    const right = this.props.align === 'right';
+    return {
+      rootRef: this.rootRef, inLib: !!s, notInLib: !s,
+      label: s ? MT.STATUS_LABEL[s] : 'Add',
+      btnLabel: s ? 'Status of ' + name + ': ' + MT.STATUS_LABEL[s] + '. Change status' : 'Add ' + name + ' to library',
+      menuLabel: s ? 'Change status' : 'Add with status',
+      open: this.state.open, exp: this.state.open ? 'true' : 'false',
+      toggle: () => this.setState(st => ({ open: !st.open })),
+      mLeft: right ? 'auto' : '0', mRight: right ? '0' : 'auto',
+      opts: MT.STATUSES.map(([v, l]) => ({ label: l, checked: s === v ? 'true' : 'false', isOn: s === v, weight: s === v ? '800' : '400', onClick: () => set(v) })),
+      remove: () => set(null),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+---
+# Copy to config.yaml (git-ignored) for local development.
+# Every key can also be set through the environment, for example
+# MITAROKU_DATABASE__PASSWORD; the environment wins over this file.
+secret_key: change-me
+debug: true
+allowed_hosts: [localhost, 127.0.0.1]
+# Behind a TLS proxy list the https origin(s), or every POST gets 403.
+csrf_trusted_origins: []  # e.g. ['https://mitaroku.example.com']
+huey_immediate: false
+
+auth:
+  mode: local  # local = Django accounts; portal = trust the SSO headers from nginx
+  # Networks allowed to send the portal headers. The default is loopback only.
+  # Deployments must list the exact address of nginx; a Docker-based nginx needs
+  # its container address or the bridge gateway listed here.
+  trusted_proxies: ['127.0.0.1/32', '::1/128']
+  portal_logout_url: ''
+
+database:
+  host: localhost
+  port: 55432
+  name: mitaroku
+  user: mitaroku
+  password: mitaroku
+
+redis:
+  host: localhost
+  port: 56379
+  db: 0
+  password: null  # set when Redis requires AUTH
+...

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/styles.css">
+<script src="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/_ds_bundle.js"></script>
+<script src="mitaroku-data.js"></script>
+</helmet>
+<main style="max-width:960px;margin:0 auto;padding:0 16px 48px;color:var(--color-text);font-family:var(--font-body)">
+  <div style="padding:22px 0 14px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px">
+    <h1 style="margin:0;font-size:clamp(28px, 6vw, 40px)">Library</h1>
+    <sc-if value="{{ isLive }}" hint-placeholder-val="{{ true }}"><span style="font-size:14px;color:var(--mt-muted);font-variant-numeric:tabular-nums">{{ totalText }}</span></sc-if>
+  </div>
+
+  <sc-if value="{{ isLoading }}" hint-placeholder-val="{{ false }}">
+    <div aria-busy="true" aria-label="Loading your library" style="display:grid;gap:16px;border-top:2px solid var(--color-divider);padding-top:20px">
+      <div style="display:flex;gap:12px;overflow:hidden"><sc-for list="{{ skel3 }}" as="k"><div style="flex:none;width:280px;height:104px;background:color-mix(in srgb, var(--color-text) 9%, transparent)"></div></sc-for></div>
+      <div style="height:44px;width:min(420px, 100%);background:color-mix(in srgb, var(--color-text) 9%, transparent)"></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));gap:20px 16px"><sc-for list="{{ skel10 }}" as="k"><div style="display:grid;gap:8px"><div style="aspect-ratio:2/3;background:color-mix(in srgb, var(--color-text) 9%, transparent)"></div><div style="height:14px;width:80%;background:color-mix(in srgb, var(--color-text) 9%, transparent)"></div><div style="height:12px;width:50%;background:color-mix(in srgb, var(--color-text) 9%, transparent)"></div></div></sc-for></div>
+      <span style="font-size:13px;color:var(--mt-muted)">Loading your library…</span>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isError }}" hint-placeholder-val="{{ false }}">
+    <div role="alert" style="display:grid;gap:10px;justify-items:start;padding:28px 0;border-top:2px solid var(--color-text)">
+      <svg viewBox="0 0 24 24" aria-hidden="true" style="width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4M12 17h.01"></path></svg>
+      <h2 style="margin:0;font-size:20px">Couldn’t load your library</h2>
+      <p style="margin:0;font-size:14px;line-height:1.5;color:var(--mt-muted);max-width:52ch">The server didn’t respond. Nothing was lost. Try again in a moment.</p>
+      <button type="button" class="btn btn-secondary" onClick="{{ retry }}" style="min-height:44px;gap:8px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path></svg>Try again</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isOnboarding }}" hint-placeholder-val="{{ false }}">
+    <section aria-labelledby="mt-onb" style="border-top:2px solid var(--color-text);padding:24px 0;display:grid;gap:18px">
+      <div style="display:grid;gap:6px;max-width:60ch">
+        <h2 id="mt-onb" style="margin:0;font-size:24px">Your library is empty</h2>
+        <p style="margin:0;font-size:15px;line-height:1.55;color:var(--mt-muted)">Add the shows, anime and movies you watch. mitaroku tracks your progress and tells you when new episodes air.</p>
+      </div>
+      <ol style="list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));border-top:1px solid var(--color-divider)">
+        <li style="display:grid;gap:4px;padding:14px 16px 14px 0;border-bottom:1px solid var(--color-divider)"><span style="font-size:13px;font-weight:800">1</span><strong style="font-size:15px">Find a title</strong><span style="font-size:14px;line-height:1.45;color:var(--mt-muted)">Search TMDB and MyAnimeList from the search bar.</span></li>
+        <li style="display:grid;gap:4px;padding:14px 16px 14px 0;border-bottom:1px solid var(--color-divider)"><span style="font-size:13px;font-weight:800">2</span><strong style="font-size:15px">Pick a status</strong><span style="font-size:14px;line-height:1.45;color:var(--mt-muted)">Watching, Plan, Completed or Dropped.</span></li>
+        <li style="display:grid;gap:4px;padding:14px 16px 14px 0;border-bottom:1px solid var(--color-divider)"><span style="font-size:13px;font-weight:800">3</span><strong style="font-size:15px">Check off episodes</strong><span style="font-size:14px;line-height:1.45;color:var(--mt-muted)">Your next episode appears under Continue watching.</span></li>
+      </ol>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <a href="#/search" class="btn btn-primary" style="min-height:44px;gap:8px;color:var(--color-neutral-100);background:var(--color-accent-700);text-decoration:none" style-hover="background:var(--color-accent-800);color:var(--color-neutral-100);text-decoration:none"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>Search</a>
+        <a href="#/import" class="btn btn-secondary" style="min-height:44px;gap:8px;text-decoration:none" style-hover="text-decoration:none"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" x2="12" y1="3" y2="15"></line></svg>Import from another service</a>
+      </div>
+    </section>
+  </sc-if>
+
+  <sc-if value="{{ isLive }}" hint-placeholder-val="{{ true }}">
+    <sc-if value="{{ hasContinue }}" hint-placeholder-val="{{ true }}">
+      <section aria-labelledby="mt-cw" style="border-top:2px solid var(--color-divider);padding:20px 0 24px">
+        <h2 id="mt-cw" style="font-size:22px;margin:0 0 12px">Continue watching<span style="font-size:12px;font-weight:600;vertical-align:super;line-height:0;margin-left:3px;color:var(--mt-muted)">{{ contCount }}</span></h2>
+        <ul data-mt-scroller="cont" style="list-style:none;margin:0 -16px;padding:0 16px 4px;display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x proximity;scroll-padding:0 16px;scrollbar-width:none">
+          <sc-for list="{{ cont }}" as="c" hint-placeholder-count="3">
+            <li style="flex:none;width:min(300px, 82vw);scroll-snap-align:start;display:grid;grid-template-columns:56px minmax(0, 1fr) 44px;gap:10px;align-items:center;padding:8px 4px 8px 8px;border:1px solid var(--color-divider);background:var(--color-bg)">
+              <a href="{{ c.href }}" aria-label="{{ c.title }}" class="grayscale" style="display:block;aspect-ratio:2/3;background-color:{{ c.tint }};background-image:repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-text) 10%, transparent) 0 1px, transparent 1px 8px);transition:filter .2s" style-hover="filter:none" style-focus="filter:none"></a>
+              <div style="display:grid;gap:2px;min-width:0;line-height:1.3">
+                <a href="{{ c.href }}" style="font-size:14px;font-weight:800;color:var(--color-text);overflow-wrap:break-word">{{ c.title }}</a>
+                <span style="font-size:13px;font-weight:600;color:var(--mt-link);overflow-wrap:break-word">{{ c.ep }}</span>
+                <span style="font-size:12px;color:var(--mt-muted)">{{ c.when }}</span>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:4px"><div aria-hidden="true" style="flex:1;height:3px;background:color-mix(in srgb, var(--color-text) 14%, transparent)"><div style="height:100%;width:{{ c.pct }};background:var(--color-text)"></div></div><span style="font-size:11px;font-weight:800;font-variant-numeric:tabular-nums">{{ c.progressText }}</span></div>
+              </div>
+              <button type="button" aria-label="{{ c.checkLabel }}" title="{{ c.checkLabel }}" disabled="{{ c.disabled }}" onClick="{{ c.onCheck }}" style="width:44px;height:44px;display:grid;place-items:center;padding:0;background:transparent;border:0;cursor:pointer;opacity:{{ c.checkOpacity }}" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent)">
+                <span style="width:26px;height:26px;border-radius:50%;border:2px solid var(--color-text);display:grid;place-items:center;color:var(--color-text)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;opacity:0.35"><path d="M20 6 9 17l-5-5"></path></svg></span>
+              </button>
+            </li>
+          </sc-for>
+        </ul>
+        <p aria-live="polite" style="margin:6px 0 0;font-size:13px">{{ marked }}</p>
+      </section>
+    </sc-if>
+
+    <section aria-label="All titles" style="border-top:2px solid var(--color-divider);padding-top:16px;display:grid;gap:12px">
+      <div role="tablist" aria-label="Type" data-mt-scroller="tabs" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:3px;margin:-3px">
+        <sc-for list="{{ tabs }}" as="c" hint-placeholder-count="4">
+          <button type="button" role="tab" aria-selected="{{ c.selected }}" onClick="{{ c.onClick }}" style="flex:none;min-height:44px;padding:0 14px;border:1px solid {{ c.border }};background:{{ c.bg }};color:{{ c.fg }};font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px" style-hover="border-color:var(--color-text)">{{ c.label }}<span style="font-size:11px;font-variant-numeric:tabular-nums">{{ c.count }}</span></button>
+        </sc-for>
+      </div>
+      <div role="group" aria-label="Status" data-mt-scroller="status" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:3px;margin:-3px">
+        <sc-for list="{{ statusChips }}" as="c" hint-placeholder-count="5">
+          <button type="button" aria-pressed="{{ c.selected }}" onClick="{{ c.onClick }}" style="flex:none;min-height:44px;padding:0 12px;border:1px solid {{ c.border }};background:{{ c.bg }};color:{{ c.fg }};font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px" style-hover="border-color:var(--color-text)">{{ c.label }}<span style="font-size:11px;font-variant-numeric:tabular-nums">{{ c.count }}</span></button>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <label style="flex:1 1 200px;position:relative;display:flex;min-width:0">
+          <span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search in library</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;fill:none;stroke:var(--mt-muted);stroke-width:2.5;stroke-linecap:round;pointer-events:none"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+          <input type="search" class="input" placeholder="Search in library" value="{{ q }}" onChange="{{ onQ }}" style="width:100%;min-height:44px;padding-left:36px">
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mt-muted)">Sort
+          <select class="input" value="{{ sort }}" onChange="{{ onSort }}" style="min-height:44px;width:auto;color:var(--color-text)">
+            <option value="recent">Recently watched</option>
+            <option value="title">Title</option>
+            <option value="rating">Rating</option>
+            <option value="next">Next episode date</option>
+          </select>
+        </label>
+        <div role="group" aria-label="View" style="display:flex;border:1px solid var(--color-divider)">
+          <button type="button" aria-pressed="{{ isGrid }}" aria-label="Grid view" title="Grid view" onClick="{{ setGrid }}" style="width:44px;height:44px;display:grid;place-items:center;padding:0;border:0;background:{{ gridBg }};color:{{ gridFg }};cursor:pointer"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round"><rect width="7" height="7" x="3" y="3"></rect><rect width="7" height="7" x="14" y="3"></rect><rect width="7" height="7" x="14" y="14"></rect><rect width="7" height="7" x="3" y="14"></rect></svg></button>
+          <button type="button" aria-pressed="{{ isList }}" aria-label="List view" title="List view" onClick="{{ setList }}" style="width:44px;height:44px;display:grid;place-items:center;padding:0;border:0;background:{{ listBg }};color:{{ listFg }};cursor:pointer"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round"><path d="M3 6h.01M3 12h.01M3 18h.01M8 6h13M8 12h13M8 18h13"></path></svg></button>
+        </div>
+      </div>
+
+      <sc-if value="{{ noMatch }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;gap:10px;justify-items:start;padding:24px 0;border-top:1px solid var(--color-divider)">
+          <h2 style="margin:0;font-size:18px">No titles match</h2>
+          <p style="margin:0;font-size:14px;color:var(--mt-muted)">Try another status or clear the search.</p>
+          <button type="button" class="btn btn-secondary" onClick="{{ clearFilters }}" style="min-height:44px">Clear filters</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showGrid }}" hint-placeholder-val="{{ true }}">
+        <ul style="list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));gap:24px 16px">
+          <sc-for list="{{ grid }}" as="g" hint-placeholder-count="8">
+            <li style="min-width:0"><dc-import name="Poster Card" title-id="{{ g.id }}" variant="library" menu-align="{{ g.align }}" theme="{{ theme }}" hint-size="100%,340px"></dc-import></li>
+          </sc-for>
+        </ul>
+      </sc-if>
+
+      <sc-if value="{{ showList }}" hint-placeholder-val="{{ false }}">
+        <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:4px">
+          <thead><tr style="border-bottom:2px solid var(--color-text);text-align:left">
+            <th scope="col" style="padding:8px 8px 8px 0;font-size:12px;font-weight:800">Title</th>
+            <sc-if value="{{ wide }}"><th scope="col" style="padding:8px;font-size:12px;font-weight:800">Type</th></sc-if>
+            <th scope="col" style="padding:8px;font-size:12px;font-weight:800">Progress</th>
+            <sc-if value="{{ wide }}"><th scope="col" style="padding:8px;font-size:12px;font-weight:800">Next</th></sc-if>
+            <th scope="col" style="padding:8px 0 8px 8px;font-size:12px;font-weight:800;width:{{ statusColW }}">Status</th>
+          </tr></thead>
+          <tbody>
+            <sc-for list="{{ rows }}" as="r" hint-placeholder-count="6">
+              <tr style="border-bottom:1px solid var(--color-divider);background:{{ r.bg }}">
+                <td style="padding:6px 8px 6px 0">
+                  <div style="display:flex;align-items:center;gap:10px;min-width:0">
+                    <a href="{{ r.href }}" aria-hidden="true" tabindex="-1" class="grayscale" style="flex:none;width:32px;aspect-ratio:2/3;background-color:{{ r.tint }};transition:filter .2s" style-hover="filter:none"></a>
+                    <span style="display:grid;line-height:1.3;min-width:0"><a href="{{ r.href }}" style="font-weight:800;color:var(--color-text);overflow-wrap:break-word">{{ r.title }}</a><span style="font-size:12px;color:var(--mt-muted)">{{ r.meta }}</span></span>
+                  </div>
+                </td>
+                <sc-if value="{{ wide }}"><td style="padding:6px 8px;color:var(--mt-muted)">{{ r.type }}</td></sc-if>
+                <td style="padding:6px 8px;font-variant-numeric:tabular-nums;white-space:nowrap">{{ r.progressText }}</td>
+                <sc-if value="{{ wide }}"><td style="padding:6px 8px;color:var(--mt-muted);font-size:13px">{{ r.next }}</td></sc-if>
+                <td style="padding:6px 0 6px 8px"><dc-import name="Status Picker" title-id="{{ r.id }}" align="right" hint-size="100%,44px"></dc-import></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </sc-if>
+    </section>
+  </sc-if>
+</main>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;viewState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;live&quot;,&quot;loading&quot;,&quot;empty&quot;,&quot;error&quot;],&quot;default&quot;:&quot;live&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;vw&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:390,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  state = { tab: 'all', sf: 'all', sort: 'recent', q: '', view: 'grid', retry: null, marked: '' };
+  componentDidMount() { this._u = window.MT ? MT.sub(() => this.forceUpdate()) : null; if (!window.MT) this._t = setTimeout(() => this.forceUpdate(), 120); }
+  componentWillUnmount() { this._u && this._u(); clearTimeout(this._t); clearTimeout(this._r); }
+  componentDidUpdate(pp) { if (pp.viewState !== this.props.viewState && this.state.retry) this.setState({ retry: null }); }
+  retry() { this.setState({ retry: 'loading' }); clearTimeout(this._r); this._r = setTimeout(() => this.setState({ retry: 'live' }), 700); }
+  renderVals() {
+    const MT = window.MT;
+    if (!MT) return { isLoading: true, skel3: [1, 2, 3], skel10: [1, 2, 3, 4] };
+    const st = this.state;
+    const vs = st.retry || this.props.viewState || 'live';
+    const dark = this.props.theme === 'dark';
+    const vw = this.props.vw || 390, wide = vw >= 720;
+    const S = MT.state.status;
+    const ids = vs === 'empty' ? [] : Object.keys(S).filter(id => MT.title(id));
+    const chip = a => ({ bg: a ? 'var(--color-text)' : 'transparent', fg: a ? 'var(--color-bg)' : 'var(--color-text)', border: a ? 'var(--color-text)' : 'var(--color-divider)' });
+    const TABS = [['all', 'All'], ['series', 'Shows'], ['anime', 'Anime'], ['film', 'Movies']];
+    const ofType = (list, tp) => list.filter(id => tp === 'all' || MT.title(id).type === tp);
+    const inTab = ofType(ids, st.tab);
+    const q = st.q.trim().toLowerCase();
+    const recentIdx = id => { const i = MT.state.recent.indexOf(id); return i < 0 ? 999 : i; };
+    const nextD = id => { const n = MT.next(id); return n && n.d && !(n.aired && n.d < MT.TODAY) ? n.d : (n && n.aired ? '0000' : '9999'); };
+    const sorters = {
+      recent: (a, b) => recentIdx(a) - recentIdx(b),
+      title: (a, b) => MT.title(a).title.localeCompare(MT.title(b).title),
+      rating: (a, b) => parseFloat(MT.title(b).rating.value) - parseFloat(MT.title(a).rating.value),
+      next: (a, b) => nextD(a) < nextD(b) ? -1 : nextD(a) > nextD(b) ? 1 : 0,
+    };
+    const list = inTab.filter(id => st.sf === 'all' || S[id] === st.sf)
+      .filter(id => { if (!q) return true; const t = MT.title(id); return (t.title + ' ' + t.orig).toLowerCase().indexOf(q) >= 0; })
+      .sort(sorters[st.sort]);
+    const cols = wide ? Math.max(2, Math.floor((Math.min(vw, 960) - 32 + 16) / 166)) : 2;
+    const cont = ids.filter(id => S[id] === 'watching').map(id => {
+      const t = MT.title(id), n = MT.next(id), p = MT.progress(id), aired = !!(n && n.aired);
+      const when = !n ? 'No upcoming episodes' : !n.d ? 'Date not announced' : aired ? (n.d === MT.TODAY ? 'Aired today' : 'Aired ' + MT.fmt(n.d)) : (MT.daysTo(n.d) === 1 ? 'Airs tomorrow' : 'Airs ' + MT.fmtShort(n.d));
+      return {
+        id, title: t.title, href: MT.hrefFor(t), tint: MT.tint(t.hue, dark),
+        ep: n ? n.code + (n.t && n.t !== n.code ? ' · ' + n.t : '') : 'Up to date', when,
+        progressText: p + '/' + t.eps, pct: Math.round(p / t.eps * 100) + '%',
+        disabled: !aired, checkOpacity: aired ? '1' : '0.45',
+        checkLabel: aired ? 'Mark ' + n.code + ' of ' + t.title + ' as watched' : t.title + ': next episode has not aired yet',
+        onCheck: () => { const m = MT.markNext(id); if (m) this.setState({ marked: 'Marked ' + m.code + ' · ' + m.t + ' of ' + t.title + ' as watched.' }); },
+        k: aired ? 0 : 1, d: n && n.d || '9999',
+      };
+    }).sort((a, b) => a.k - b.k || (a.k ? (a.d < b.d ? -1 : 1) : 0));
+    return {
+      theme: this.props.theme || 'light', wide,
+      isLoading: vs === 'loading', isError: vs === 'error', isOnboarding: vs !== 'loading' && vs !== 'error' && ids.length === 0, isLive: vs !== 'loading' && vs !== 'error' && ids.length > 0,
+      skel3: [1, 2, 3], skel10: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+      retry: () => this.retry(),
+      totalText: ids.length + ' titles',
+      hasContinue: cont.length > 0, cont, contCount: cont.length, marked: st.marked,
+      tabs: TABS.map(([v, l]) => Object.assign({ label: l, count: ofType(ids, v).length, selected: st.tab === v ? 'true' : 'false', onClick: () => this.setState({ tab: v }) }, chip(st.tab === v))),
+      statusChips: [['all', 'All statuses']].concat(MT.STATUSES.map(([v]) => [v, MT.STATUS_LABEL[v]])).map(([v, l]) => Object.assign({ label: l, count: v === 'all' ? inTab.length : inTab.filter(id => S[id] === v).length, selected: st.sf === v ? 'true' : 'false', onClick: () => this.setState({ sf: v }) }, chip(st.sf === v))),
+      q: st.q, onQ: e => this.setState({ q: e.target.value }),
+      sort: st.sort, onSort: e => this.setState({ sort: e.target.value }),
+      isGrid: st.view === 'grid' ? 'true' : 'false', isList: st.view === 'list' ? 'true' : 'false',
+      gridBg: st.view === 'grid' ? 'var(--color-text)' : 'transparent', gridFg: st.view === 'grid' ? 'var(--color-bg)' : 'var(--color-text)',
+      listBg: st.view === 'list' ? 'var(--color-text)' : 'transparent', listFg: st.view === 'list' ? 'var(--color-bg)' : 'var(--color-text)',
+      setGrid: () => this.setState({ view: 'grid' }), setList: () => this.setState({ view: 'list' }),
+      noMatch: list.length === 0, clearFilters: () => this.setState({ sf: 'all', q: '', tab: 'all' }),
+      showGrid: st.view === 'grid' && list.length > 0, showList: st.view === 'list' && list.length > 0,
+      grid: list.map((id, i) => ({ id, align: i % cols === cols - 1 ? 'right' : 'left' })),
+      statusColW: wide ? '160px' : '128px',
+      rows: list.map((id, i) => {
+        const t = MT.title(id), p = MT.progress(id), n = MT.next(id), film = t.type === 'film';
+        return {
+          id, title: t.title, href: MT.hrefFor(t), tint: MT.tint(t.hue, dark), type: MT.TYPE_LABEL[t.type],
+          meta: wide ? String(t.year) : t.year + ' · ' + MT.TYPE_LABEL[t.type],
+          progressText: film ? (S[id] === 'completed' ? 'Watched' : '—') : p + '/' + t.eps,
+          next: film ? t.runtime : !n ? '—' : !n.d ? 'Not announced' : n.aired ? n.code + ' available' : n.code + ' · ' + MT.fmtShort(n.d),
+          bg: i % 2 ? 'color-mix(in srgb, var(--color-text) 4%, transparent)' : 'transparent',
+        };
+      }),
+    };
+  }
+}
+</script>
+</body>
+</html>

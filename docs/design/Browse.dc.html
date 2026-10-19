@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/styles.css">
+<script src="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/_ds_bundle.js"></script>
+<script src="mitaroku-data.js"></script>
+</helmet>
+<main style="max-width:960px;margin:0 auto;padding:0 16px 48px;color:var(--color-text);font-family:var(--font-body)">
+  <div style="padding:22px 0 14px;display:grid;gap:4px">
+    <span style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--mt-muted)">Browse</span>
+    <h1 style="margin:0;font-size:clamp(28px, 6vw, 40px);text-wrap:balance">{{ heading }}</h1>
+    <sc-if value="{{ showCount }}" hint-placeholder-val="{{ true }}"><span style="font-size:14px;color:var(--mt-muted);font-variant-numeric:tabular-nums">{{ countText }}</span></sc-if>
+  </div>
+
+  <div style="border-top:2px solid var(--color-divider);padding-top:12px;display:grid;gap:10px">
+    <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+      <sc-for list="{{ chips }}" as="c" hint-placeholder-count="3">
+        <button type="button" aria-label="{{ c.aria }}" title="{{ c.aria }}" onClick="{{ c.onRemove }}" style="min-height:44px;padding:0 8px 0 12px;display:flex;align-items:center;gap:6px;border:1px solid var(--color-text);background:var(--color-text);color:var(--color-bg);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap" style-hover="background:var(--color-neutral-800);color:var(--color-neutral-100)"><span style="font-weight:400">{{ c.k }}:</span>{{ c.v }}<svg viewBox="0 0 24 24" aria-hidden="true" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+      </sc-for>
+      <sc-if value="{{ canAdd }}" hint-placeholder-val="{{ true }}">
+        <button type="button" aria-expanded="{{ addExpanded }}" aria-controls="br-add" onClick="{{ toggleAdd }}" style="min-height:44px;padding:0 12px;display:flex;align-items:center;gap:6px;border:1px dashed var(--color-text);background:transparent;color:var(--color-text);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap" style-hover="background:color-mix(in srgb, var(--color-text) 7%, transparent)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round"><path d="M5 12h14M12 5v14"></path></svg>Add filter</button>
+      </sc-if>
+      <sc-if value="{{ hasFilters }}" hint-placeholder-val="{{ true }}"><a href="#/browse" style="min-height:44px;display:flex;align-items:center;padding:0 6px;font-size:13px;font-weight:600">Clear all</a></sc-if>
+      <label style="margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mt-muted)">Sort
+        <select class="input" value="{{ sort }}" onChange="{{ onSort }}" style="min-height:44px;width:auto;color:var(--color-text)">
+          <option value="popularity">Popularity</option>
+          <option value="release">Release date</option>
+          <option value="title">Title</option>
+          <option value="rating">Rating</option>
+        </select>
+      </label>
+    </div>
+    <sc-if value="{{ addOpen }}" hint-placeholder-val="{{ false }}">
+      <div id="br-add" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:10px;padding:12px;border:1px solid var(--color-text)">
+        <sc-for list="{{ addFacets }}" as="f">
+          <div class="field" style="display:grid;gap:4px">
+            <label for="{{ f.fid }}">{{ f.label }}</label>
+            <select id="{{ f.fid }}" class="input" value="" onChange="{{ f.onPick }}" style="min-height:44px"><option value="">Any</option><sc-for list="{{ f.options }}" as="o"><option value="{{ o.v }}">{{ o.t }}</option></sc-for></select>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ isError }}" hint-placeholder-val="{{ false }}">
+    <div role="alert" style="display:grid;gap:10px;justify-items:start;padding:28px 0;margin-top:12px;border-top:2px solid var(--color-text)">
+      <h2 style="margin:0;font-size:20px">Couldn’t load titles</h2>
+      <p style="margin:0;font-size:14px;color:var(--mt-muted)">TMDB didn’t respond. Your filters are kept.</p>
+      <button type="button" class="btn btn-secondary" onClick="{{ retry }}" style="min-height:44px">Try again</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+    <div style="display:grid;gap:10px;justify-items:start;padding:28px 0;margin-top:12px;border-top:2px solid var(--color-text)">
+      <h2 style="margin:0;font-size:20px">No titles match these filters</h2>
+      <p style="margin:0;font-size:14px;color:var(--mt-muted)">Remove a filter, or start over.</p>
+      <a href="#/browse" class="btn btn-secondary" style="min-height:44px;text-decoration:none" style-hover="text-decoration:none">Clear filters</a>
+    </div>
+  </sc-if>
+
+  <ul aria-busy="{{ busy }}" style="list-style:none;margin:16px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:24px 14px">
+    <sc-for list="{{ cards }}" as="g" hint-placeholder-count="6">
+      <li style="min-width:0"><dc-import name="Poster Card" title-id="{{ g.id }}" variant="browse" menu-align="{{ g.align }}" theme="{{ theme }}" hint-size="100%,320px"></dc-import></li>
+    </sc-for>
+    <sc-for list="{{ skel }}" as="k">
+      <li aria-hidden="true" style="display:grid;gap:8px;align-content:start"><div style="aspect-ratio:2/3;background:color-mix(in srgb, var(--color-text) 9%, transparent)"></div><div style="height:14px;width:80%;background:color-mix(in srgb, var(--color-text) 9%, transparent)"></div><div style="height:12px;width:45%;background:color-mix(in srgb, var(--color-text) 9%, transparent)"></div><div style="height:44px;background:color-mix(in srgb, var(--color-text) 6%, transparent)"></div></li>
+    </sc-for>
+  </ul>
+
+  <sc-if value="{{ hasMore }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:24px;padding-top:16px;border-top:1px solid var(--color-divider)">
+      <button type="button" class="btn btn-secondary" disabled="{{ loadingMore }}" onClick="{{ loadMore }}" style="min-height:44px">{{ moreLabel }}</button>
+      <span style="font-size:13px;color:var(--mt-muted);font-variant-numeric:tabular-nums">{{ shownText }}</span>
+    </div>
+  </sc-if>
+</main>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;params&quot;:{&quot;editor&quot;:null,&quot;default&quot;:{&quot;type&quot;:&quot;series&quot;,&quot;genre&quot;:&quot;Drama&quot;,&quot;year&quot;:2025},&quot;tsType&quot;:&quot;{type?:string,genre?:string,country?:string,year?:number}&quot;},&quot;viewState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;live&quot;,&quot;loading&quot;,&quot;empty&quot;,&quot;error&quot;],&quot;default&quot;:&quot;live&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;vw&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:390,&quot;tsType&quot;:&quot;number&quot;}}">
+const PAGE = 12;
+class Component extends DCLogic {
+  state = { sort: 'popularity', shown: PAGE, loading: true, loadingMore: false, addOpen: false, retry: null };
+  componentDidMount() { this._u = window.MT ? MT.sub(() => this.forceUpdate()) : null; this.boot(); }
+  componentWillUnmount() { this._u && this._u(); clearTimeout(this._t); clearTimeout(this._m); clearTimeout(this._r); }
+  componentDidUpdate(pp) {
+    if (JSON.stringify(pp.params || {}) !== JSON.stringify(this.props.params || {})) { this.setState({ shown: PAGE, addOpen: false }); this.boot(); }
+    if (pp.viewState !== this.props.viewState && this.state.retry) this.setState({ retry: null });
+  }
+  boot() { this.setState({ loading: true }); clearTimeout(this._t); this._t = setTimeout(() => this.setState({ loading: false }), 450); }
+  retry() { this.setState({ retry: 'loading' }); clearTimeout(this._r); this._r = setTimeout(() => this.setState({ retry: 'live' }), 700); }
+  renderVals() {
+    const MT = window.MT;
+    if (!MT) return { cards: [], skel: [1, 2, 3, 4], chips: [] };
+    const st = this.state;
+    const vs = st.retry || this.props.viewState || 'live';
+    const p = {}; MT.KEYS.forEach(k => { const v = (this.props.params || {})[k]; if (v) p[k] = v; });
+    const vw = this.props.vw || 390;
+    const cols = Math.max(2, Math.floor((Math.min(vw, 960) - 32 + 14) / 154));
+    const all = vs === 'empty' ? [] : MT.browse(p, st.sort);
+    const loading = vs === 'loading' || st.loading;
+    const err = vs === 'error';
+    const LBL = { type: 'Type', genre: 'Genre', country: 'Country', year: 'Year' };
+    const TYPE_T = { series: 'Series', anime: 'Anime', film: 'Films' };
+    const val = (k, v) => k === 'type' ? TYPE_T[v] : String(v);
+    const without = k => { const q = Object.assign({}, p); delete q[k]; return q; };
+    const OPTS = { type: ['series', 'anime', 'film'].map(v => ({ v, t: TYPE_T[v] })), genre: MT.GENRES.map(v => ({ v, t: v })), country: MT.COUNTRIES.map(v => ({ v, t: v })), year: MT.YEARS.map(v => ({ v: String(v), t: String(v) })) };
+    const missing = MT.KEYS.filter(k => !p[k]);
+    const shown = all.slice(0, st.shown);
+    return {
+      theme: this.props.theme || 'light',
+      heading: MT.browseTitle(p),
+      showCount: !loading && !err, countText: all.length + (all.length === 1 ? ' title' : ' titles'),
+      chips: MT.KEYS.filter(k => p[k]).map(k => ({ k: LBL[k], v: val(k, p[k]), aria: 'Remove filter ' + LBL[k] + ': ' + val(k, p[k]), onRemove: () => MT.go(MT.browseHref(without(k))) })),
+      hasFilters: MT.KEYS.some(k => p[k]),
+      canAdd: missing.length > 0, addOpen: st.addOpen, addExpanded: st.addOpen ? 'true' : 'false',
+      toggleAdd: () => this.setState(s => ({ addOpen: !s.addOpen })),
+      addFacets: missing.map(k => ({ fid: 'br-f-' + k, label: LBL[k], options: OPTS[k], onPick: e => { if (!e.target.value) return; const q = Object.assign({}, p, { [k]: k === 'year' ? Number(e.target.value) : e.target.value }); MT.go(MT.browseHref(q)); } })),
+      sort: st.sort, onSort: e => this.setState({ sort: e.target.value, shown: PAGE }),
+      isError: err, isEmpty: !loading && !err && all.length === 0,
+      busy: loading || st.loadingMore ? 'true' : 'false',
+      cards: loading || err ? [] : shown.map((t, i) => ({ id: t.id, align: i % cols === cols - 1 ? 'right' : 'left' })),
+      skel: loading && !err ? [1, 2, 3, 4, 5, 6] : st.loadingMore ? [1, 2, 3, 4, 5, 6].slice(0, Math.min(6, all.length - st.shown)) : [],
+      hasMore: !loading && !err && all.length > st.shown, loadingMore: st.loadingMore,
+      moreLabel: st.loadingMore ? 'Loading…' : 'Load more',
+      shownText: 'Showing ' + Math.min(st.shown, all.length) + ' of ' + all.length,
+      loadMore: () => { this.setState({ loadingMore: true }); clearTimeout(this._m); this._m = setTimeout(() => this.setState(s => ({ loadingMore: false, shown: s.shown + PAGE })), 700); },
+      retry: () => this.retry(),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/styles.css">
+<script src="_ds/modernist-0d8577dc-8df1-4540-b8fb-ce2cce2560e4/_ds_bundle.js"></script>
+<script src="mitaroku-data.js"></script>
+</helmet>
+<main style="max-width:960px;margin:0 auto;padding:0 16px 48px;color:var(--color-text);font-family:var(--font-body)">
+  <div style="padding:22px 0 14px;display:grid;gap:4px">
+    <h1 style="margin:0;font-size:clamp(28px, 6vw, 40px)">Upcoming</h1>
+    <p style="margin:0;font-size:14px;color:var(--mt-muted)">New episodes and premieres for titles in your library.</p>
+  </div>
+
+  <sc-if value="{{ isLoading }}" hint-placeholder-val="{{ false }}">
+    <div aria-busy="true" aria-label="Loading schedule" style="display:grid;gap:10px;border-top:2px solid var(--color-divider);padding-top:20px">
+      <div style="height:20px;width:120px;background:color-mix(in srgb, var(--color-text) 9%, transparent)"></div>
+      <sc-for list="{{ skel }}" as="k"><div style="display:grid;grid-template-columns:44px minmax(0, 1fr);gap:12px;align-items:center"><div style="aspect-ratio:2/3;background:color-mix(in srgb, var(--color-text) 9%, transparent)"></div><div style="display:grid;gap:6px"><div style="height:14px;width:60%;background:color-mix(in srgb, var(--color-text) 9%, transparent)"></div><div style="height:12px;width:35%;background:color-mix(in srgb, var(--color-text) 9%, transparent)"></div></div></div></sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isError }}" hint-placeholder-val="{{ false }}">
+    <div role="alert" style="display:grid;gap:10px;justify-items:start;padding:28px 0;border-top:2px solid var(--color-text)">
+      <svg viewBox="0 0 24 24" aria-hidden="true" style="width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4M12 17h.01"></path></svg>
+      <h2 style="margin:0;font-size:20px">Couldn’t load the schedule</h2>
+      <p style="margin:0;font-size:14px;line-height:1.5;color:var(--mt-muted);max-width:52ch">Air dates come from TMDB and MyAnimeList, and they didn’t respond. Try again in a moment.</p>
+      <button type="button" class="btn btn-secondary" onClick="{{ retry }}" style="min-height:44px">Try again</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+    <div style="display:grid;gap:10px;justify-items:start;padding:28px 0;border-top:2px solid var(--color-text)">
+      <h2 style="margin:0;font-size:20px">Nothing scheduled</h2>
+      <p style="margin:0;font-size:14px;line-height:1.5;color:var(--mt-muted);max-width:52ch">Add shows you’re watching or planning to watch, and their next episodes will appear here.</p>
+      <a href="#/search" class="btn btn-secondary" style="min-height:44px;text-decoration:none" style-hover="text-decoration:none">Search titles</a>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isLive }}" hint-placeholder-val="{{ true }}">
+    <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+      <section aria-labelledby="{{ g.hid }}" style="border-top:2px solid var(--color-divider);padding:18px 0 8px">
+        <h2 id="{{ g.hid }}" style="font-size:20px;margin:0 0 8px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">{{ g.title }}<span style="font-size:13px;font-weight:600;color:var(--mt-muted)">{{ g.sub }}</span></h2>
+        <ul style="list-style:none;margin:0;padding:0">
+          <sc-for list="{{ g.items }}" as="it">
+            <li style="display:grid;grid-template-columns:44px minmax(0, 1fr) auto;gap:4px 12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--color-divider)">
+              <a href="{{ it.href }}" aria-hidden="true" tabindex="-1" class="grayscale" style="display:block;aspect-ratio:2/3;background-color:{{ it.tint }};background-image:repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-text) 10%, transparent) 0 1px, transparent 1px 7px);transition:filter .2s" style-hover="filter:none"></a>
+              <div style="display:grid;gap:2px;min-width:0;line-height:1.3">
+                <a href="{{ it.href }}" style="font-size:15px;font-weight:800;color:var(--color-text);overflow-wrap:break-word">{{ it.title }}</a>
+                <span style="font-size:14px;color:var(--mt-link);overflow-wrap:break-word">{{ it.line }}</span>
+                <span style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:12px;color:var(--mt-muted)">
+                  <sc-if value="{{ it.today }}"><span style="background:var(--color-accent-700);color:var(--color-neutral-100);font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;line-height:1.3">Today</span></sc-if>
+                  <span style="font-variant-numeric:tabular-nums">{{ it.date }}</span>
+                </span>
+              </div>
+              <span style="justify-self:end;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:3px 7px;background:color-mix(in srgb, var(--color-text) 9%, transparent);color:var(--color-text);white-space:nowrap">{{ it.status }}</span>
+            </li>
+          </sc-for>
+        </ul>
+      </section>
+    </sc-for>
+  </sc-if>
+</main>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;viewState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;live&quot;,&quot;loading&quot;,&quot;empty&quot;,&quot;error&quot;],&quot;default&quot;:&quot;live&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = { retry: null };
+  componentDidMount() { this._u = window.MT ? MT.sub(() => this.forceUpdate()) : null; if (!window.MT) this._t = setTimeout(() => this.forceUpdate(), 120); }
+  componentWillUnmount() { this._u && this._u(); clearTimeout(this._t); clearTimeout(this._r); }
+  componentDidUpdate(pp) { if (pp.viewState !== this.props.viewState && this.state.retry) this.setState({ retry: null }); }
+  retry() { this.setState({ retry: 'loading' }); clearTimeout(this._r); this._r = setTimeout(() => this.setState({ retry: 'live' }), 700); }
+  renderVals() {
+    const MT = window.MT;
+    if (!MT) return { isLoading: true, skel: [1, 2, 3] };
+    const vs = this.state.retry || this.props.viewState || 'live';
+    const dark = this.props.theme === 'dark';
+    const items = vs === 'empty' ? [] : MT.upcoming();
+    const G = [['today', 'Today', MT.dow(MT.TODAY) + ', ' + MT.fmt(MT.TODAY)], ['tomorrow', 'Tomorrow', ''], ['week', 'This week', ''], ['later', 'Later', ''], ['tba', 'Date not announced', 'We’ll notify you when a date is set']];
+    const bucket = d => { if (!d) return 'tba'; const n = MT.daysTo(d); return n <= 0 ? 'today' : n === 1 ? 'tomorrow' : n < 7 ? 'week' : 'later'; };
+    const groups = G.map(([k, title, sub]) => {
+      const list = items.filter(x => bucket(x.d) === k).map(x => {
+        const t = MT.title(x.id);
+        const line = x.kind === 'premiere' ? 'Movie premiere' + (x.ep ? ' · ' + x.ep : '') : x.code + (x.ep && x.ep !== x.code ? ' · ' + x.ep : '');
+        return { href: MT.hrefFor(t), title: t.title, tint: MT.tint(t.hue, dark), line, today: k === 'today', date: x.d ? MT.dow(x.d) + ', ' + MT.fmt(x.d) : 'Date not announced', status: MT.STATUS_LABEL[MT.statusOf(x.id)] || '' };
+      });
+      const s = k === 'tomorrow' && list.length ? MT.dow('2026-10-09') + ', ' + MT.fmt('2026-10-09') : sub;
+      return { hid: 'up-' + k, title, sub: s, items: list };
+    }).filter(g => g.items.length);
+    return {
+      isLoading: vs === 'loading', isError: vs === 'error', isEmpty: vs !== 'loading' && vs !== 'error' && groups.length === 0, isLive: vs !== 'loading' && vs !== 'error' && groups.length > 0,
+      skel: [1, 2, 3, 4, 5], retry: () => this.retry(), groups,
+    };
+  }
+}
+</script>
+</body>
+</html>
