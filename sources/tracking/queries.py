@@ -69,11 +69,15 @@ class LibraryRow:
 
 @dataclass(frozen=True)
 class UpcomingItem:
-    """The next release of a title: an episode of a series or a movie."""
+    """The next release of a title: an episode of a series or a movie.
+
+    ``status`` is the user's ``LibraryEntry`` status of the title.
+    """
 
     title: Title
     episode: Episode | None
     date: date | None
+    status: str
 
 
 @dataclass(frozen=True)
@@ -342,14 +346,18 @@ def upcoming(user, today: date | None = None) -> list[UpcomingItem]:
             if entry.movie_seen:
                 continue
             if title.release_date and title.release_date >= today:
-                items.append(UpcomingItem(title, None, title.release_date))
+                items.append(
+                    UpcomingItem(title, None, title.release_date, entry.status)
+                )
             elif title.release_date is None and title.status == Title.Status.UPCOMING:
-                items.append(UpcomingItem(title, None, None))
+                items.append(UpcomingItem(title, None, None, entry.status))
         elif entry.dated_id:
             episode = episodes[entry.dated_id]
-            items.append(UpcomingItem(title, episode, episode.air_date))
+            items.append(UpcomingItem(title, episode, episode.air_date, entry.status))
         elif entry.undated_id and title.status in open_status:
-            items.append(UpcomingItem(title, episodes[entry.undated_id], None))
+            items.append(
+                UpcomingItem(title, episodes[entry.undated_id], None, entry.status)
+            )
     items.sort(key=lambda i: (i.date is None, i.date or today, i.title.original_title))
     return items
 

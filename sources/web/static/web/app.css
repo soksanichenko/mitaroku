@@ -2210,3 +2210,124 @@ a:focus-visible .mt-poster-img {
   font-weight: 800;
   color: var(--color-text);
 }
+
+/* Upcoming. */
+.mt-up-head {
+  display: grid;
+  gap: 4px;
+  padding-bottom: 14px;
+}
+
+.mt-up-head .mt-page-title {
+  margin: 0;
+  font-size: clamp(28px, 6vw, 40px);
+}
+
+.mt-up-head .mt-muted {
+  margin: 0;
+  font-size: 14px;
+}
+
+.mt-up-group {
+  padding: 18px 0 8px;
+  border-top: 2px solid var(--color-divider);
+}
+
+.mt-up-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 10px;
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.mt-up-sub {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mt-muted);
+}
+
+.mt-up-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mt-up-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: center;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.mt-up-link {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 0;
+  color: var(--color-text);
+}
+
+.mt-up-link:hover {
+  text-decoration: none;
+}
+
+.mt-up-thumb .mt-poster--thumb {
+  width: 100%;
+}
+
+.mt-up-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.mt-up-name {
+  font-size: 15px;
+  font-weight: 800;
+  overflow-wrap: break-word;
+}
+
+.mt-up-line {
+  font-size: 14px;
+  color: var(--mt-link);
+  overflow-wrap: break-word;
+}
+
+.mt-up-when {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 12px;
+  color: var(--mt-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mt-up-today {
+  padding: 2px 6px;
+  background: var(--color-accent-700);
+  color: var(--color-neutral-100);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.mt-up-status {
+  justify-self: end;
+  padding: 3px 7px;
+  background: color-mix(in srgb, var(--color-text) 9%, transparent);
+  color: var(--color-text);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}

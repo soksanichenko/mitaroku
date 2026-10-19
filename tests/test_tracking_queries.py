@@ -212,6 +212,7 @@ def test_upcoming_orders_dated_first_and_skips_ended_undated(alice):
     assert items[1].episode is None
     assert items[2].episode is None
     assert items[3].episode.number == 2
+    assert [i.status for i in items] == ['watching', 'watching', 'planned', 'watching']
 
 
 def test_upcoming_includes_an_episode_aired_today(alice):

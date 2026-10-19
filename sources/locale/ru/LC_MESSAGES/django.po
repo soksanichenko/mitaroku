@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-19 20:13+0000\n"
+"POT-Creation-Date: 2026-10-19 20:44+0000\n"
 "Language: ru\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
@@ -364,6 +364,18 @@ msgstr "Не удалось загрузить тайтл"
 msgid "The metadata providers haven't answered yet. Nothing was lost. Try again in a moment."
 msgstr "Источники метаданных пока не ответили. Ничего не потеряно. Попробуйте ещё раз чуть позже."
 
+msgid "D, M j"
+msgstr "D, j E"
+
+msgid "D, M j, Y"
+msgstr "D, j E Y"
+
+msgid "Movie premiere"
+msgstr "Премьера фильма"
+
+msgid "Today"
+msgstr "Сегодня"
+
 msgid "Skip to content"
 msgstr "Перейти к содержимому"
 
@@ -416,9 +428,6 @@ msgstr "Добавить со статусом"
 msgid "Remove from library"
 msgstr "Удалить из библиотеки"
 
-msgid "Couldn’t load your library"
-msgstr "Не удалось загрузить библиотеку"
-
 msgid "All titles"
 msgstr "Все тайтлы"
 
@@ -440,6 +449,9 @@ msgstr "Вид списком"
 msgid "Apply filters"
 msgstr "Применить фильтры"
 
+msgid "Couldn’t load your library"
+msgstr "Не удалось загрузить библиотеку"
+
 msgid "Loading your library…"
 msgstr "Загружаем библиотеку…"
 
@@ -455,8 +467,17 @@ msgstr "Результаты из TMDB (сериалы и фильмы) и AniLi
 msgid "Searching…"
 msgstr "Ищем…"
 
-msgid "Upcoming episodes and premieres will appear here."
-msgstr "Здесь появятся ближайшие серии и премьеры."
+msgid "New episodes and premieres for titles in your library."
+msgstr "Новые серии и премьеры тайтлов из вашей библиотеки."
+
+msgid "Nothing coming up"
+msgstr "Ничего не ожидается"
+
+msgid "Titles you’re watching or planning to watch show their next episode or premiere here."
+msgstr "Здесь появятся ближайшие серии и премьеры тайтлов, которые вы смотрите или планируете посмотреть."
+
+msgid "Open your library"
+msgstr "Открыть библиотеку"
 
 msgid "Watching"
 msgstr "Смотрю"
@@ -554,6 +575,21 @@ msgstr "Список серий пока неизвестен"
 
 msgid "No episodes yet"
 msgstr "Серий пока нет"
+
+msgid "Tomorrow"
+msgstr "Завтра"
+
+msgid "This week"
+msgstr "На этой неделе"
+
+msgid "Later"
+msgstr "Позже"
+
+msgid "No date yet"
+msgstr "Даты пока нет"
+
+#~ msgid "Upcoming episodes and premieres will appear here."
+#~ msgstr "Здесь появятся ближайшие серии и премьеры."
 
 #~ msgid "Your titles will appear here."
 #~ msgstr "Здесь появятся ваши тайтлы."

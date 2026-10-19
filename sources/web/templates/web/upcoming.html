@@ -1,6 +1,25 @@
 {% extends 'web/base.html' %}{% load i18n %}
 {% block title %}{% trans 'Upcoming' %}{% endblock %}
 {% block content %}
-<h1 class="mt-page-title">{% trans 'Upcoming' %}</h1>
-<p class="mt-muted">{% trans 'Upcoming episodes and premieres will appear here.' %}</p>
+{% comment %}
+The releases to come, grouped by distance from today (web.views.upcoming). The page
+is a plain, fully rendered GET: there is no request after the load, so it has no
+loading or error state of its own; a failed load is the browser's error page, and
+the shared state components cover what is left (the empty state below).
+{% endcomment %}
+<div class="mt-upcoming">
+  <div class="mt-up-head">
+    <h1 class="mt-page-title">{% trans 'Upcoming' %}</h1>
+    <p class="mt-muted">{% trans 'New episodes and premieres for titles in your library.' %}</p>
+  </div>
+  {% if groups %}
+    {% for group in groups %}{% include 'web/_upcoming_group.html' %}{% endfor %}
+  {% else %}
+    {% trans 'Nothing coming up' as empty_heading %}
+    {% trans 'Titles you’re watching or planning to watch show their next episode or premiere here.' as empty_text %}
+    {% trans 'Open your library' as empty_action %}
+    {% url 'library' as library_url %}
+    {% include 'web/components/_state_empty.html' with heading=empty_heading text=empty_text action_url=library_url action_label=empty_action %}
+  {% endif %}
+</div>
 {% endblock %}

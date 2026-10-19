@@ -1,0 +1,27 @@
+{% comment %}
+One group of the upcoming page: a heading with an optional date or note, then a row
+per release (poster, name, "S1E4 · name" or "Movie premiere", date, status).
+Context: group (web.views.upcoming.Group), today.
+{% endcomment %}{% load i18n web_extras %}
+{% trans 'D, M j' as short_date %}{% trans 'D, M j, Y' as long_date %}
+<section class="mt-up-group" aria-labelledby="up-{{ group.key }}">
+  <h2 id="up-{{ group.key }}" class="mt-up-heading">{{ group.heading }}{% if group.date %}<span class="mt-up-sub">{{ group.date|date:short_date }}</span>{% elif group.note %}<span class="mt-up-sub">{{ group.note }}</span>{% endif %}</h2>
+  <ul class="mt-up-list">
+    {% for item in group.items %}
+    <li class="mt-up-item">
+      <a class="mt-up-link" href="{% url 'title' item.title.pk %}">
+        <span class="mt-up-thumb">{% include 'web/components/_poster.html' with title=item.title variant='thumb' %}</span>
+        <span class="mt-up-text">
+          <span class="mt-up-name">{% title_name item.title %}</span>
+          <span class="mt-up-line">{% if item.episode %}{% episode_name item.episode as ep_name %}{% if not ep_name %}{% blocktrans trimmed asvar ep_name with number=item.episode.number %}Episode {{ number }}{% endblocktrans %}{% endif %}S{{ item.episode.season.number }}E{{ item.episode.number }} · {{ ep_name }}{% else %}{% trans 'Movie premiere' %}{% endif %}</span>
+          <span class="mt-up-when">
+            {% if group.key == 'today' %}<span class="mt-up-today">{% trans 'Today' %}</span>{% endif %}
+            <span class="mt-up-date">{% if item.date %}{% if item.date.year == today.year %}{{ item.date|date:short_date }}{% else %}{{ item.date|date:long_date }}{% endif %}{% else %}{% trans 'Date not announced' %}{% endif %}</span>
+          </span>
+        </span>
+      </a>
+      <span class="mt-up-status">{{ item.status|status_label }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
