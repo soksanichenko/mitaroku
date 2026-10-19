@@ -34,7 +34,7 @@ from tracking.models import LibraryEntry, WatchEvent
 
 
 def _percent(watched: int, total: int) -> int:
-    """Return the whole percent watched; 0 when there is nothing to watch."""
+    """Return the percent watched, rounded down; 0 when there is nothing to watch."""
     return watched * 100 // total if total else 0
 
 
@@ -47,7 +47,7 @@ class Progress:
 
     @property
     def percent(self) -> int:
-        """The whole percent watched (0 when ``total`` is 0)."""
+        """The percent watched, rounded down (0 when ``total`` is 0)."""
         return _percent(self.watched, self.total)
 
 
@@ -63,7 +63,7 @@ class LibraryRow:
 
     @property
     def percent(self) -> int:
-        """The whole percent watched (0 when ``total`` is 0)."""
+        """The percent watched, rounded down (0 when ``total`` is 0)."""
         return _percent(self.watched, self.total)
 
 
@@ -164,7 +164,7 @@ def library_rows(
     query: str = '',
     language: str = 'en',
 ) -> list[LibraryRow]:
-    """Return the user's library with progress, in three queries.
+    """Return the user's library with progress, in at most three queries.
 
     The queries fetch the entries with annotated counts, the next episodes in
     bulk and the translations for ``language`` and English in bulk.
@@ -297,10 +297,10 @@ def continue_watching(
 def upcoming(user, today: date | None = None) -> list[UpcomingItem]:
     """Return the next release of every Watching or Planned title.
 
-    A series gives its earliest main episode dated today or later, or, when it
-    has none, an undated main episode if the title is airing or upcoming. A movie
-    gives its release date when it is today or later, or no date yet if the
-    title is upcoming.
+    A series gives its earliest unwatched main episode dated today or later, or,
+    when it has none, an unwatched undated main episode if the title is airing or
+    upcoming. A movie gives its release date when it is today or later, or no
+    date yet if the title is upcoming, unless the user has already watched it.
 
     Args:
         user: The owner of the library.
@@ -318,8 +318,17 @@ def upcoming(user, today: date | None = None) -> list[UpcomingItem]:
         .filter(status__in=[LibraryEntry.Status.WATCHING, LibraryEntry.Status.PLANNED])
         .select_related('title')
         .annotate(
-            dated_id=Subquery(main.filter(air_date__gte=today).values('pk')[:1]),
-            undated_id=Subquery(main.filter(air_date__isnull=True).values('pk')[:1]),
+            dated_id=Subquery(
+                main.filter(~_seen(user), air_date__gte=today).values('pk')[:1]
+            ),
+            undated_id=Subquery(
+                main.filter(~_seen(user), air_date__isnull=True).values('pk')[:1]
+            ),
+            movie_seen=Exists(
+                WatchEvent.objects.for_user(user).filter(
+                    title=OuterRef('title'), episode__isnull=True
+                )
+            ),
         )
     )
     episodes = Episode.objects.select_related('season').in_bulk(
@@ -330,6 +339,8 @@ def upcoming(user, today: date | None = None) -> list[UpcomingItem]:
     for entry in entries:
         title = entry.title
         if title.kind == Title.Kind.MOVIE:
+            if entry.movie_seen:
+                continue
             if title.release_date and title.release_date >= today:
                 items.append(UpcomingItem(title, None, title.release_date))
             elif title.release_date is None and title.status == Title.Status.UPCOMING:

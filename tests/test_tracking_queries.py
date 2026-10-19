@@ -287,3 +287,98 @@ def test_page_state_episode_translations_are_prefetched(alice):
     state = queries.title_page_state(alice, title, today=TODAY, language='ru')
     first = state.groups[0].rows[0].episode
     assert {t.language for t in first.translations.all()} == {'ru'}
+
+
+def test_library_rows_ignore_another_users_viewings_of_the_same_titles(alice, bob):
+    title, eps, _ = make_show('Shared')
+    add(alice, title)
+    add(bob, title)
+    watch(alice, eps[0], eps[1], at=T0)
+    watch(bob, *eps[:4], at=T0 + timedelta(days=5))
+    (row,) = queries.library_rows(alice)
+    assert (row.watched, row.total, row.next) == (2, 5, eps[2])
+    assert row.last_watched_at == T0
+    (bobs,) = queries.library_rows(bob)
+    assert (bobs.watched, bobs.next) == (4, eps[4])
+
+
+def test_continue_watching_ignores_another_users_viewings(alice, bob):
+    one, one_eps, _ = make_show('One', extra=False)
+    two, two_eps, _ = make_show('Two', extra=False)
+    for title in (one, two):
+        add(alice, title)
+        add(bob, title)
+    watch(alice, one_eps[0], at=T0)
+    watch(alice, two_eps[0], at=T0 + timedelta(days=1))
+    watch(bob, one_eps[0], one_eps[1], one_eps[2], at=T0 + timedelta(days=9))
+    rows = queries.continue_watching(alice, today=TODAY)
+    assert [(r.entry.title, r.next) for r in rows] == [
+        (two, two_eps[1]),
+        (one, one_eps[1]),
+    ]
+    assert [r.watched for r in rows] == [1, 1]
+
+
+def test_continue_watching_counts_an_episode_dated_today_as_aired(alice):
+    today, today_eps, _ = make_show('Today', dated=(-30, 0), extra=False)
+    older, older_eps, _ = make_show('Older', dated=(-30, 3), extra=False)
+    for title, eps, day in [(older, older_eps, 5), (today, today_eps, 0)]:
+        add(alice, title)
+        watch(alice, eps[0], at=T0 + timedelta(days=day))
+    rows = queries.continue_watching(alice, today=TODAY)
+    # 'Today' was watched earlier but its next episode has aired, so it goes first
+    assert [r.entry.title for r in rows] == [today, older]
+
+
+def test_upcoming_skips_a_watched_episode_dated_today(alice):
+    title, eps, _ = make_show(dated=(-3, 0, 5), extra=False)
+    add(alice, title)
+    watch(alice, eps[1])
+    (item,) = queries.upcoming(alice, today=TODAY)
+    assert (item.episode, item.date) == (eps[2], TODAY + timedelta(days=5))
+
+
+def test_upcoming_is_empty_when_the_last_dated_episode_is_watched(alice):
+    title, eps, _ = make_show(status='ended', dated=(-3, 0), extra=False)
+    add(alice, title)
+    watch(alice, eps[1])
+    assert queries.upcoming(alice, today=TODAY) == []
+
+
+def test_upcoming_falls_back_to_an_undated_unwatched_episode(alice):
+    title, eps, _ = make_show(dated=(-3, 0, None), extra=False)
+    add(alice, title)
+    watch(alice, eps[1])
+    (item,) = queries.upcoming(alice, today=TODAY)
+    assert (item.episode, item.date) == (eps[2], None)
+
+
+def test_upcoming_skips_an_undated_episode_that_is_watched(alice):
+    title, eps, _ = make_show(dated=(-3, None), extra=False)
+    add(alice, title)
+    watch(alice, eps[1])
+    assert queries.upcoming(alice, today=TODAY) == []
+
+
+def test_upcoming_skips_a_watched_movie(alice):
+    released = make_movie('Today film', release_offset=0, status='ended')
+    unwatched = make_movie('Other film', release_offset=0, status='ended')
+    for movie in (released, unwatched):
+        add(alice, movie)
+    WatchEvent.objects.create(user=alice, title=released, watched_at=T0)
+    items = queries.upcoming(alice, today=TODAY)
+    assert [i.title for i in items] == [unwatched]
+
+
+def test_upcoming_ignores_another_users_viewings(alice, bob, django_assert_num_queries):
+    title, eps, _ = make_show(dated=(-3, 0, 5), extra=False)
+    movie = make_movie('Film', release_offset=0, status='ended')
+    for entry_title in (title, movie):
+        add(alice, entry_title)
+        add(bob, entry_title)
+    watch(bob, eps[1])
+    WatchEvent.objects.create(user=bob, title=movie, watched_at=T0)
+    with django_assert_num_queries(2):
+        items = queries.upcoming(alice, today=TODAY)
+    assert [(i.title, i.episode) for i in items] == [(movie, None), (title, eps[1])]
+    assert [i.title for i in queries.upcoming(bob, today=TODAY)] == [title]
