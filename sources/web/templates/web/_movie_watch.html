@@ -1,0 +1,26 @@
+{% comment %}
+The movie's watched control: section#movie-watch. The toggle posts the WANTED state;
+"Watched again" records one more viewing. Context: title, movie_views (the user's
+viewings), movie_released.
+{% endcomment %}{% load i18n %}
+<section id="movie-watch" class="mt-section mt-movie-watch" aria-labelledby="movie-watch-heading">
+  <h2 id="movie-watch-heading" class="mt-section-title">{% trans 'Watched' %}</h2>
+  {% url 'title_movie_watch' title.pk as movie_url %}
+  <div class="mt-movie-actions">
+    {% if not movie_released %}
+    <button type="button" class="btn btn-secondary mt-touch" disabled aria-disabled="true" aria-pressed="false">{% trans 'Mark as watched' %}</button>
+    <p class="mt-muted mt-movie-note">{% trans 'Not released yet' %}</p>
+    {% elif movie_views %}
+    <button type="button" class="btn btn-primary mt-touch" aria-pressed="true" title="{% trans 'Mark as unwatched' %}" aria-label="{% trans 'Mark as unwatched' %}"
+            hx-post="{{ movie_url }}" hx-vals='{"watched": "0"}' hx-target="#movie-watch" hx-swap="outerHTML" hx-disabled-elt="this">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg><span>{% trans 'Watched' %}</span>
+    </button>
+    <button type="button" class="btn btn-secondary mt-touch"
+            hx-post="{{ movie_url }}" hx-vals='{"watched": "1", "again": "1"}' hx-target="#movie-watch" hx-swap="outerHTML" hx-disabled-elt="this">{% trans 'Watched again' %}</button>
+    <p class="mt-movie-count">{% blocktrans trimmed count n=movie_views %}Watched {{ n }} time{% plural %}Watched {{ n }} times{% endblocktrans %}</p>
+    {% else %}
+    <button type="button" class="btn btn-primary mt-touch" aria-pressed="false"
+            hx-post="{{ movie_url }}" hx-vals='{"watched": "1"}' hx-target="#movie-watch" hx-swap="outerHTML" hx-disabled-elt="this">{% trans 'Mark as watched' %}</button>
+    {% endif %}
+  </div>
+</section>

@@ -1,0 +1,16 @@
+{% comment %}
+The answer of a watch action. Context: mode and, by mode:
+- "group": group (GroupView) as the main fragment; earlier (the earlier main groups
+  "up to here" also changed) and the progress, the continue bar and, if hint, the armed
+  tip, all out of band;
+- "episodes": the whole #episodes section (it holds the progress, the bar and the tip);
+- "movie": the movie block;
+panel: also send #library-panel out of band (the entry status changed).
+{% endcomment %}{% if mode == 'group' %}{% include 'web/_episode_group.html' with g=group %}
+{% for g in earlier %}{% include 'web/_episode_group.html' with oob=True %}
+{% endfor %}{% include 'web/_title_progress.html' with oob=True %}
+{% include 'web/_continue_bar.html' with oob=True %}
+{% if hint %}{% include 'web/_hint_mark_up_to.html' with oob=True armed=True %}{% endif %}
+{% elif mode == 'episodes' %}{% include 'web/_episodes_section.html' %}
+{% elif mode == 'movie' %}{% include 'web/_movie_watch.html' %}
+{% endif %}{% if panel %}{% include 'web/_library_panel.html' with oob=True %}{% endif %}

@@ -1,7 +1,7 @@
 """Web URLs."""
 
 from django.urls import path
-from web.views import library, search, shell, titles, upcoming
+from web.views import actions, library, search, shell, titles, upcoming
 
 urlpatterns = [
     path('', shell.index, name='index'),
@@ -15,5 +15,11 @@ urlpatterns = [
     path('titles/<int:pk>/status/', titles.title_status, name='title_status'),
     path('titles/<int:pk>/score/', titles.title_score, name='title_score'),
     path('titles/<int:pk>/note/', titles.title_note, name='title_note'),
+    path('titles/<int:pk>/watch-all/', actions.title_watch_all, name='title_watch_all'),
+    path('titles/<int:pk>/movie/', actions.title_movie_watch, name='title_movie_watch'),
+    path('titles/<int:pk>/continue/', actions.title_continue, name='title_continue'),
+    path('episodes/<int:pk>/watch/', actions.episode_watch, name='episode_watch'),
+    path('episodes/<int:pk>/up-to/', actions.episode_up_to, name='episode_up_to'),
+    path('seasons/<int:pk>/watch/', actions.season_watch, name='season_watch'),
     path('healthz/', shell.healthz, name='healthz'),
 ]

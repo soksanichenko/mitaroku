@@ -1,0 +1,16 @@
+{% comment %}
+The one-time tip about "Mark all up to here as watched": div#mark-up-to-hint. It is
+always on the page but hidden; a single-episode mark sends it out of band with armed
+true. Dismissing it, or using the action (the window event mt-up-to), stores
+mitaroku.hint.markUpTo in localStorage; every storage access is guarded, so the page
+works with storage blocked (the tip then returns on the next visit).
+Context: armed (bool); oob (optional): add hx-swap-oob="true".
+{% endcomment %}{% load i18n %}
+<div id="mark-up-to-hint" class="mt-hint" role="status" data-armed="{% if armed %}true{% else %}false{% endif %}"{% if oob %} hx-swap-oob="true"{% endif %}
+     x-data="{ armed: {% if armed %}true{% else %}false{% endif %}, dismissed: false, key: 'mitaroku.hint.markUpTo', get show() { return this.armed && !this.dismissed }, init() { try { this.dismissed = localStorage.getItem(this.key) === 'dismissed' } catch (e) {} }, dismiss() { this.dismissed = true; try { localStorage.setItem(this.key, 'dismissed') } catch (e) {} } }"
+     x-show="show" x-cloak @mt-up-to.window="dismiss()">
+  <span class="mt-hint-text">{% trans 'Tip: use the menu to mark everything up to an episode' %}</span>
+  <button type="button" class="mt-hint-close mt-touch" aria-label="{% trans 'Dismiss the tip' %}" title="{% trans 'Dismiss the tip' %}" @click="dismiss()">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+  </button>
+</div>

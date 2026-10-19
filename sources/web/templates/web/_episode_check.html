@@ -1,9 +1,15 @@
 {% comment %}
-The watched mark of an episode or a season. Here it is only an icon; the tracking
-actions replace its content with a control and keep this wrapper.
-Contract (stable): span#check-<prefix>-<object_id> with class "mt-check
-mt-check--<state>", data-scope ("episode" or "season") and data-id (the pk).
-Variables: prefix ("ep" or "grp"), scope, object_id, state: watched, partly (a
-season with some aired episodes watched), unwatched or unaired (not on air yet).
-{% endcomment %}{% load i18n %}{% if state == 'watched' %}{% trans 'Watched' as label %}{% elif state == 'partly' %}{% trans 'Partly watched' as label %}{% elif state == 'unaired' %}{% trans 'Not aired yet' as label %}{% else %}{% trans 'Not watched' as label %}{% endif %}
-<span class="mt-check mt-check--{{ state }}" id="check-{{ prefix }}-{{ object_id }}" data-scope="{{ scope }}" data-id="{{ object_id }}" role="img" aria-label="{{ label }}">{% if state == 'watched' %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>{% endif %}</span>
+The watched control of an episode, a season group or the whole show: a 44 px button
+around the circle. The circle keeps the contract of the display: span#check-<prefix>-
+<object_id> with class "mt-check mt-check--<state>", data-scope and data-id. The
+button is #mark-<prefix>-<object_id> (#mark-all for the whole show) and carries the
+WANTED state (hx-vals watched), so a repeated request changes nothing.
+Variables: prefix ("ep", "grp" or "all"), scope ("episode", "season" or "title"),
+object_id, state (watched, partly, unwatched or unaired), name (what the control
+acts on), code (episode scope: "S1E3"), grp (season pk, for the swap target),
+post_url. A state "unaired" renders the button disabled and without hx-post.
+{% endcomment %}{% load i18n %}{% if scope == 'episode' %}{% if state == 'watched' %}{% blocktrans asvar label %}Mark as unwatched: {{ code }} · {{ name }}{% endblocktrans %}{% else %}{% blocktrans asvar label %}Mark as watched: {{ code }} · {{ name }}{% endblocktrans %}{% endif %}{% elif scope == 'season' %}{% if state == 'watched' %}{% blocktrans asvar label %}Mark all aired episodes as unwatched: {{ name }}{% endblocktrans %}{% else %}{% blocktrans asvar label %}Mark all aired episodes as watched: {{ name }}{% endblocktrans %}{% endif %}{% elif state == 'watched' %}{% trans 'Mark whole show as unwatched' as label %}{% else %}{% trans 'Mark whole show as watched' as label %}{% endif %}
+<button type="button" id="mark-{{ prefix }}{% if prefix != 'all' %}-{{ object_id }}{% endif %}" class="mt-check-btn mt-touch" aria-label="{{ label }}" aria-pressed="{% if state == 'watched' %}true{% elif state == 'partly' %}mixed{% else %}false{% endif %}"
+        {% if state == 'unaired' %}disabled aria-disabled="true" title="{% trans 'Not aired yet' %}"{% else %}hx-post="{{ post_url }}" hx-vals='{"watched": "{% if state == 'watched' %}0{% else %}1{% endif %}"}' hx-target="{% if scope == 'title' %}#episodes{% else %}#grp-{{ grp }}{% endif %}" hx-swap="outerHTML"{% endif %}>
+  <span class="mt-check mt-check--{{ state }}" id="check-{{ prefix }}-{{ object_id }}" data-scope="{{ scope }}" data-id="{{ object_id }}" aria-hidden="true">{% if state == 'watched' %}<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></svg>{% endif %}</span>
+</button>

@@ -1,0 +1,22 @@
+{% comment %}
+What to watch next: div#continue-bar. A "Continue" button when the next main episode
+has aired, "Next: ... airs <date>" text when it has not, "You're all caught up" when
+none is left. Actions replace it out of band. Context: progress, next_row (RowView or
+None); oob (optional): add hx-swap-oob="true".
+{% endcomment %}{% load i18n web_extras %}
+<div id="continue-bar" class="mt-continue"{% if oob %} hx-swap-oob="true"{% endif %}>
+  {% if next_row %}
+  {% with ep=next_row.row.episode %}{% episode_name ep as name %}{% if not name %}{% blocktrans trimmed asvar name with number=ep.number %}Episode {{ number }}{% endblocktrans %}{% endif %}{% firstof next_row.code2 next_row.code as code %}
+  {% if next_row.row.aired %}
+  <button type="button" class="btn btn-primary mt-touch mt-continue-btn" hx-post="{% url 'title_continue' title.pk %}" hx-target="#grp-{{ ep.season_id }}" hx-swap="outerHTML" hx-disabled-elt="this">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
+    <span>{% blocktrans trimmed %}Continue: {{ code }} · {{ name }}{% endblocktrans %}</span>
+  </button>
+  {% else %}
+  <span class="btn btn-secondary mt-touch mt-continue-next" aria-disabled="true">{% if ep.air_date %}{% blocktrans trimmed with date=ep.air_date|date:'M j' %}Next: {{ code }} · airs {{ date }}{% endblocktrans %}{% else %}{% blocktrans trimmed %}Next: {{ code }} · date not announced{% endblocktrans %}{% endif %}</span>
+  {% endif %}
+  {% endwith %}
+  {% elif progress.total %}
+  <span class="mt-continue-done">{% trans "You're all caught up" %}</span>
+  {% endif %}
+</div>

@@ -589,7 +589,8 @@ a:focus-visible .mt-poster-img {
   text-overflow: ellipsis;
 }
 
-.mt-picker-menu {
+.mt-picker-menu,
+.mt-ep-menu {
   position: absolute;
   left: 0;
   top: calc(100% + 4px);
@@ -606,6 +607,14 @@ a:focus-visible .mt-poster-img {
 .mt-picker-menu--right {
   left: auto;
   right: 0;
+}
+
+/* The menu of an episode row opens under its "..." button. */
+.mt-ep-menu {
+  left: auto;
+  right: 8px;
+  top: calc(100% - 6px);
+  min-width: 240px;
 }
 
 .mt-picker-item {
@@ -1361,8 +1370,9 @@ a:focus-visible .mt-poster-img {
 }
 
 .mt-ep {
+  position: relative;
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) 44px;
+  grid-template-columns: 56px minmax(0, 1fr) 44px 44px;
   align-items: center;
   column-gap: 8px;
   min-height: 44px;
@@ -1409,14 +1419,41 @@ a:focus-visible .mt-poster-img {
   color: var(--mt-muted);
 }
 
-/* The watched mark: an icon here, a control once the tracking actions arrive. */
+/* The watched mark: the circle inside the 44 px button of the control. */
+.mt-check-btn {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.mt-check-btn:hover:not(:disabled) .mt-check--unwatched,
+.mt-check-btn:hover:not(:disabled) .mt-check--partly {
+  background-color: color-mix(in srgb, var(--color-text) 14%, transparent);
+}
+
+.mt-check-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.mt-check-btn.htmx-request {
+  opacity: 0.6;
+}
+
 .mt-check {
   flex: none;
   display: grid;
   place-items: center;
   width: 24px;
   height: 24px;
-  margin: 10px;
+  margin: 0;
   border: 2px solid var(--color-text);
   border-radius: 50%;
   box-sizing: border-box;
@@ -1457,6 +1494,152 @@ a:focus-visible .mt-poster-img {
   }
 
   .mt-ep {
-    grid-template-columns: 84px minmax(0, 1fr) 44px;
+    grid-template-columns: 84px minmax(0, 1fr) 44px 44px;
   }
+}
+
+/* Row menu button, repeated-viewing count. */
+.mt-ep-more {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mt-muted);
+  cursor: pointer;
+}
+
+.mt-ep-more:hover {
+  color: var(--color-text);
+}
+
+.mt-ep-more svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.mt-ep-views {
+  margin-left: 6px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+/* Progress, whole-show control, continue bar, tip. */
+.mt-title-progress {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mt-title-progress .mt-check-btn {
+  margin-left: auto;
+}
+
+.mt-continue > * {
+  margin-top: 12px;
+}
+
+.mt-continue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 16px;
+}
+
+.mt-continue-btn {
+  max-width: 100%;
+  justify-content: flex-start;
+  gap: 8px;
+  text-align: left;
+}
+
+.mt-continue-btn svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mt-continue-next {
+  cursor: default;
+  font-weight: 600;
+}
+
+.mt-continue-done {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.mt-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 4px 4px 4px 12px;
+  border: 1px solid var(--color-text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.mt-hint-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.mt-hint-close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.mt-hint-close svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+/* Movie watched block. */
+.mt-movie-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding-bottom: 12px;
+}
+
+.mt-movie-actions svg {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mt-movie-count,
+.mt-movie-note {
+  margin: 0;
+  font-size: 14px;
+}
+
+.mt-movie-count {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }

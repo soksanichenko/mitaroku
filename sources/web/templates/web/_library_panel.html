@@ -1,11 +1,12 @@
 {% comment %}
 The user's library panel: status picker, five-star score and private note. It is
 the target of the three actions, which replace it (outerHTML).
-Context: title, entry (LibraryEntry or None); oob_episodes (optional): also send
+Context: title, entry (LibraryEntry or None); oob (optional): send the panel out of
+band as a swap of itself; oob_episodes (optional): also send
 the episode list as an out-of-band swap, for actions that change what was watched
 (then also groups, multi, open_ids, chips, progress).
 {% endcomment %}{% load i18n web_extras %}
-<section id="library-panel" class="mt-lib" aria-labelledby="library-heading">
+<section id="library-panel" class="mt-lib" aria-labelledby="library-heading"{% if oob %} hx-swap-oob="true"{% endif %}>
   <div class="mt-lib-status">
     <h2 id="library-heading" class="mt-lib-heading">{% trans 'Your library' %}</h2>
     {% url 'title_status' title.pk as status_url %}

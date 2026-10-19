@@ -178,8 +178,33 @@ def _sync_state(title: Title) -> str:
     return STUCK
 
 
-def _context(request: HttpRequest, title: Title) -> dict:
-    """Build the context of the page body for the signed-in user."""
+def _whole_check(groups: list[GroupView]) -> str:
+    """Return the state of the whole-show control over every aired episode."""
+    rows = [r for g in groups for r in g.group.rows if r.aired]
+    watched = sum(1 for r in rows if r.views)
+    if not rows:
+        return 'unaired'
+    if watched >= len(rows):
+        return 'watched'
+    return 'partly' if watched else 'unwatched'
+
+
+def page_context(request: HttpRequest, title: Title) -> dict:
+    """Build the context of the page body for the signed-in user.
+
+    Besides the display data it carries what the watch actions need to render
+    their fragments: ``whole`` (state of the whole-show control), ``has_rows``
+    (any episode row exists) and ``next_row`` (the row of the next main episode,
+    or None) for series, ``movie_views`` and ``movie_released`` for movies.
+
+    Args:
+        request: The request of the signed-in user.
+        title: The title shown.
+
+    Returns:
+        The template context; only ``title``, ``sync_state`` and ``entry`` until
+        the title has synced.
+    """
     context = {'title': title, 'sync_state': _sync_state(title), 'entry': None}
     if context['sync_state'] != READY:
         return context
@@ -192,10 +217,22 @@ def _context(request: HttpRequest, title: Title) -> dict:
         # Progress is derived from the viewings, which outlive the entry.
         has_views=any(g.watched for g in state.groups),
     )
-    if title.kind != Title.Kind.MOVIE:
+    if title.kind == Title.Kind.MOVIE:
+        context.update(
+            movie_views=state.movie_views,
+            movie_released=bool(title.release_date and title.release_date <= today),
+        )
+    else:
         groups = _group_views(title, state, today)
+        next_pk = state.next_episode.pk if state.next_episode else None
         context.update(
             has_episodes=True,
+            has_rows=any(g.rows for g in groups),
+            whole=_whole_check(groups),
+            next_row=next(
+                (r for g in groups for r in g.rows if r.row.episode.pk == next_pk),
+                None,
+            ),
             groups=groups,
             multi=len(groups) > 1,
             open_ids=[g.group.season.pk for g in groups if g.open],
@@ -225,7 +262,7 @@ def title_page(request: HttpRequest, pk: int) -> HttpResponse:
     """
     title = get_object_or_404(Title.objects.prefetch_related('translations'), pk=pk)
     _queue_background_jobs(request, title)
-    return render(request, 'web/title.html', _context(request, title))
+    return render(request, 'web/title.html', page_context(request, title))
 
 
 @require_POST
@@ -241,7 +278,7 @@ def title_refresh(request: HttpRequest, pk: int) -> HttpResponse:
     """
     title = get_object_or_404(Title.objects.prefetch_related('translations'), pk=pk)
     tasks.enqueue_refresh_once(title)
-    return render(request, 'web/_title_body.html', _context(request, title))
+    return render(request, 'web/_title_body.html', page_context(request, title))
 
 
 def _panel(request: HttpRequest, title: Title, entry: LibraryEntry | None):
@@ -273,7 +310,7 @@ def title_status(request: HttpRequest, pk: int) -> HttpResponse:
     entry = services.set_status(
         request.user, title, None if status == REMOVE else status
     )
-    context = _context(request, title)
+    context = page_context(request, title)
     context.update(entry=entry, oob_episodes=context.get('has_episodes', False))
     return render(request, 'web/_library_panel.html', context)
 

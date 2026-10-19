@@ -26,6 +26,7 @@ and, for series and anime, has_episodes, groups, multi, open_ids, chips.
     <p class="mt-desc mt-muted">{% trans 'There is no description yet.' %}</p>
     {% endif %}
   </section>
+  {% if title.kind == 'movie' %}{% include 'web/_movie_watch.html' %}{% endif %}
   {% if has_episodes %}{% include 'web/_episodes_section.html' %}{% endif %}
   {% elif sync_state == 'syncing' %}
   {% trans 'Fetching the details of this title…' as syncing_label %}

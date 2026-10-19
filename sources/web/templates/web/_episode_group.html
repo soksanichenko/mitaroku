@@ -1,9 +1,10 @@
 {% comment %}
 One season (or franchise entry) of the episode list. Context: g (GroupView), multi.
 DOM: section#grp-<season pk>; with several groups a header carries the toggle
-and the group check (span#check-grp-<season pk>).
+and the group check (button#mark-grp-<season pk>). oob (optional): send the group as
+an out-of-band swap of itself.
 {% endcomment %}{% load i18n web_extras %}{% with season=g.group.season %}
-<section class="mt-grp" id="grp-{{ season.pk }}"{% if multi %} aria-labelledby="grp-{{ season.pk }}-name"{% endif %}>
+<section class="mt-grp" id="grp-{{ season.pk }}"{% if multi %} aria-labelledby="grp-{{ season.pk }}-name"{% endif %}{% if oob %} hx-swap-oob="true"{% endif %}>
   {% if multi %}
   <div class="mt-gh">
     <button type="button" class="mt-gh-toggle mt-touch" aria-controls="grp-{{ season.pk }}-rows" aria-expanded="{% if g.open %}true{% else %}false{% endif %}" :aria-expanded="has({{ season.pk }})" @click="toggle({{ season.pk }})">
@@ -12,7 +13,7 @@ and the group check (span#check-grp-<season pk>).
       {% if g.group.total %}<span class="mt-gh-count">{{ g.group.watched }}/{{ g.group.total }}</span>{% endif %}
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
     </button>
-    {% if g.rows %}{% include 'web/_episode_check.html' with prefix='grp' scope='season' object_id=season.pk state=g.check %}{% endif %}
+    {% if g.rows %}{% url 'season_watch' season.pk as watch_url %}{% include 'web/_episode_check.html' with prefix='grp' scope='season' object_id=season.pk state=g.check name=g.label grp=season.pk post_url=watch_url %}{% endif %}
   </div>
   {% endif %}
   <div id="grp-{{ season.pk }}-rows"{% if multi %} x-show="has({{ season.pk }})"{% if not g.open %} x-cloak{% endif %}{% endif %}>

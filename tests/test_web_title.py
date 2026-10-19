@@ -325,7 +325,7 @@ def test_the_check_has_a_stable_dom_contract(
     assert 'class="mt-check mt-check--unwatched"' in check
     assert 'data-scope="episode"' in check
     assert f'data-id="{episode.pk}"' in check
-    assert 'role="img"' in check and 'aria-label="Not watched"' in check
+    assert 'aria-hidden="true"' in check  # the button around it is the labelled control
 
 
 def test_anime_page_has_franchise_chips_and_kind_tags(client, portal_headers, alice):
@@ -625,7 +625,7 @@ def test_title_page_is_translated_to_russian(
         'Дата не объявлена',
         'Сезон 1',
         'Серия 1',
-        'Не просмотрено',
+        'Отметить просмотренной: S1E1',
         'Эфир через 7 дн',
     ):
         assert text in html, text

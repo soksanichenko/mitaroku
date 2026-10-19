@@ -3,20 +3,35 @@ The episode list of a series or an anime franchise. Alpine keeps the open accord
 groups; the franchise chips open a group and scroll to it.
 Context: groups (GroupView list), multi (more than one group), open_ids (groups that
 start open), chips (groups again for anime with several entries, else empty), entry,
-progress, has_views (the user has a viewing of the title: the bar shows without an entry); oob (optional): send it as an out-of-band swap of #episodes.
+progress, has_views (the user has a viewing of the title: the bar shows without an entry),
+whole, has_rows, next_row (see _title_progress.html and _continue_bar.html); oob
+(optional): send it as an out-of-band swap of #episodes. It holds #title-progress,
+#continue-bar and #mark-up-to-hint, so a response with the section sends none of them
+separately. The Alpine scope also keeps the open row menu (menu) and the long press.
 {% endcomment %}{% load i18n web_extras %}
 <section id="episodes" class="mt-section mt-episodes" aria-labelledby="episodes-heading"{% if oob %} hx-swap-oob="true"{% endif %}
-         x-data="{ open: [{{ open_ids|join:', ' }}], has(id) { return this.open.includes(id) }, toggle(id) { this.open = this.has(id) ? this.open.filter(i => i !== id) : [...this.open, id] }, show(id) { if (!this.has(id)) this.open.push(id); this.$nextTick(() => document.getElementById('grp-' + id).scrollIntoView({ block: 'start' })) } }">
+         x-data="{ open: [{{ open_ids|join:', ' }}], has(id) { return this.open.includes(id) }, toggle(id) { this.open = this.has(id) ? this.open.filter(i => i !== id) : [...this.open, id] }, show(id) { if (!this.has(id)) this.open.push(id); this.$nextTick(() => document.getElementById('grp-' + id).scrollIntoView({ block: 'start' })) },
+                  menu: null, held: false, timer: null,
+                  pressStart(id) { this.held = false; clearTimeout(this.timer); this.timer = setTimeout(() => { this.held = true; this.menu = id }, 500) },
+                  pressEnd() { clearTimeout(this.timer); setTimeout(() => { this.held = false }, 400) },
+                  pressMenu(e) { if (this.held) e.preventDefault() },
+                  pressClick(e) { if (this.held) { e.stopPropagation(); e.preventDefault() } } }"
+         @click.window="if (!$event.target.closest('.mt-ep-menu, .mt-ep-more')) menu = null"
+         @keydown.escape.window="if (menu) { document.getElementById('more-ep-' + menu).focus(); menu = null }">
   <div class="mt-episodes-head">
     <h2 id="episodes-heading" class="mt-section-title">{% trans 'Episodes' %}</h2>
-    {% if progress.total and entry or progress.total and has_views %}{% include 'web/components/_progress.html' with watched=progress.watched total=progress.total %}{% endif %}
+    {% if groups %}{% include 'web/_title_progress.html' with oob=False %}{% endif %}
   </div>
+  {% if groups %}
+  {% include 'web/_continue_bar.html' with oob=False %}
+  {% include 'web/_hint_mark_up_to.html' with oob=False armed=False %}
+  {% endif %}
   {% if chips %}
   <nav class="mt-chips" aria-label="{% trans 'Entries of this franchise' %}">
     {% for g in chips %}<a class="mt-chip mt-touch" href="#grp-{{ g.group.season.pk }}" @click.prevent="show({{ g.group.season.pk }})">{{ g.label }}<span class="mt-chip-count">{{ g.group.total }}</span></a>{% endfor %}
   </nav>
   {% endif %}
-  {% for g in groups %}{% include 'web/_episode_group.html' %}{% empty %}
+  {% for g in groups %}{% include 'web/_episode_group.html' with oob=False %}{% empty %}
   {% trans 'No episodes announced yet' as empty_heading %}
   {% include 'web/components/_state_empty.html' with heading=empty_heading %}
   {% endfor %}

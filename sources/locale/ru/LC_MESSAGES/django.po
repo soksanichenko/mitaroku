@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-19 19:28+0000\n"
+"POT-Creation-Date: 2026-10-19 19:39+0000\n"
 "Language: ru\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
@@ -51,21 +51,49 @@ msgstr "Скоро"
 msgid "Search"
 msgstr "Поиск"
 
-msgid "Watched"
-msgstr "Просмотрено"
-
-msgid "Partly watched"
-msgstr "Просмотрено частично"
-
-msgid "Not aired yet"
-msgstr "Ещё не вышло"
-
-msgid "Not watched"
-msgstr "Не просмотрено"
-
 #, python-format
 msgid "Episode %(number)s"
 msgstr "Серия %(number)s"
+
+#, python-format
+msgid "Continue: %(code)s · %(name)s"
+msgstr "Продолжить: %(code)s · %(name)s"
+
+#, python-format
+msgid "Next: %(code)s · airs %(date)s"
+msgstr "Далее: %(code)s · выйдет %(date)s"
+
+#, python-format
+msgid "Next: %(code)s · date not announced"
+msgstr "Далее: %(code)s · дата не объявлена"
+
+msgid "You're all caught up"
+msgstr "Вы всё посмотрели"
+
+#, python-format
+msgid "Mark as unwatched: %(code)s · %(name)s"
+msgstr "Снять отметку о просмотре: %(code)s · %(name)s"
+
+#, python-format
+msgid "Mark as watched: %(code)s · %(name)s"
+msgstr "Отметить просмотренной: %(code)s · %(name)s"
+
+#, python-format
+msgid "Mark all aired episodes as unwatched: %(name)s"
+msgstr "Снять отметку со всех вышедших серий: %(name)s"
+
+#, python-format
+msgid "Mark all aired episodes as watched: %(name)s"
+msgstr "Отметить все вышедшие серии просмотренными: %(name)s"
+
+msgid "Mark whole show as unwatched"
+msgstr "Снять отметку просмотра со всего сериала"
+
+msgid "Mark whole show as watched"
+msgstr "Отметить весь сериал просмотренным"
+
+msgid "Not aired yet"
+msgstr "Ещё не вышло"
 
 msgid "Airs tomorrow"
 msgstr "Эфир завтра"
@@ -79,6 +107,23 @@ msgstr[2] "Эфир через %(days)s дней"
 
 msgid "Date not announced"
 msgstr "Дата не объявлена"
+
+#, python-format
+msgid "Watched %(n)s time"
+msgid_plural "Watched %(n)s times"
+msgstr[0] "Просмотрено %(n)s раз"
+msgstr[1] "Просмотрено %(n)s раза"
+msgstr[2] "Просмотрено %(n)s раз"
+
+#, python-format
+msgid "More actions: %(code)s · %(name)s"
+msgstr "Другие действия: %(code)s · %(name)s"
+
+msgid "Mark all up to here as watched"
+msgstr "Отметить все до этой серии просмотренными"
+
+msgid "Watched again"
+msgstr "Просмотрено ещё раз"
 
 msgid "Episodes"
 msgstr "Серии"
@@ -106,6 +151,12 @@ msgstr "Язык"
 
 msgid "Log out"
 msgstr "Выйти"
+
+msgid "Tip: use the menu to mark everything up to an episode"
+msgstr "Совет: через меню можно отметить всё до выбранной серии"
+
+msgid "Dismiss the tip"
+msgstr "Скрыть совет"
 
 msgid "Your library"
 msgstr "Ваша библиотека"
@@ -137,6 +188,18 @@ msgstr "Сохранить заметку"
 
 msgid "Add this title to your library to rate it and keep a private note."
 msgstr "Добавьте тайтл в библиотеку, чтобы оценить его и оставить личную заметку."
+
+msgid "Watched"
+msgstr "Просмотрено"
+
+msgid "Mark as watched"
+msgstr "Отметить просмотренным"
+
+msgid "Not released yet"
+msgstr "Ещё не вышел"
+
+msgid "Mark as unwatched"
+msgstr "Снять отметку о просмотре"
 
 msgid "Type a title above to search shows, anime and movies."
 msgstr "Введите название выше, чтобы искать сериалы, аниме и фильмы."
@@ -358,3 +421,9 @@ msgstr "Список серий пока неизвестен"
 
 msgid "No episodes yet"
 msgstr "Серий пока нет"
+
+#~ msgid "Not watched"
+#~ msgstr "Не просмотрено"
+
+#~ msgid "Partly watched"
+#~ msgstr "Просмотрено частично"
