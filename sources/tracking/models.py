@@ -112,3 +112,59 @@ class WatchEvent(models.Model):
 
     def __str__(self) -> str:
         return f'{self.user} / {self.episode or self.title} @ {self.watched_at}'
+
+
+class AddRequest(models.Model):
+    """A request to add a title that a background job completes.
+
+    The browser sends only the provider, the id and the wanted status; the job
+    builds the catalog title from the provider. ``error`` is ``provider`` (the
+    provider failed) or ``timeout`` (the job never finished). Only one request
+    per ``(user, provider, external_id)`` can be pending at a time.
+    """
+
+    class State(models.TextChoices):
+        PENDING = 'pending'
+        DONE = 'done'
+        FAILED = 'failed'
+
+    class Error(models.TextChoices):
+        NONE = ''
+        PROVIDER = 'provider'
+        TIMEOUT = 'timeout'
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='add_requests',
+    )
+    provider = models.CharField(max_length=12)
+    external_id = models.CharField(max_length=10)
+    status = models.CharField(
+        max_length=10, choices=LibraryEntry.Status, default=LibraryEntry.Status.WATCHING
+    )
+    state = models.CharField(max_length=10, choices=State, default=State.PENDING)
+    title = models.ForeignKey(
+        'catalog.Title',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+    )
+    error = models.CharField(max_length=10, choices=Error, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    objects = UserScopedManager()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'provider', 'external_id'],
+                condition=Q(state='pending'),
+                name='unique_pending_add_request',
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.user} / {self.provider}:{self.external_id} [{self.state}]'

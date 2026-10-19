@@ -1,11 +1,24 @@
 """Shared fixtures."""
 
 import uuid
+from datetime import UTC, date, datetime
 
 import httpx
 import pytest
 from accounts.models import User
+from catalog.models import ExternalId, Title
+from catalog.sync.common import Clients
 from django.core.management import call_command
+from fakes import (
+    FailingProvider,
+    FakeAniList,
+    FakeTmdb,
+    edge,
+    media,
+    tmdb_movie,
+    tmdb_season,
+    tmdb_show,
+)
 from providers.clients import connect_redis
 from providers.http import ProviderHttp
 
@@ -85,3 +98,66 @@ def provider_http(redis_client, redis_prefix):
         )
 
     return build
+
+
+@pytest.fixture
+def fake_clients(monkeypatch) -> Clients:
+    """Return fake provider clients and make the add flow use them.
+
+    They hold the TMDB movie 603, the TMDB show 1396 with two seasons and the
+    anime franchise 70 -> 71.
+    """
+    seasons = {
+        1: tmdb_season(1, 3, date(2008, 1, 20)),
+        2: tmdb_season(2, 3, date(2009, 3, 8)),
+    }
+    tmdb = FakeTmdb(
+        movies={603: tmdb_movie(603)},
+        shows={1396: (tmdb_show(1396, list(seasons.values())), seasons)},
+    )
+    anilist = FakeAniList(
+        media(70, [edge('SEQUEL', 71)]),
+        media(71, [edge('PREQUEL', 70)], year=2021),
+    )
+    clients = Clients(tmdb=tmdb, anilist=anilist)
+    monkeypatch.setattr('tracking.adding.default_clients', lambda: clients)
+    return clients
+
+
+@pytest.fixture
+def failing_clients(monkeypatch) -> Clients:
+    """Return provider clients that always fail and make the add flow use them."""
+    clients = Clients(tmdb=FailingProvider(), anilist=FailingProvider())
+    monkeypatch.setattr('tracking.adding.default_clients', lambda: clients)
+    return clients
+
+
+@pytest.fixture
+def queued(monkeypatch) -> list[int]:
+    """Replace ``add_title_task`` with a recorder of the request ids it gets."""
+    calls: list[int] = []
+
+    def record(request_id: int) -> int:
+        calls.append(request_id)
+        return request_id
+
+    monkeypatch.setattr('tracking.adding.add_title_task', record)
+    return calls
+
+
+@pytest.fixture
+def capture_on_commit(django_capture_on_commit_callbacks):
+    """Return a factory of the context manager that runs ``on_commit`` callbacks."""
+    return lambda: django_capture_on_commit_callbacks(execute=True)
+
+
+@pytest.fixture
+def synced_movie(db) -> Title:
+    """Return a movie linked to ``tmdb_movie:603`` that has been synced."""
+    title = Title.objects.create(
+        kind=Title.Kind.MOVIE,
+        original_title='The Matrix',
+        synced_at=datetime(2026, 10, 19, 12, 0, tzinfo=UTC),
+    )
+    ExternalId.objects.create(title=title, provider='tmdb_movie', external_id='603')
+    return title

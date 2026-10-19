@@ -3,6 +3,7 @@
 from datetime import date, timedelta
 
 from providers.anilist import AniListEdge, AniListMedia, AniListSchedule
+from providers.http import ProviderError
 from providers.tmdb import (
     TmdbEpisode,
     TmdbMovie,
@@ -142,3 +143,13 @@ class FakeAniList:
     def schedule(self, anilist_id):
         self.schedule_calls.append(anilist_id)
         return self.schedules.get(anilist_id, AniListSchedule(upcoming={}, all={}))
+
+
+class FailingProvider:
+    """Stand-in for a provider client whose every method raises ``ProviderError``."""
+
+    def __getattr__(self, name):
+        def fail(*args, **kwargs):
+            raise ProviderError(f'{name}: the provider is down')
+
+        return fail
