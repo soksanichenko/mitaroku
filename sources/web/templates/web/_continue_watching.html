@@ -1,0 +1,38 @@
+{% comment %}
+The "Continue watching" strip. It asks for itself again (`?fragment=continue`)
+whenever the page announces `library-changed`, so it stays in the page even when
+there is nothing to show. A card posts the episode it shows to `title_continue`
+with `hx-swap="none"` (the answer is built for the title page, whose targets are
+absent here) and the page then refreshes the strip. A card whose next episode has
+not aired has no button.
+Context: cards (list of ContinueCard).
+{% endcomment %}{% load i18n web_extras %}
+<section id="continue-watching" class="mt-cw{% if cards %} mt-cw--full{% endif %}"{% if cards %} aria-labelledby="cw-heading"{% endif %} hx-get="{% url 'library' %}?fragment=continue" hx-trigger="library-changed from:body" hx-swap="outerHTML">
+  {% if cards %}
+  <h2 id="cw-heading" class="mt-cw-title">{% trans 'Continue watching' %}<span class="mt-cw-count">{{ cards|length }}</span></h2>
+  <ul class="mt-cw-list">
+    {% for card in cards %}{% with title=card.row.entry.title next=card.row.next %}
+    <li class="mt-cw-card">
+      <a class="mt-cw-img" href="{% url 'title' title.pk %}" aria-hidden="true" tabindex="-1">{% include 'web/components/_poster.html' with title=title variant='thumb' %}</a>
+      <div class="mt-cw-body">
+        <a class="mt-cw-name" href="{% url 'title' title.pk %}">{{ card.name }}</a>
+        {% if card.aired %}
+        <span class="mt-cw-ep">{{ card.code }}{% if card.episode_name %} · {{ card.episode_name }}{% endif %}</span>
+        <span class="mt-cw-when">{% if card.today %}{% trans 'Aired today' %}{% else %}{% blocktrans trimmed with date=next.air_date|date:'M j' %}Aired {{ date }}{% endblocktrans %}{% endif %}</span>
+        {% else %}
+        <span class="mt-cw-ep">{% if next.air_date %}{% blocktrans trimmed with code=card.code date=next.air_date|date:'M j' %}Next: {{ code }} · {{ date }}{% endblocktrans %}{% else %}{% blocktrans trimmed with code=card.code %}Next: {{ code }} · date not announced{% endblocktrans %}{% endif %}</span>
+        {% endif %}
+        {% blocktrans trimmed asvar progress_label with name=card.name watched=card.row.watched total=card.row.total %}{{ name }}: {{ watched }} of {{ total }} episodes watched{% endblocktrans %}
+        {% include 'web/components/_progress.html' with watched=card.row.watched total=card.row.total label=progress_label %}
+      </div>
+      {% if card.aired %}
+      {% blocktrans trimmed asvar mark_label with code=card.code name=card.name %}Mark {{ code }} of {{ name }} as watched{% endblocktrans %}
+      <button type="button" id="cw-btn-{{ title.pk }}" class="mt-cw-check mt-touch" hx-post="{% url 'title_continue' title.pk %}" hx-vals='{"episode": "{{ next.pk }}"}' hx-swap="none" hx-sync="this:drop" aria-label="{{ mark_label }}" title="{{ mark_label }}">
+        <span class="mt-cw-circle"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span>
+      </button>
+      {% endif %}
+    </li>
+    {% endwith %}{% endfor %}
+  </ul>
+  {% endif %}
+</section>

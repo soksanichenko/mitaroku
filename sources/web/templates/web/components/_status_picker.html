@@ -12,6 +12,8 @@ Variables:
   confirm_remove  optional text of the confirmation asked before "Remove from library"
   target  optional hx-target for the response (default: this picker itself);
           the response replaces the target (hx-swap="outerHTML")
+  swap    optional hx-swap; "none" for a page that ignores the response and refreshes
+          itself afterwards (the library)
 {% endcomment %}{% load i18n web_extras %}{% if title %}{% title_name title as name %}{% elif display_name %}{% firstof display_name as name %}{% else %}{% trans 'Untitled' as name %}{% endif %}{% status_options as options %}
 <div class="mt-picker" x-data="{ open: false }" @keydown.escape="open = false; $refs.trigger.focus()" @click.outside="open = false">
   {% for field, value in fields.items %}<input type="hidden" name="{{ field }}" value="{{ value }}">{% endfor %}
@@ -35,14 +37,14 @@ Variables:
   <div class="mt-picker-menu{% if align == 'right' %} mt-picker-menu--right{% endif %}" role="menu" aria-label="{% if entry %}{% trans 'Change status' %}{% else %}{% trans 'Add with status' %}{% endif %}" x-show="open" x-cloak>
     {% for value, label in options %}
     <button type="button" role="menuitemradio" class="mt-picker-item mt-touch" aria-checked="{% if entry.status == value %}true{% else %}false{% endif %}"
-            hx-post="{{ action }}" hx-vals='{"status": "{{ value }}"}' hx-include="closest .mt-picker" hx-target="{{ target|default:'closest .mt-picker' }}" hx-swap="outerHTML" @click="open = false">
+            hx-post="{{ action }}" hx-vals='{"status": "{{ value }}"}' hx-include="closest .mt-picker" hx-target="{{ target|default:'closest .mt-picker' }}" hx-swap="{{ swap|default:'outerHTML' }}" @click="open = false">
       <span class="mt-picker-mark">{% if entry.status == value %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>{% endif %}</span>{{ label }}
     </button>
     {% endfor %}
     {% if entry %}
     <hr class="mt-picker-sep">
     <button type="button" role="menuitem" class="mt-picker-item mt-picker-item--remove mt-touch"{% if confirm_remove %} hx-confirm="{{ confirm_remove }}"{% endif %}
-            hx-post="{{ action }}" hx-vals='{"status": "remove"}' hx-include="closest .mt-picker" hx-target="{{ target|default:'closest .mt-picker' }}" hx-swap="outerHTML" @click="open = false">{% trans 'Remove from library' %}</button>
+            hx-post="{{ action }}" hx-vals='{"status": "remove"}' hx-include="closest .mt-picker" hx-target="{{ target|default:'closest .mt-picker' }}" hx-swap="{{ swap|default:'outerHTML' }}" @click="open = false">{% trans 'Remove from library' %}</button>
     {% endif %}
   </div>
 </div>

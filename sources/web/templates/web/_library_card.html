@@ -1,0 +1,26 @@
+{% comment %}
+A title in the grid: poster, name, progress and what comes next, status picker.
+The picker posts to the title page's status action and ignores the answer (swap
+none); the page refreshes itself when the post is done.
+Context: item (web.views.library.Item), remove_text.
+{% endcomment %}{% load i18n web_extras %}{% with entry=item.row.entry title=item.row.entry.title %}
+<article class="mt-lcard">
+  <a class="mt-lcard-link" href="{% url 'title' title.pk %}">
+    <span class="mt-lcard-img">
+      {% include 'web/components/_poster.html' with title=title %}
+      {% with airing=title.status|airing_label %}{% if airing and title.kind != 'movie' %}<span class="mt-lcard-airing">{{ airing }}</span>{% endif %}{% endwith %}
+    </span>
+    <span class="mt-lcard-text">
+      <span class="mt-lcard-name">{{ item.name }}</span>
+      <span class="mt-lcard-meta">{% if title.release_date %}{{ title.release_date|date:'Y' }} · {% endif %}{{ title.kind|kind_label }}</span>
+    </span>
+  </a>
+  {% if title.kind != 'movie' %}
+  {% blocktrans trimmed asvar progress_label with name=item.name watched=item.row.watched total=item.row.total %}{{ name }}: {{ watched }} of {{ total }} episodes watched{% endblocktrans %}
+  {% include 'web/components/_progress.html' with watched=item.row.watched total=item.row.total label=progress_label %}
+  {% endif %}
+  <span class="mt-lcard-next">{% include 'web/_library_next.html' %}</span>
+  {% url 'title_status' title.pk as status_url %}
+  {% include 'web/components/_status_picker.html' with title=title entry=entry action=status_url swap='none' align='right' confirm_remove=remove_text %}
+</article>
+{% endwith %}

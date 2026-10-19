@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-19 19:39+0000\n"
+"POT-Creation-Date: 2026-10-19 20:13+0000\n"
 "Language: ru\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
@@ -69,6 +69,28 @@ msgstr "Далее: %(code)s · дата не объявлена"
 
 msgid "You're all caught up"
 msgstr "Вы всё посмотрели"
+
+msgid "Continue watching"
+msgstr "Продолжить просмотр"
+
+msgid "Aired today"
+msgstr "Вышла сегодня"
+
+#, python-format
+msgid "Aired %(date)s"
+msgstr "Вышла %(date)s"
+
+#, python-format
+msgid "Next: %(code)s · %(date)s"
+msgstr "Далее: %(code)s · %(date)s"
+
+#, python-format
+msgid "%(name)s: %(watched)s of %(total)s episodes watched"
+msgstr "%(name)s: просмотрено серий — %(watched)s из %(total)s"
+
+#, python-format
+msgid "Mark %(code)s of %(name)s as watched"
+msgstr "Отметить просмотренной: %(code)s, %(name)s"
 
 #, python-format
 msgid "Mark as unwatched: %(code)s · %(name)s"
@@ -158,6 +180,27 @@ msgstr "Совет: через меню можно отметить всё до 
 msgid "Dismiss the tip"
 msgstr "Скрыть совет"
 
+msgid "Show more"
+msgstr "Показать ещё"
+
+#, python-format
+msgid "%(minutes)s min"
+msgstr "%(minutes)s мин"
+
+#, python-format
+msgid "%(code)s available"
+msgstr "%(code)s доступна"
+
+#, python-format
+msgid "Next %(code)s · %(date)s"
+msgstr "Далее %(code)s · %(date)s"
+
+msgid "Next: date not announced"
+msgstr "Далее: дата не объявлена"
+
+msgid "No upcoming episodes"
+msgstr "Ближайших серий нет"
+
 msgid "Your library"
 msgstr "Ваша библиотека"
 
@@ -188,6 +231,61 @@ msgstr "Сохранить заметку"
 
 msgid "Add this title to your library to rate it and keep a private note."
 msgstr "Добавьте тайтл в библиотеку, чтобы оценить его и оставить личную заметку."
+
+#, python-format
+msgid "%(count)s title"
+msgid_plural "%(count)s titles"
+msgstr[0] "%(count)s название"
+msgstr[1] "%(count)s названия"
+msgstr[2] "%(count)s названий"
+
+msgid "Your library is empty"
+msgstr "Ваша библиотека пуста"
+
+msgid "Add the shows, anime and movies you watch. mitaroku tracks your progress and tells you when new episodes air."
+msgstr "Добавляйте сериалы, аниме и фильмы, которые смотрите. mitaroku следит за вашим прогрессом и сообщает, когда выходят новые серии."
+
+msgid "Find a title"
+msgstr "Найти тайтл"
+
+msgid "Search TMDB and AniList from the search bar."
+msgstr "Ищите в TMDB и AniList через строку поиска."
+
+msgid "Pick a status"
+msgstr "Выберите статус"
+
+msgid "Watching, Plan to watch, Completed or Dropped."
+msgstr "Смотрю, Буду смотреть, Просмотрено или Брошено."
+
+msgid "Check off episodes"
+msgstr "Отмечайте серии"
+
+msgid "Your next episode appears under Continue watching."
+msgstr "Следующая серия появится в разделе «Продолжить просмотр»."
+
+msgid "No titles match"
+msgstr "Ничего не найдено"
+
+msgid "Try another status or clear the search."
+msgstr "Попробуйте другой статус или очистите поиск."
+
+msgid "Clear filters"
+msgstr "Сбросить фильтры"
+
+msgid "Title"
+msgstr "Название"
+
+msgid "Type"
+msgstr "Тип"
+
+msgid "Progress"
+msgstr "Прогресс"
+
+msgid "Next"
+msgstr "Далее"
+
+msgid "Status"
+msgstr "Статус"
 
 msgid "Watched"
 msgstr "Просмотрено"
@@ -266,10 +364,6 @@ msgstr "Не удалось загрузить тайтл"
 msgid "The metadata providers haven't answered yet. Nothing was lost. Try again in a moment."
 msgstr "Источники метаданных пока не ответили. Ничего не потеряно. Попробуйте ещё раз чуть позже."
 
-#, python-format
-msgid "%(minutes)s min"
-msgstr "%(minutes)s мин"
-
 msgid "Skip to content"
 msgstr "Перейти к содержимому"
 
@@ -322,8 +416,32 @@ msgstr "Добавить со статусом"
 msgid "Remove from library"
 msgstr "Удалить из библиотеки"
 
-msgid "Your titles will appear here."
-msgstr "Здесь появятся ваши тайтлы."
+msgid "Couldn’t load your library"
+msgstr "Не удалось загрузить библиотеку"
+
+msgid "All titles"
+msgstr "Все тайтлы"
+
+msgid "Search in library"
+msgstr "Искать в библиотеке"
+
+msgid "Sort"
+msgstr "Сортировка"
+
+msgid "View"
+msgstr "Вид"
+
+msgid "Grid view"
+msgstr "Вид сеткой"
+
+msgid "List view"
+msgstr "Вид списком"
+
+msgid "Apply filters"
+msgstr "Применить фильтры"
+
+msgid "Loading your library…"
+msgstr "Загружаем библиотеку…"
 
 msgid "Search and add"
 msgstr "Поиск и добавление"
@@ -370,11 +488,26 @@ msgstr "Завершён"
 msgid "Canceled"
 msgstr "Отменён"
 
+msgid "All"
+msgstr "Все"
+
 msgid "Shows"
 msgstr "Сериалы"
 
 msgid "Movies"
 msgstr "Фильмы"
+
+msgid "All statuses"
+msgstr "Все статусы"
+
+msgid "Recently watched"
+msgstr "Недавно просмотренные"
+
+msgid "Rating"
+msgstr "Рейтинг"
+
+msgid "Next episode date"
+msgstr "Дата следующей серии"
 
 msgid "This took too long. Try again."
 msgstr "Это заняло слишком много времени. Попробуйте ещё раз."
@@ -421,6 +554,9 @@ msgstr "Список серий пока неизвестен"
 
 msgid "No episodes yet"
 msgstr "Серий пока нет"
+
+#~ msgid "Your titles will appear here."
+#~ msgstr "Здесь появятся ваши тайтлы."
 
 #~ msgid "Not watched"
 #~ msgstr "Не просмотрено"
