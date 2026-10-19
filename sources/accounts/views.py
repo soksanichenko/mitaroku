@@ -1,6 +1,7 @@
 """Login, logout and language views."""
 
 from typing import Any
+from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_not_required
@@ -34,14 +35,23 @@ def set_language(request: HttpRequest) -> HttpResponseRedirect:
     The language goes to the profile for signed-in users and to a cookie for
     everyone, so the login page honours it too.
     """
-    code = request.POST.get('language', '')
-    target = request.POST.get('next', '/')
-    if not url_has_allowed_host_and_scheme(
-        target, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    requested = request.POST.get('language', '')
+    # The cookie and the profile get the value from our own list, never the input.
+    code = next((known for known, _ in settings.LANGUAGES if known == requested), None)
+    target = request.POST.get('next', '/').replace('\\', '')
+    parsed = urlsplit(target)
+    if (
+        parsed.scheme
+        or parsed.netloc
+        or not url_has_allowed_host_and_scheme(
+            target,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        )
     ):
         target = '/'
     response = HttpResponseRedirect(target)
-    if code in dict(settings.LANGUAGES):
+    if code is not None:
         if request.user.is_authenticated:
             request.user.profile.interface_language = code
             request.user.profile.save(update_fields=['interface_language'])

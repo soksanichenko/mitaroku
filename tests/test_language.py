@@ -1,3 +1,5 @@
+from urllib.parse import urlsplit
+
 import pytest
 from django.contrib.auth import get_user_model
 
@@ -41,6 +43,26 @@ def test_set_language_rejects_open_redirect(client, portal_headers):
         **portal_headers,
     )
     assert response['Location'] == '/'
+
+
+@pytest.mark.parametrize(
+    'target',
+    [
+        '//evil.example/',
+        '/\\evil.example/',
+        'javascript:alert(1)',
+        'https:evil.example',
+    ],
+)
+def test_set_language_rejects_other_redirect_tricks(client, portal_headers, target):
+    client.get('/library/', **portal_headers)
+    response = client.post(
+        '/language/', {'language': 'ru', 'next': target}, **portal_headers
+    )
+    location = urlsplit(response['Location'])
+    # Whatever is left stays on this site: a path, no host, no scheme.
+    assert not location.scheme and not location.netloc
+    assert not response['Location'].startswith('//')
 
 
 def test_set_language_requires_post(client, portal_headers):
