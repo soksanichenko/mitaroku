@@ -15,6 +15,7 @@ from catalog.sync import Clients, sync_title
 from fakes import FakeAniList
 from providers.clients import connect_redis
 from providers.http import ProviderError
+from redis.exceptions import ConnectionError as RedisConnectionError
 from tracking.models import LibraryEntry
 
 pytestmark = pytest.mark.django_db
@@ -202,3 +203,48 @@ def test_gc_keeps_english_and_languages_in_use(alice):
     assert catalog_tasks.gc_translations.call_local() == 2
     assert set(title.translations.values_list('language', flat=True)) == {'en', 'ru'}
     assert set(episode.translations.values_list('language', flat=True)) == {'en', 'ru'}
+
+
+def test_a_title_watched_by_one_user_and_planned_by_another_ranks_as_watching(
+    alice, bob, queued, monkeypatch
+):
+    monkeypatch.setattr(catalog_tasks, 'DUE_BATCH', 1)
+    planned_only = make_title(due=True, library_status='planned', user=alice)
+    mixed = make_title(due=True, library_status='planned', user=alice)
+    LibraryEntry.objects.create(user=bob, title=mixed, status='watching')
+    catalog_tasks.sync_due_titles.call_local()
+    assert [pk for pk, _ in queued] == [mixed.pk]
+    assert not leased(planned_only.pk)
+
+
+def refuse(*args, **kwargs):
+    raise RedisConnectionError('down')
+
+
+@pytest.fixture
+def enqueue_calls(monkeypatch):
+    """Record the sync and language tasks the callers queue."""
+    calls = []
+    monkeypatch.setattr(catalog_tasks, 'sync_title_task', calls.append)
+    monkeypatch.setattr(
+        catalog_tasks, 'ensure_language_task', lambda *args: calls.append(args)
+    )
+    return calls
+
+
+def test_a_redis_outage_does_not_break_the_enqueue_helpers(monkeypatch, enqueue_calls):
+    monkeypatch.setattr(catalog_tasks, 'connect_redis', refuse)
+    title = make_title(synced=False)
+    assert catalog_tasks.enqueue_sync_once(title) is False
+    assert catalog_tasks.enqueue_language_once(title, 'ru') is False
+    assert enqueue_calls == []
+
+
+def test_a_failing_enqueue_returns_false_and_frees_the_claim(monkeypatch):
+    title = make_title(synced=False)
+    monkeypatch.setattr(catalog_tasks, 'sync_title_task', refuse)
+    monkeypatch.setattr(catalog_tasks, 'ensure_language_task', refuse)
+    assert catalog_tasks.enqueue_sync_once(title) is False
+    assert catalog_tasks.claim(f'sync-queued:{title.pk}', 300) is True
+    assert catalog_tasks.enqueue_language_once(title, 'ru') is False
+    assert catalog_tasks.claim(f'language-queued:{title.pk}:ru', 3600) is True

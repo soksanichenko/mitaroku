@@ -1,6 +1,7 @@
 """Background tasks that keep the catalog fresh."""
 
 import logging
+from collections.abc import Callable
 from datetime import timedelta
 
 from accounts.models import Profile
@@ -19,6 +20,7 @@ from huey import crontab
 from huey.contrib.djhuey import db_periodic_task, db_task, lock_task
 from huey.exceptions import TaskLockedException
 from providers.clients import connect_redis
+from redis.exceptions import RedisError
 from tracking.models import LibraryEntry
 
 logger = logging.getLogger(__name__)
@@ -82,6 +84,40 @@ def claim(key: str, ttl: int) -> bool:
     return bool(connect_redis().set(f'{CLAIM_PREFIX}{key}', '1', nx=True, ex=ttl))
 
 
+def queue_once(key: str, ttl: int, title: Title, enqueue: Callable[[], object]) -> bool:
+    """Claim ``key`` and run ``enqueue``; never raise because Redis is down.
+
+    Page views call this inline, so a Redis outage must cost a background job,
+    not the page. A claim whose enqueue failed is released, so the next view
+    can retry.
+
+    Args:
+        key: The claim key.
+        ttl: How long the claim holds, in seconds.
+        title: The title, for the log line.
+        enqueue: Queues the job.
+
+    Returns:
+        True when the job was queued.
+    """
+    try:
+        if not claim(key, ttl):
+            return False
+    except (RedisError, OSError) as error:
+        logger.warning('Claim %s failed for title %s: %s', key, title.pk, type(error))
+        return False
+    try:
+        enqueue()
+    except (RedisError, OSError) as error:
+        logger.warning('Enqueue %s failed for title %s: %s', key, title.pk, type(error))
+        try:
+            connect_redis().delete(f'{CLAIM_PREFIX}{key}')
+        except (RedisError, OSError):
+            pass  # best effort: the claim expires on its own
+        return False
+    return True
+
+
 def enqueue_sync_once(title: Title) -> bool:
     """Queue a non-forced sync of a never-synced or due title, at most once per window.
 
@@ -92,10 +128,14 @@ def enqueue_sync_once(title: Title) -> bool:
         True when a sync was queued.
     """
     due = title.next_sync_at is None or title.next_sync_at <= timezone.now()
-    if not due or not claim(f'sync-queued:{title.pk}', SYNC_CLAIM_TTL):
+    if not due:
         return False
-    sync_title_task(title.pk)
-    return True
+    return queue_once(
+        f'sync-queued:{title.pk}',
+        SYNC_CLAIM_TTL,
+        title,
+        lambda: sync_title_task(title.pk),
+    )
 
 
 @db_task(retries=2, retry_delay=60)
@@ -135,10 +175,12 @@ def enqueue_language_once(title: Title, language: str) -> bool:
     """
     if language == FALLBACK_LANGUAGE:
         return False
-    if not claim(f'language-queued:{title.pk}:{language}', LANGUAGE_CLAIM_TTL):
-        return False
-    ensure_language_task(title.pk, language)
-    return True
+    return queue_once(
+        f'language-queued:{title.pk}:{language}',
+        LANGUAGE_CLAIM_TTL,
+        title,
+        lambda: ensure_language_task(title.pk, language),
+    )
 
 
 @db_periodic_task(crontab(day_of_week='0', hour='4', minute='30'))
