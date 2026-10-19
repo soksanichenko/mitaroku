@@ -1,0 +1,15 @@
+{% comment %}
+One episode. Context: rv (RowView). DOM: li#ep-<episode pk> holding the number, the
+name, the date line and the check (span#check-ep-<episode pk>).
+{% endcomment %}{% load i18n web_extras %}{% with ep=rv.row.episode %}{% episode_name ep as name %}
+<li class="mt-ep mt-ep--{{ rv.check }}" id="ep-{{ ep.pk }}">
+  <span class="mt-ep-num"><span>{{ rv.code }}</span>{% if rv.code2 %}<span class="mt-ep-num2">{{ rv.code2 }}</span>{% endif %}</span>
+  <div class="mt-ep-body">
+    <span class="mt-ep-name">{% if name %}{{ name }}{% else %}{% blocktrans trimmed with number=ep.number %}Episode {{ number }}{% endblocktrans %}{% endif %}</span>
+    <span class="mt-ep-date">
+      {% if ep.air_date %}{{ ep.air_date|date }}{% if not rv.row.aired %} · <em>{% if rv.days == 1 %}{% trans 'Airs tomorrow' %}{% else %}{% blocktrans trimmed count days=rv.days %}Airs in {{ days }} day{% plural %}Airs in {{ days }} days{% endblocktrans %}{% endif %}</em>{% endif %}{% else %}<em>{% trans 'Date not announced' %}</em>{% endif %}
+    </span>
+  </div>
+  {% include 'web/_episode_check.html' with prefix='ep' scope='episode' object_id=ep.pk state=rv.check %}
+</li>
+{% endwith %}

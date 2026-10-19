@@ -2,11 +2,12 @@
 Poster of a title, 2:3. A tinted placeholder lies under the image, so a missing
 or failing poster still shows a stable colour.
 Variables: title (catalog.Title); variant (optional): "card" (default, with the
-rating badge in the corner) or "thumb" (small, no badge).
+rating badge in the corner), "thumb" (small, no badge) or "hero" (fills its
+container, in colour, no badge: the title page shows the rating beside it).
 The poster turns grayscale until its link is hovered or focused: wrap it in an <a>.
 {% endcomment %}{% load web_extras %}
-<span class="mt-poster{% if variant == 'thumb' %} mt-poster--thumb{% endif %}" style="--mt-hue: {{ title.pk|poster_hue }}">
+<span class="mt-poster{% if variant == 'thumb' %} mt-poster--thumb{% elif variant == 'hero' %} mt-poster--hero{% endif %}" style="--mt-hue: {{ title.pk|poster_hue }}">
   <span class="mt-poster-ph" aria-hidden="true"></span>
   {% if title.poster_url %}<img class="mt-poster-img" src="{{ title.poster_url }}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">{% endif %}
-  {% if variant != 'thumb' and title.rating is not None %}<span class="mt-poster-badge">{% include 'web/components/_rating_badge.html' with size='sm' %}</span>{% endif %}
+  {% if variant != 'thumb' and variant != 'hero' and title.rating is not None %}<span class="mt-poster-badge">{% include 'web/components/_rating_badge.html' with size='sm' %}</span>{% endif %}
 </span>

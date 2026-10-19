@@ -9,6 +9,7 @@ Variables:
   action  URL the choice is POSTed to (fields: status=watching|planned|completed|dropped|remove)
   fields  optional dict of extra hidden inputs sent with the choice
   align   optional "right" to open the menu towards the left edge
+  confirm_remove  optional text of the confirmation asked before "Remove from library"
   target  optional hx-target for the response (default: this picker itself);
           the response replaces the target (hx-swap="outerHTML")
 {% endcomment %}{% load i18n web_extras %}{% if title %}{% title_name title as name %}{% elif display_name %}{% firstof display_name as name %}{% else %}{% trans 'Untitled' as name %}{% endif %}{% status_options as options %}
@@ -40,7 +41,7 @@ Variables:
     {% endfor %}
     {% if entry %}
     <hr class="mt-picker-sep">
-    <button type="button" role="menuitem" class="mt-picker-item mt-picker-item--remove mt-touch"
+    <button type="button" role="menuitem" class="mt-picker-item mt-picker-item--remove mt-touch"{% if confirm_remove %} hx-confirm="{{ confirm_remove }}"{% endif %}
             hx-post="{{ action }}" hx-vals='{"status": "remove"}' hx-include="closest .mt-picker" hx-target="{{ target|default:'closest .mt-picker' }}" hx-swap="outerHTML" @click="open = false">{% trans 'Remove from library' %}</button>
     {% endif %}
   </div>

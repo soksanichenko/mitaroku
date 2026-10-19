@@ -93,3 +93,25 @@ def watch(
         )
         for episode in episodes
     ]
+
+
+def first_episode(title: Title) -> Episode:
+    """Return the first main episode that has aired as of ``TODAY``."""
+    return (
+        Episode.objects.filter(
+            season__title=title, season__is_extra=False, air_date__lte=TODAY
+        )
+        .order_by('season__number', 'number')
+        .first()
+    )
+
+
+def future_episode(title: Title) -> Episode:
+    """Return the first main episode dated after ``TODAY``."""
+    return (
+        Episode.objects.filter(
+            season__title=title, season__is_extra=False, air_date__gt=TODAY
+        )
+        .order_by('season__number', 'number')
+        .first()
+    )

@@ -1,0 +1,35 @@
+{% comment %}
+The user's library panel: status picker, five-star score and private note. It is
+the target of the three actions, which replace it (outerHTML).
+Context: title, entry (LibraryEntry or None); oob_episodes (optional): also send
+the episode list as an out-of-band swap, for actions that change what was watched
+(then also groups, multi, open_ids, chips, progress).
+{% endcomment %}{% load i18n web_extras %}
+<section id="library-panel" class="mt-lib" aria-label="{% trans 'Your library' %}">
+  <div class="mt-lib-status">
+    <h2 class="mt-lib-heading">{% trans 'Your library' %}</h2>
+    {% url 'title_status' title.pk as status_url %}
+    {% trans 'Remove this title from your library? Your watched episodes are kept.' as remove_text %}
+    {% include 'web/components/_status_picker.html' with title=title entry=entry action=status_url target='#library-panel' confirm_remove=remove_text %}
+  </div>
+  {% if entry %}
+  <form class="mt-lib-score" hx-post="{% url 'title_score' title.pk %}" hx-trigger="change" hx-target="#library-panel" hx-swap="outerHTML">
+    <label class="mt-lib-label" for="score-select">{% trans 'My rating' %}</label>
+    <span class="mt-stars" aria-hidden="true">
+      {% for state in entry.score|star_states %}<span class="mt-star mt-star--{{ state }}"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg><svg class="mt-star-fill" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></span>{% endfor %}
+    </span>
+    <select id="score-select" name="score" class="input mt-touch">
+      {% score_choices as choices %}{% for n in choices %}<option value="{{ n }}"{% if n == entry.score %} selected{% endif %}>{% if n == 0 %}{% trans 'Not rated' %}{% else %}{{ n }}/10{% endif %}</option>{% endfor %}
+    </select>
+  </form>
+  <form class="mt-lib-note field" hx-post="{% url 'title_note' title.pk %}" hx-target="#library-panel" hx-swap="outerHTML">
+    <label for="note-text">{% trans 'Private note — only you can see this' %}</label>
+    <textarea id="note-text" name="note" class="input" rows="4" maxlength="5000" placeholder="{% trans 'What stayed with you?' %}">
+{{ entry.note }}</textarea>
+    <button type="submit" class="btn btn-secondary mt-touch">{% trans 'Save note' %}</button>
+  </form>
+  {% else %}
+  <p class="mt-lib-hint mt-muted">{% trans 'Add this title to your library to rate it and keep a private note.' %}</p>
+  {% endif %}
+</section>
+{% if oob_episodes %}{% include 'web/_episodes_section.html' with oob=True %}{% endif %}

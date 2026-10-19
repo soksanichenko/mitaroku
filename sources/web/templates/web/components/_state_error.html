@@ -1,7 +1,7 @@
 {% comment %}
 Error state with an optional retry button.
 Variables: heading, text (optional); retry_url (optional): when set, the button
-GETs it with HTMX; retry_target (optional hx-target, default: this block, which
+requests it with HTMX (GET, or POST with retry_method="post"); retry_target (optional hx-target, default: this block, which
 the response replaces with hx-swap="outerHTML").
 {% endcomment %}{% load i18n %}
 <div class="mt-state mt-state--error" role="alert">
@@ -9,7 +9,7 @@ the response replaces with hx-swap="outerHTML").
   <h2 class="mt-state-title">{{ heading|default:_("Couldn't load this") }}</h2>
   <p class="mt-state-text">{{ text|default:_("The server didn't respond. Nothing was lost. Try again in a moment.") }}</p>
   {% if retry_url %}
-  <button type="button" class="btn btn-secondary mt-touch" hx-get="{{ retry_url }}" hx-target="{{ retry_target|default:'closest .mt-state' }}" hx-swap="outerHTML">
+  <button type="button" class="btn btn-secondary mt-touch" hx-{{ retry_method|default:'get' }}="{{ retry_url }}" hx-target="{{ retry_target|default:'closest .mt-state' }}" hx-swap="outerHTML">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path></svg>{% trans 'Try again' %}
   </button>
   {% endif %}

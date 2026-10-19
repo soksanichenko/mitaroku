@@ -39,6 +39,8 @@ CLAIM_PREFIX = 'mitaroku:claims:'
 SYNC_CLAIM_TTL = 300
 # A language job is not queued again for the same title and language this soon.
 LANGUAGE_CLAIM_TTL = 3600
+# "Try again" on a title page forces a sync at most this often per title.
+REFRESH_CLAIM_TTL = 60
 
 
 @db_task(retries=3, retry_delay=300)
@@ -82,6 +84,21 @@ def claim(key: str, ttl: int) -> bool:
         True only for the first caller within the window.
     """
     return bool(connect_redis().set(f'{CLAIM_PREFIX}{key}', '1', nx=True, ex=ttl))
+
+
+def claimed(key: str) -> bool:
+    """Return whether ``key`` is claimed right now; False when Redis is down.
+
+    Args:
+        key: A key given to ``claim``.
+
+    Returns:
+        True while the claim holds.
+    """
+    try:
+        return bool(connect_redis().exists(f'{CLAIM_PREFIX}{key}'))
+    except (RedisError, OSError):
+        return False
 
 
 def queue_once(key: str, ttl: int, title: Title, enqueue: Callable[[], object]) -> bool:
@@ -135,6 +152,28 @@ def enqueue_sync_once(title: Title) -> bool:
         SYNC_CLAIM_TTL,
         title,
         lambda: sync_title_task(title.pk),
+    )
+
+
+def refresh_key(title: Title) -> str:
+    """Return the claim key of a forced refresh of ``title``."""
+    return f'refresh-queued:{title.pk}'
+
+
+def enqueue_refresh_once(title: Title) -> bool:
+    """Queue a forced sync of ``title``, at most once a minute.
+
+    Args:
+        title: The title whose "Try again" button was pressed.
+
+    Returns:
+        True when a sync was queued.
+    """
+    return queue_once(
+        refresh_key(title),
+        REFRESH_CLAIM_TTL,
+        title,
+        lambda: sync_title_task(title.pk, True),
     )
 
 

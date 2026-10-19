@@ -25,6 +25,20 @@ STATUS_LABELS = {
 
 RATING_SOURCES = {'tmdb': 'TMDB', 'anilist': 'AniList'}
 
+KIND_LABELS = {
+    Title.Kind.TV: _('Show'),
+    Title.Kind.ANIME: _('Anime'),
+    Title.Kind.MOVIE: _('Movie'),
+}
+
+# "Unknown" has no label: a tag that says nothing is not shown.
+AIRING_LABELS = {
+    Title.Status.UPCOMING: _('Upcoming'),
+    Title.Status.AIRING: _('Airing'),
+    Title.Status.ENDED: _('Ended'),
+    Title.Status.CANCELED: _('Canceled'),
+}
+
 
 @register.filter
 def initials(user: AbstractUser) -> str:
@@ -102,3 +116,34 @@ def rating_source_name(source: str) -> str:
 def status_options() -> list[tuple[str, str]]:
     """Return ``(value, label)`` for every status, in display order."""
     return [(value, str(label)) for value, label in STATUS_LABELS.items()]
+
+
+@register.simple_tag
+def score_choices() -> list[int]:
+    """Return the scores a user can give: 0 (not rated) to 10."""
+    return list(range(11))
+
+
+@register.filter
+def kind_label(kind: str) -> str:
+    """Return the translated label of a ``Title.Kind`` value."""
+    return str(KIND_LABELS.get(kind, kind))
+
+
+@register.filter
+def airing_label(status: str) -> str:
+    """Return the translated label of a ``Title.Status`` value, or an empty string."""
+    return str(AIRING_LABELS.get(status, ''))
+
+
+@register.filter
+def star_states(score: int) -> list[str]:
+    """Return ``full``, ``half`` or ``empty`` for each of the five stars of a score.
+
+    A score is 0 to 10 and every star is worth two points, so an odd score ends
+    in a half star.
+    """
+    return [
+        'full' if score >= 2 * n else 'half' if score == 2 * n - 1 else 'empty'
+        for n in range(1, 6)
+    ]

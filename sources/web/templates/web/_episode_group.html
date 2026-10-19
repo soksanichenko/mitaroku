@@ -1,0 +1,23 @@
+{% comment %}
+One season (or franchise entry) of the episode list. Context: g (GroupView), multi.
+DOM: section#grp-<season pk>; with several groups a header carries the toggle
+and the group check (span#check-grp-<season pk>).
+{% endcomment %}{% load i18n web_extras %}{% with season=g.group.season %}
+<section class="mt-grp" id="grp-{{ season.pk }}"{% if multi %} aria-labelledby="grp-{{ season.pk }}-name"{% endif %}>
+  {% if multi %}
+  <div class="mt-gh">
+    <button type="button" class="mt-gh-toggle mt-touch" aria-controls="grp-{{ season.pk }}-rows" aria-expanded="{% if g.open %}true{% else %}false{% endif %}" :aria-expanded="has({{ season.pk }})" @click="toggle({{ season.pk }})">
+      <span id="grp-{{ season.pk }}-name" class="mt-gh-name">{{ g.label }}</span>
+      {% if g.tag %}<span class="mt-tag">{{ g.tag }}</span>{% endif %}
+      {% if g.group.total %}<span class="mt-gh-count">{{ g.group.watched }}/{{ g.group.total }}</span>{% endif %}
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+    </button>
+    {% if g.rows %}{% include 'web/_episode_check.html' with prefix='grp' scope='season' object_id=season.pk state=g.check %}{% endif %}
+  </div>
+  {% endif %}
+  <div id="grp-{{ season.pk }}-rows"{% if multi %} x-show="has({{ season.pk }})"{% if not g.open %} x-cloak{% endif %}{% endif %}>
+    {% if g.note %}<p class="mt-ep-note">{{ g.note }}</p>{% endif %}
+    {% if g.rows %}<ul class="mt-eps">{% for rv in g.rows %}{% include 'web/_episode_row.html' %}{% endfor %}</ul>{% endif %}
+  </div>
+</section>
+{% endwith %}

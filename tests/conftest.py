@@ -1,7 +1,7 @@
 """Shared fixtures."""
 
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 import httpx
 import pytest
@@ -9,6 +9,7 @@ from accounts.models import User
 from catalog.models import ExternalId, Title
 from catalog.sync.common import Clients
 from django.core.management import call_command
+from django.utils import timezone
 from fakes import (
     FailingProvider,
     FakeAniList,
@@ -22,6 +23,7 @@ from fakes import (
 from providers.clients import connect_redis
 from providers.http import ProviderHttp
 from providers.search import SearchResults
+from tracking_helpers import TODAY, make_show
 
 PORTAL = {
     'HTTP_X_DISCORD_USER_ID': '1001',
@@ -193,3 +195,64 @@ def patched_search(monkeypatch) -> SearchRecorder:
         'web.views.search.shared_clients', lambda: Clients(None, FakeAniList())
     )
     return recorder
+
+
+@pytest.fixture
+def today(monkeypatch) -> date:
+    """Freeze ``timezone.localdate()`` at ``tracking_helpers.TODAY``."""
+    monkeypatch.setattr(timezone, 'localdate', lambda *args, **kwargs: TODAY)
+    return TODAY
+
+
+@pytest.fixture
+def synced_show(db, today) -> Title:
+    """Return ``make_show()`` as a synced title, so a page view queues no sync.
+
+    It has main season 1 with five episodes (three aired, one dated a week after
+    ``TODAY``, one undated) and an extra season 2 with one aired episode.
+    """
+    title, _, _ = make_show()
+    now = timezone.now()
+    Title.objects.filter(pk=title.pk).update(
+        synced_at=now, next_sync_at=now + timedelta(hours=1)
+    )
+    title.refresh_from_db()
+    return title
+
+
+class QueuedJobs:
+    """Recorders of the background jobs a page view queues.
+
+    Attributes:
+        sync: ``(title_id, force)`` of every queued sync.
+        language: ``(title_id, language)`` of every queued language job.
+    """
+
+    def __init__(self) -> None:
+        self.sync: list[tuple[int, bool]] = []
+        self.language: list[tuple[int, str]] = []
+
+
+@pytest.fixture
+def queued_language(monkeypatch, redis_client) -> QueuedJobs:
+    """Replace the sync and language jobs with recorders and free the claims.
+
+    The claim keys live in the test Redis, so they are deleted before and after.
+    """
+    jobs = QueuedJobs()
+
+    def clear() -> None:
+        for key in redis_client.scan_iter('mitaroku:claims:*'):
+            redis_client.delete(key)
+
+    clear()
+    monkeypatch.setattr(
+        'catalog.tasks.sync_title_task',
+        lambda title_id, force=False: jobs.sync.append((title_id, force)),
+    )
+    monkeypatch.setattr(
+        'catalog.tasks.ensure_language_task',
+        lambda title_id, language: jobs.language.append((title_id, language)),
+    )
+    yield jobs
+    clear()

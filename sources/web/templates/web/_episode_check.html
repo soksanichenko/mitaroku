@@ -1,0 +1,9 @@
+{% comment %}
+The watched mark of an episode or a season. Here it is only an icon; the tracking
+actions replace its content with a control and keep this wrapper.
+Contract (stable): span#check-<prefix>-<object_id> with class "mt-check
+mt-check--<state>", data-scope ("episode" or "season") and data-id (the pk).
+Variables: prefix ("ep" or "grp"), scope, object_id, state: watched, partly (a
+season with some aired episodes watched), unwatched or unaired (not on air yet).
+{% endcomment %}{% load i18n %}{% if state == 'watched' %}{% trans 'Watched' as label %}{% elif state == 'partly' %}{% trans 'Partly watched' as label %}{% elif state == 'unaired' %}{% trans 'Not aired yet' as label %}{% else %}{% trans 'Not watched' as label %}{% endif %}
+<span class="mt-check mt-check--{{ state }}" id="check-{{ prefix }}-{{ object_id }}" data-scope="{{ scope }}" data-id="{{ object_id }}" role="img" aria-label="{{ label }}">{% if state == 'watched' %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>{% endif %}</span>

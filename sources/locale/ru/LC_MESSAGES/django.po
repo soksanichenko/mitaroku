@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-19 18:23+0000\n"
+"POT-Creation-Date: 2026-10-19 19:10+0000\n"
 "Language: ru\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
@@ -51,6 +51,44 @@ msgstr "Скоро"
 msgid "Search"
 msgstr "Поиск"
 
+msgid "Watched"
+msgstr "Просмотрено"
+
+msgid "Partly watched"
+msgstr "Просмотрено частично"
+
+msgid "Not aired yet"
+msgstr "Ещё не вышло"
+
+msgid "Not watched"
+msgstr "Не просмотрено"
+
+#, python-format
+msgid "Episode %(number)s"
+msgstr "Серия %(number)s"
+
+msgid "Airs tomorrow"
+msgstr "Эфир завтра"
+
+#, python-format
+msgid "Airs in %(days)s day"
+msgid_plural "Airs in %(days)s days"
+msgstr[0] "Эфир через %(days)s день"
+msgstr[1] "Эфир через %(days)s дня"
+msgstr[2] "Эфир через %(days)s дней"
+
+msgid "Date not announced"
+msgstr "Дата не объявлена"
+
+msgid "Episodes"
+msgstr "Серии"
+
+msgid "Entries of this franchise"
+msgstr "Части франшизы"
+
+msgid "No episodes announced yet"
+msgstr "Серии пока не объявлены"
+
 msgid "mitaroku, go to library"
 msgstr "mitaroku, перейти в библиотеку"
 
@@ -68,6 +106,30 @@ msgstr "Язык"
 
 msgid "Log out"
 msgstr "Выйти"
+
+msgid "Your library"
+msgstr "Ваша библиотека"
+
+msgid "Remove this title from your library? Your watched episodes are kept."
+msgstr "Убрать тайтл из библиотеки? Отметки о просмотре сохранятся."
+
+msgid "My rating"
+msgstr "Моя оценка"
+
+msgid "Not rated"
+msgstr "Не оценено"
+
+msgid "Private note — only you can see this"
+msgstr "Личная заметка — её видите только вы"
+
+msgid "What stayed with you?"
+msgstr "Что осталось в памяти?"
+
+msgid "Save note"
+msgstr "Сохранить заметку"
+
+msgid "Add this title to your library to rate it and keep a private note."
+msgstr "Добавьте тайтл в библиотеку, чтобы оценить его и оставить личную заметку."
 
 msgid "Type a title above to search shows, anime and movies."
 msgstr "Введите название выше, чтобы искать сериалы, аниме и фильмы."
@@ -112,6 +174,31 @@ msgstr "Включить тёмную тему"
 
 msgid "Switch to light theme"
 msgstr "Включить светлую тему"
+
+msgid "Description"
+msgstr "Описание"
+
+msgid "… more"
+msgstr "… ещё"
+
+msgid "Less"
+msgstr "Свернуть"
+
+msgid "There is no description yet."
+msgstr "Описания пока нет."
+
+msgid "Fetching the details of this title…"
+msgstr "Загружаем данные об этом тайтле…"
+
+msgid "We couldn't load this title"
+msgstr "Не удалось загрузить тайтл"
+
+msgid "The metadata providers haven't answered yet. Nothing was lost. Try again in a moment."
+msgstr "Источники метаданных пока не ответили. Ничего не потеряно. Попробуйте ещё раз чуть позже."
+
+#, python-format
+msgid "%(minutes)s min"
+msgstr "%(minutes)s мин"
 
 msgid "Skip to content"
 msgstr "Перейти к содержимому"
@@ -195,20 +282,29 @@ msgstr "Просмотрено"
 msgid "Dropped"
 msgstr "Брошено"
 
-msgid "Shows"
-msgstr "Сериалы"
+msgid "Show"
+msgstr "Сериал"
 
 msgid "Anime"
 msgstr "Аниме"
 
-msgid "Movies"
-msgstr "Фильмы"
-
-msgid "Show"
-msgstr "Сериал"
-
 msgid "Movie"
 msgstr "Фильм"
+
+msgid "Airing"
+msgstr "Выходит"
+
+msgid "Ended"
+msgstr "Завершён"
+
+msgid "Canceled"
+msgstr "Отменён"
+
+msgid "Shows"
+msgstr "Сериалы"
+
+msgid "Movies"
+msgstr "Фильмы"
 
 msgid "This took too long. Try again."
 msgstr "Это заняло слишком много времени. Попробуйте ещё раз."
@@ -222,3 +318,34 @@ msgstr "Что-то пошло не так. Попробуйте ещё раз."
 #, python-format
 msgid "%(count)s titles are already being added. Try again soon."
 msgstr "Уже добавляется тайтлов: %(count)s. Попробуйте чуть позже."
+
+msgid "OVA"
+msgstr "OVA"
+
+msgid "ONA"
+msgstr "ONA"
+
+msgid "Special"
+msgstr "Спецвыпуск"
+
+#, python-format
+msgid "SP %(number)s"
+msgstr "Спец. %(number)s"
+
+#, python-format
+msgid "OVA %(number)s"
+msgstr "OVA %(number)s"
+
+msgid "Specials"
+msgstr "Спецвыпуски"
+
+#, python-format
+msgid "Season %(number)s"
+msgstr "Сезон %(number)s"
+
+msgid "Episode titles are not available for this entry"
+msgstr "Названия серий для этой записи недоступны"
+
+msgid "Episodes are not known yet"
+
+msgstr "Список серий пока неизвестен"
