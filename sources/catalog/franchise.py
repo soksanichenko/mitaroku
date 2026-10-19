@@ -44,6 +44,13 @@ class Franchise:
         except the detached ones."""
         return self.main + [m for m in self.extras if m.anilist_id not in self.detached]
 
+    @property
+    def anchors(self) -> list[AniListMedia]:
+        """The entries that identify this franchise: the main chain and the
+        compilations. Side stories and other extras can be shared with an
+        alternative version of the franchise, so they never decide a match."""
+        return self.main + [m for m in self.extras if is_compilation(m)]
+
 
 def is_compilation(media: AniListMedia) -> bool:
     """Return True for a MOVIE or SPECIAL that names a PARENT anime entry."""

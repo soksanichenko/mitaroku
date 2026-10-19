@@ -634,3 +634,15 @@ def test_a_shrinking_allocation_releases_the_titles_of_the_next_part():
     # The stale rows must not push part 2 off its place in the absolute numbering.
     assert not stale.exclude(absolute_number=None).exists()
     assert second.episodes.get(number=1).absolute_number == 13
+
+
+def test_alternative_versions_sharing_a_side_story_are_separate_titles():
+    anilist = FakeAniList(
+        media(1, [edge('ALTERNATIVE', 5), edge('SIDE_STORY', 9, fmt='OVA')], year=2000),
+        media(5, [edge('ALTERNATIVE', 1), edge('SIDE_STORY', 9, fmt='OVA')], year=2010),
+        media(9, [edge('PARENT', 1), edge('PARENT', 5)], fmt='OVA', year=2011),
+    )
+    clients_ = Clients(None, anilist)
+    first, _ = add_hit(1, clients_)
+    second, created = add_hit(5, clients_)
+    assert created is True and second.pk != first.pk

@@ -190,3 +190,8 @@ def test_a_franchise_without_loose_relations_owns_everything():
     franchise = load_franchise(fetch, 1)
     assert franchise.detached == set()
     assert ids(franchise.own) == [1, 4]
+
+
+def test_equal_dates_sort_by_anilist_id():
+    first, second = media(20, year=2020), media(10, year=2020)
+    assert sorted([first, second], key=lambda m: m.sort_key)[0].anilist_id == 10
