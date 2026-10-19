@@ -1,0 +1,53 @@
+{% load i18n web_extras %}
+<div id="search-results" class="mt-results">
+{% if state == 'idle' %}
+  <p class="mt-search-hint">{% trans 'Type a title above to search shows, anime and movies.' %}</p>
+{% elif state == 'typing' %}
+  <p class="mt-search-hint">{% trans 'Type at least 2 characters' %}</p>
+{% elif state == 'error' %}
+  {% trans 'Search is unavailable' as error_heading %}{% trans "TMDB and AniList didn't respond, so we can't search. Titles already in your library still work." as error_text %}
+  {% include 'web/components/_state_error.html' with heading=error_heading text=error_text retry_url=retry_url retry_target='#search-results' %}
+{% elif state == 'none' %}
+  {% if partial %}<p class="mt-search-notice" role="status">{% blocktrans trimmed %}Results may be incomplete: {{ failed_names }} did not respond.{% endblocktrans %}</p>{% endif %}
+  <div class="mt-state mt-state--empty">
+    <h2 class="mt-state-title">{% blocktrans trimmed %}No results for “{{ q }}”{% endblocktrans %}</h2>
+    <p class="mt-state-text">{% trans 'Check the spelling, or try the original title.' %}</p>
+  </div>
+{% else %}
+  <p class="mt-search-count" role="status">{% blocktrans trimmed count count=total %}{{ count }} result for “{{ q }}”{% plural %}{{ count }} results for “{{ q }}”{% endblocktrans %}</p>
+  {% if partial %}<p class="mt-search-notice" role="status">{% blocktrans trimmed %}Results may be incomplete: {{ failed_names }} did not respond.{% endblocktrans %}</p>{% endif %}
+  {% for group in groups %}
+  <section class="mt-group" aria-labelledby="sr-{{ group.kind }}">
+    <h2 id="sr-{{ group.kind }}" class="mt-group-title">{{ group.title }} <span class="mt-group-count">{{ group.count }}</span></h2>
+    <ul class="mt-result-list">
+      {% for row in group.rows %}{% with hit=row.hit %}
+      <li class="mt-result">
+        <div class="mt-result-img">
+          {% if row.title_id %}<a href="{% url 'title' row.title_id %}" aria-hidden="true" tabindex="-1">{% include 'web/components/_poster.html' with title=row.poster variant='thumb' %}</a>{% else %}{% include 'web/components/_poster.html' with title=row.poster variant='thumb' %}{% endif %}
+        </div>
+        <div class="mt-result-body">
+          <div class="mt-result-name">{% if row.title_id %}<a href="{% url 'title' row.title_id %}">{{ hit.title }}</a>{% else %}{{ hit.title }}{% endif %}</div>
+          {% if hit.original_title and hit.original_title != hit.title %}<span class="mt-result-sub">{{ hit.original_title }}</span>{% endif %}
+          <span class="mt-result-sub">{% if hit.year %}{{ hit.year }} · {% endif %}{{ row.kind_label }}</span>
+          {% if hit.overview %}<p class="mt-result-desc">{{ hit.overview }}</p>{% endif %}
+        </div>
+        <div class="mt-result-act">
+          {% if row.entry %}
+          {% with label=row.entry.status|status_label %}
+          <span class="mt-result-status" aria-label="{% blocktrans trimmed %}In your library: {{ label }}{% endblocktrans %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>{{ label }}</span>
+          {% endwith %}
+          {% else %}
+          {% url 'search_add' as add_url %}
+          {% include 'web/components/_status_picker.html' with display_name=hit.title entry=None action=add_url fields=row.fields align='right' %}
+          {% endif %}
+        </div>
+      </li>
+      {% endwith %}{% endfor %}
+    </ul>
+    {% if group.more_url %}
+    <a class="mt-result-more mt-touch" href="{{ group.more_url }}" hx-get="{{ group.more_url }}" hx-target="#search-results" hx-swap="outerHTML" hx-push-url="true">{% blocktrans trimmed with count=group.count %}Show all {{ count }}{% endblocktrans %}</a>
+    {% endif %}
+  </section>
+  {% endfor %}
+{% endif %}
+</div>

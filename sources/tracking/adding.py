@@ -75,7 +75,7 @@ def request_add(
     return _request_add(user, provider, str(int(external_id)), status)
 
 
-def _expire_stale(user: User, now: datetime) -> int:
+def expire_stale(user: User, now: datetime) -> int:
     """Fail the user's pending requests that are older than ``PENDING_TIMEOUT``."""
     return (
         AddRequest.objects.for_user(user)
@@ -103,7 +103,7 @@ def _request_add(
         return _add_to_library(user, link.title, status)
 
     # A request whose job died must neither be reused nor count as pending.
-    _expire_stale(user, timezone.now())
+    expire_stale(user, timezone.now())
     pending = AddRequest.objects.for_user(user).filter(state=AddRequest.State.PENDING)
     existing = pending.filter(provider=provider, external_id=external_id).first()
     if existing is not None:
@@ -247,7 +247,7 @@ def cleanup_add_requests() -> int:
         add_requests__created_at__lt=now - PENDING_TIMEOUT,
     ).distinct()
     for user in stale:
-        touched += _expire_stale(user, now)
+        touched += expire_stale(user, now)
     old = User.objects.filter(
         add_requests__state__in=[AddRequest.State.DONE, AddRequest.State.FAILED],
         add_requests__finished_at__lt=now - FINISHED_RETENTION,

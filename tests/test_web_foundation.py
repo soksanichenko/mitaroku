@@ -54,7 +54,7 @@ def test_header_has_a_search_form_and_bottom_nav_a_search_item(client, portal_he
     assert 'href="/search/"' in bottom
 
 
-def test_search_link_leads_to_a_page(client, portal_headers):
+def test_search_link_leads_to_a_page(client, portal_headers, patched_search):
     response = client.get('/search/', {'q': 'matrix'}, **portal_headers)
     assert response.status_code == 200
     assert 'value="matrix"' in response.content.decode()

@@ -3,13 +3,15 @@ Status dropdown (Alpine). Without an entry it is an "Add" button; with one it
 shows the current status and offers "Remove from library".
 Variables:
   title   catalog.Title (names the control for screen readers)
+  display_name  optional name to use instead of the title's, for a search hit that has
+                no catalog title yet (then title may be omitted)
   entry   the user's LibraryEntry, or None when the title is not in the library
   action  URL the choice is POSTed to (fields: status=watching|planned|completed|dropped|remove)
   fields  optional dict of extra hidden inputs sent with the choice
   align   optional "right" to open the menu towards the left edge
   target  optional hx-target for the response (default: this picker itself);
           the response replaces the target (hx-swap="outerHTML")
-{% endcomment %}{% load i18n web_extras %}{% title_name title as name %}{% status_options as options %}
+{% endcomment %}{% load i18n web_extras %}{% if display_name %}{% firstof display_name as name %}{% else %}{% title_name title as name %}{% endif %}{% status_options as options %}
 <div class="mt-picker" x-data="{ open: false }" @keydown.escape="open = false; $refs.trigger.focus()" @click.outside="open = false">
   {% for field, value in fields.items %}<input type="hidden" name="{{ field }}" value="{{ value }}">{% endfor %}
   {% if entry %}

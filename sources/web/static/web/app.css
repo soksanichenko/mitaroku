@@ -778,3 +778,248 @@ a:focus-visible .mt-poster-img {
     opacity: 0.55;
   }
 }
+
+/* Search and add. */
+.mt-search-head {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 14px;
+}
+
+.mt-search-head .mt-page-title {
+  margin: 0;
+  font-size: clamp(28px, 6vw, 40px);
+}
+
+.mt-search-form {
+  position: relative;
+  display: flex;
+  max-width: 640px;
+}
+
+.mt-search-form svg {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  transform: translateY(-50%);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.mt-search-form .input {
+  width: 100%;
+  min-height: 52px;
+  padding-left: 44px;
+  font-size: 17px;
+  border-width: 2px;
+}
+
+.mt-search-source {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* The skeleton shows only while HTMX waits for the results. */
+.mt-search-loading {
+  display: none;
+}
+
+.mt-search-loading.htmx-request {
+  display: block;
+}
+
+.mt-search-hint,
+.mt-search-count,
+.mt-search-notice {
+  margin: 0;
+  font-size: 14px;
+  color: var(--mt-muted);
+}
+
+.mt-search-hint {
+  padding-top: 16px;
+  border-top: 2px solid var(--color-divider);
+}
+
+.mt-search-count {
+  font-size: 13px;
+  padding-bottom: 4px;
+}
+
+.mt-search-notice {
+  padding: 8px 12px;
+  margin-bottom: 4px;
+  border: 1px solid var(--color-divider);
+  border-left: 4px solid var(--color-text);
+  color: var(--color-text);
+}
+
+.mt-group {
+  padding: 16px 0 8px;
+  border-top: 2px solid var(--color-divider);
+}
+
+.mt-group-title {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+
+.mt-group-count {
+  margin-left: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  vertical-align: super;
+  line-height: 0;
+  color: var(--mt-muted);
+}
+
+.mt-result-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mt-result {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  grid-template-areas: 'img body' 'img act';
+  gap: 6px 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.mt-result:last-child {
+  border-bottom: 0;
+}
+
+.mt-result-img {
+  grid-area: img;
+}
+
+.mt-result-img a {
+  display: block;
+}
+
+.mt-result-body {
+  grid-area: body;
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.mt-result-name {
+  font-size: 16px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.mt-result-name a {
+  color: var(--color-text);
+}
+
+.mt-result-sub {
+  font-size: 13px;
+  color: var(--mt-muted);
+  overflow-wrap: anywhere;
+}
+
+.mt-result-desc {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  max-width: 60ch;
+  margin: 2px 0 0;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.mt-result-act {
+  grid-area: act;
+  width: min(100%, 180px);
+  align-self: start;
+}
+
+.mt-result-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mt-result-status svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mt-result-more {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* The control that replaces the add picker. */
+.mt-add {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  font-size: 13px;
+}
+
+.mt-add--pending {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: var(--mt-muted);
+}
+
+.mt-add-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-divider);
+  border-top-color: var(--color-text);
+  border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mt-add-spinner {
+    animation: mt-spin 0.8s linear infinite;
+  }
+}
+
+@keyframes mt-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.mt-add-text {
+  color: var(--mt-muted);
+}
+
+@media (min-width: 600px) {
+  .mt-result {
+    grid-template-columns: 56px minmax(0, 1fr) 150px;
+    grid-template-areas: 'img body act';
+  }
+
+  .mt-result-act {
+    width: auto;
+  }
+}

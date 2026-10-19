@@ -21,6 +21,7 @@ from fakes import (
 )
 from providers.clients import connect_redis
 from providers.http import ProviderHttp
+from providers.search import SearchResults
 
 PORTAL = {
     'HTTP_X_DISCORD_USER_ID': '1001',
@@ -161,3 +162,34 @@ def synced_movie(db) -> Title:
     )
     ExternalId.objects.create(title=title, provider='tmdb_movie', external_id='603')
     return title
+
+
+class SearchRecorder:
+    """Stand-in for ``providers.search.search`` that records its calls.
+
+    Attributes:
+        calls: ``(query, language)`` of every call.
+        result: What the next calls return.
+    """
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str]] = []
+        self.result = SearchResults()
+
+    def __call__(self, query: str, language: str, **clients) -> SearchResults:
+        self.calls.append((query, language))
+        return self.result
+
+
+@pytest.fixture
+def patched_search(monkeypatch) -> SearchRecorder:
+    """Replace the provider search of the search view with a recorder.
+
+    The shared clients are replaced too, so no test builds a real client.
+    """
+    recorder = SearchRecorder()
+    monkeypatch.setattr('web.views.search.search', recorder)
+    monkeypatch.setattr(
+        'web.views.search.shared_clients', lambda: Clients(None, FakeAniList())
+    )
+    return recorder

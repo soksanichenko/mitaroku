@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-19 18:02+0000\n"
+"POT-Creation-Date: 2026-10-19 18:15+0000\n"
 "Language: ru\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
@@ -23,6 +23,21 @@ msgstr "Пароль"
 
 msgid "Forgot your password? Ask the administrator of this server to reset it."
 msgstr "Забыли пароль? Попросите администратора сервера сбросить его."
+
+msgid "Adding…"
+msgstr "Добавляем…"
+
+msgid "Added"
+msgstr "Добавлено"
+
+msgid "Open"
+msgstr "Открыть"
+
+msgid "Couldn't add this title"
+msgstr "Не удалось добавить"
+
+msgid "Try again"
+msgstr "Повторить"
 
 msgid "Main"
 msgstr "Главное меню"
@@ -54,6 +69,44 @@ msgstr "Язык"
 msgid "Log out"
 msgstr "Выйти"
 
+msgid "Type a title above to search shows, anime and movies."
+msgstr "Введите название выше, чтобы искать сериалы, аниме и фильмы."
+
+msgid "Type at least 2 characters"
+msgstr "Введите не менее 2 символов"
+
+msgid "Search is unavailable"
+msgstr "Поиск недоступен"
+
+msgid "TMDB and AniList didn't respond, so we can't search. Titles already in your library still work."
+msgstr "TMDB и AniList не ответили, поэтому поиск не работает. Тайтлы из вашей библиотеки по-прежнему доступны."
+
+#, python-format
+msgid "Results may be incomplete: %(failed_names)s did not respond."
+msgstr "Результаты могут быть неполными: %(failed_names)s не ответил."
+
+#, python-format
+msgid "No results for “%(q)s”"
+msgstr "Ничего не найдено по запросу «%(q)s»"
+
+msgid "Check the spelling, or try the original title."
+msgstr "Проверьте написание или попробуйте оригинальное название."
+
+#, python-format
+msgid "%(count)s result for “%(q)s”"
+msgid_plural "%(count)s results for “%(q)s”"
+msgstr[0] "%(count)s результат по запросу «%(q)s»"
+msgstr[1] "%(count)s результата по запросу «%(q)s»"
+msgstr[2] "%(count)s результатов по запросу «%(q)s»"
+
+#, python-format
+msgid "In your library: %(label)s"
+msgstr "В вашей библиотеке: %(label)s"
+
+#, python-format
+msgid "Show all %(count)s"
+msgstr "Показать все (%(count)s)"
+
 msgid "Switch to dark theme"
 msgstr "Включить тёмную тему"
 
@@ -82,9 +135,6 @@ msgstr "Не удалось загрузить"
 
 msgid "The server didn't respond. Nothing was lost. Try again in a moment."
 msgstr "Сервер не ответил. Ничего не потеряно. Попробуйте ещё раз чуть позже."
-
-msgid "Try again"
-msgstr "Повторить"
 
 msgid "Loading…"
 msgstr "Загрузка…"
@@ -115,6 +165,18 @@ msgstr "Удалить из библиотеки"
 msgid "Your titles will appear here."
 msgstr "Здесь появятся ваши тайтлы."
 
+msgid "Search and add"
+msgstr "Поиск и добавление"
+
+msgid "Title or original title"
+msgstr "Название или оригинальное название"
+
+msgid "Results from TMDB (shows and movies) and AniList (anime)."
+msgstr "Результаты из TMDB (сериалы и фильмы) и AniList (аниме)."
+
+msgid "Searching…"
+msgstr "Ищем…"
+
 msgid "Upcoming episodes and premieres will appear here."
 msgstr "Здесь появятся ближайшие серии и премьеры."
 
@@ -129,3 +191,31 @@ msgstr "Просмотрено"
 
 msgid "Dropped"
 msgstr "Брошено"
+
+msgid "Shows"
+msgstr "Сериалы"
+
+msgid "Anime"
+msgstr "Аниме"
+
+msgid "Movies"
+msgstr "Фильмы"
+
+msgid "Show"
+msgstr "Сериал"
+
+msgid "Movie"
+msgstr "Фильм"
+
+msgid "This took too long. Try again."
+msgstr "Это заняло слишком много времени. Попробуйте ещё раз."
+
+msgid "The metadata provider didn't respond. Try again."
+msgstr "Источник данных не ответил. Попробуйте ещё раз."
+
+msgid "Something went wrong. Try again."
+msgstr "Что-то пошло не так. Попробуйте ещё раз."
+
+#, python-format
+msgid "%(count)s titles are already being added. Try again soon."
+msgstr "Уже добавляется тайтлов: %(count)s. Попробуйте чуть позже."
