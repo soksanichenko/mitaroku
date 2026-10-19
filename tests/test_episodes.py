@@ -34,6 +34,7 @@ def test_guard_needs_the_first_episode_close_to_the_start_date():
     assert passes_guard(part, 12, START)
     assert passes_guard(part, 12, START + timedelta(days=2))
     assert passes_guard(part, 12, START - timedelta(days=2))
+    assert not passes_guard(part, 12, START - timedelta(days=3))
     assert not passes_guard(part, 12, START + timedelta(days=3))
 
 
@@ -54,18 +55,22 @@ def test_guard_rejects_missing_dates_and_empty_parts():
 
 
 def test_fribb_season_and_offset_pick_the_right_slice():
-    # One TMDB season of 24 that AniList splits into two cours of 12.
+    # One TMDB season of 24 that AniList splits into two cours of 12. An earlier
+    # entry Fribb does not map takes two slots of the stream and misaligns it, so
+    # only the Fribb season and offset can place the two cours.
     seasons = {1: season(1, 24)}
     second_start = START + timedelta(days=7 * 12)
     result = allocate_show(
         seasons,
         [
+            spec(0, START - timedelta(days=100), 2),
             spec(1, START, 12, tmdb_season=1, offset=0),
             spec(2, second_start, 12, tmdb_season=1, offset=12),
         ],
     )
+    assert result[0] is None
+    assert [e.number for e in result[1]] == list(range(1, 13))
     assert [e.number for e in result[2]] == list(range(13, 25))
-    assert len(result[1]) == 12
 
 
 def test_concatenation_rescues_an_entry_fribb_maps_wrongly():
@@ -109,6 +114,19 @@ def test_ova_entries_do_not_consume_the_stream():
         ],
     )
     assert result[2] is not None and result[2][0].number == 1
+
+
+def test_season_zero_does_not_shift_the_stream():
+    seasons = {
+        0: season(0, 3),
+        1: season(1, 12),
+        2: season(2, 12, START + timedelta(days=100)),
+    }
+    result = allocate_show(
+        seasons, [spec(1, START, 12), spec(2, START + timedelta(days=100), 12)]
+    )
+    assert result[1][-1].air_date == START + timedelta(days=7 * 11)
+    assert result[2][0].air_date == START + timedelta(days=100)
 
 
 def test_a_running_entry_with_an_unknown_count_takes_the_rest():
