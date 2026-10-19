@@ -9,6 +9,7 @@ from catalog.translations import (
 from django import template
 from django.contrib.auth.models import AbstractUser
 from django.template.context import Context
+from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 from tracking.models import LibraryEntry
 
@@ -71,9 +72,9 @@ def title_name(context: Context, title: Title) -> str:
     """Return the name of a title in the user's metadata language.
 
     Uses the prefetched translations when there are any, so a list of titles
-    costs no extra queries.
+    costs no extra queries. A title without any name is called "Untitled".
     """
-    return localized_title(title, _metadata_language(context))[0]
+    return localized_title(title, _metadata_language(context))[0] or gettext('Untitled')
 
 
 @register.simple_tag(takes_context=True)
@@ -137,13 +138,24 @@ def airing_label(status: str) -> str:
 
 
 @register.filter
-def star_states(score: int) -> list[str]:
-    """Return ``full``, ``half`` or ``empty`` for each of the five stars of a score.
+def star_buttons(score: int) -> list[dict]:
+    """Return the five star buttons of a score (0 to 10, two points a star).
 
-    A score is 0 to 10 and every star is worth two points, so an odd score ends
-    in a half star.
+    Each item has ``number`` (1 to 5), ``state`` (``full``, ``half`` or ``empty``;
+    an odd score ends in a half star), ``pressed`` (a full star) and ``value``,
+    what clicking posts: the star's score, or 0 for the star that already is the
+    current whole rating, which clears it.
     """
     return [
-        'full' if score >= 2 * n else 'half' if score == 2 * n - 1 else 'empty'
+        {
+            'number': n,
+            'state': 'full'
+            if score >= 2 * n
+            else 'half'
+            if score == 2 * n - 1
+            else 'empty',
+            'pressed': score >= 2 * n,
+            'value': 0 if score == 2 * n else 2 * n,
+        }
         for n in range(1, 6)
     ]

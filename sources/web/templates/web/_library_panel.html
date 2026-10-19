@@ -5,18 +5,18 @@ Context: title, entry (LibraryEntry or None); oob_episodes (optional): also send
 the episode list as an out-of-band swap, for actions that change what was watched
 (then also groups, multi, open_ids, chips, progress).
 {% endcomment %}{% load i18n web_extras %}
-<section id="library-panel" class="mt-lib" aria-label="{% trans 'Your library' %}">
+<section id="library-panel" class="mt-lib" aria-labelledby="library-heading">
   <div class="mt-lib-status">
-    <h2 class="mt-lib-heading">{% trans 'Your library' %}</h2>
+    <h2 id="library-heading" class="mt-lib-heading">{% trans 'Your library' %}</h2>
     {% url 'title_status' title.pk as status_url %}
     {% trans 'Remove this title from your library? Your watched episodes are kept.' as remove_text %}
     {% include 'web/components/_status_picker.html' with title=title entry=entry action=status_url target='#library-panel' confirm_remove=remove_text %}
   </div>
   {% if entry %}
-  <form class="mt-lib-score" hx-post="{% url 'title_score' title.pk %}" hx-trigger="change" hx-target="#library-panel" hx-swap="outerHTML">
+  <form class="mt-lib-score" hx-post="{% url 'title_score' title.pk %}" hx-trigger="submit, change" hx-target="#library-panel" hx-swap="outerHTML">
     <label class="mt-lib-label" for="score-select">{% trans 'My rating' %}</label>
-    <span class="mt-stars" aria-hidden="true">
-      {% for state in entry.score|star_states %}<span class="mt-star mt-star--{{ state }}"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg><svg class="mt-star-fill" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></span>{% endfor %}
+    <span class="mt-stars" role="group" aria-label="{% trans 'My rating' %}">
+      {% for star in entry.score|star_buttons %}<button type="submit" name="score" value="{{ star.value }}" class="mt-touch mt-star mt-star--{{ star.state }}" aria-pressed="{{ star.pressed|yesno:'true,false' }}" aria-label="{% if star.value == 0 %}{% trans 'Clear the rating' %}{% else %}{% blocktrans trimmed with number=star.number %}{{ number }} of 5 stars{% endblocktrans %}{% endif %}"><span class="mt-star-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg><svg class="mt-star-fill" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></span></button>{% endfor %}
     </span>
     <select id="score-select" name="score" class="input mt-touch">
       {% score_choices as choices %}{% for n in choices %}<option value="{{ n }}"{% if n == entry.score %} selected{% endif %}>{% if n == 0 %}{% trans 'Not rated' %}{% else %}{{ n }}/10{% endif %}</option>{% endfor %}

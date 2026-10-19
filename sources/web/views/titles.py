@@ -120,6 +120,8 @@ def _note(season: Season, rows: list[RowView]) -> str:
         return gettext('Episode titles are not available for this entry')
     if season.episode_source == Season.EpisodeSource.NONE and not rows:
         return gettext('Episodes are not known yet')
+    if not rows:
+        return gettext('No episodes yet')
     return ''
 
 
@@ -184,7 +186,12 @@ def _context(request: HttpRequest, title: Title) -> dict:
     today = timezone.localdate()
     language = request.user.profile.metadata_language
     state = queries.title_page_state(request.user, title, today, language)
-    context.update(entry=state.entry, progress=state.progress)
+    context.update(
+        entry=state.entry,
+        progress=state.progress,
+        # Progress is derived from the viewings, which outlive the entry.
+        has_views=any(g.watched for g in state.groups),
+    )
     if title.kind != Title.Kind.MOVIE:
         groups = _group_views(title, state, today)
         context.update(
@@ -258,6 +265,8 @@ def title_status(request: HttpRequest, pk: int) -> HttpResponse:
         The library panel; 400 for an unknown status.
     """
     title = get_object_or_404(Title.objects.prefetch_related('translations'), pk=pk)
+    if title.synced_at is None:
+        return HttpResponse('The title is not ready yet', status=409)
     status = request.POST.get('status', '')
     if status != REMOVE and status not in LibraryEntry.Status.values:
         return HttpResponseBadRequest('Unknown status')
@@ -283,7 +292,9 @@ def title_score(request: HttpRequest, pk: int) -> HttpResponse:
     """
     title = get_object_or_404(Title, pk=pk)
     value = request.POST.get('score', '')
-    if not (value.isascii() and value.isdecimal() and int(value) <= 10):
+    if not (
+        len(value) <= 2 and value.isascii() and value.isdecimal() and int(value) <= 10
+    ):
         return HttpResponseBadRequest('The score must be from 0 to 10')
     try:
         entry = services.set_score(request.user, title, int(value))

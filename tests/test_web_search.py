@@ -151,7 +151,8 @@ def test_all_parameter_is_whitelisted(client, portal_headers, patched_search):
         html = client.get(
             '/search/', {'q': 'show', 'all': value}, **portal_headers
         ).content.decode()
-        assert 'S6' not in html and '<script>' not in html
+        names = re.findall(r'class="mt-result-name">(?:<a[^>]*>)?([^<]+)', html)
+        assert 'S0' in names and 'S6' not in names and '<script>' not in html
 
 
 def test_row_shows_name_original_year_and_kind(client, portal_headers, patched_search):

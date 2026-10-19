@@ -1148,12 +1148,26 @@ a:focus-visible .mt-poster-img {
 }
 
 .mt-stars {
-  display: inline-flex;
-  gap: 2px;
+  display: none;
+  gap: 0;
   color: var(--color-text);
 }
 
 .mt-star {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.mt-star:hover {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+
+.mt-star-icon {
   position: relative;
   width: 22px;
   height: 22px;
@@ -1433,6 +1447,10 @@ a:focus-visible .mt-poster-img {
 }
 
 @media (min-width: 600px) {
+  .mt-stars {
+    display: inline-flex;
+  }
+
   .mt-th {
     grid-template-columns: 200px minmax(0, 1fr);
     gap: 24px;

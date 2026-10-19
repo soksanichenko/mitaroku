@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-19 19:10+0000\n"
+"POT-Creation-Date: 2026-10-19 19:28+0000\n"
 "Language: ru\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
@@ -115,6 +115,13 @@ msgstr "Убрать тайтл из библиотеки? Отметки о п�
 
 msgid "My rating"
 msgstr "Моя оценка"
+
+msgid "Clear the rating"
+msgstr "Сбросить оценку"
+
+#, python-format
+msgid "%(number)s of 5 stars"
+msgstr "%(number)s из 5 звёзд"
 
 msgid "Not rated"
 msgstr "Не оценено"
@@ -347,5 +354,7 @@ msgid "Episode titles are not available for this entry"
 msgstr "Названия серий для этой записи недоступны"
 
 msgid "Episodes are not known yet"
-
 msgstr "Список серий пока неизвестен"
+
+msgid "No episodes yet"
+msgstr "Серий пока нет"

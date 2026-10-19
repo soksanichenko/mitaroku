@@ -1,5 +1,6 @@
 import re
 from datetime import timedelta
+from pathlib import Path
 
 import pytest
 from catalog.models import (
@@ -568,7 +569,9 @@ def test_missing_status_is_400(client, portal_headers, alice, synced_show):
     assert post(client, portal_headers, synced_show, 'status').status_code == 400
 
 
-@pytest.mark.parametrize('score', ['', 'x', '-1', '11', '3.5', '999999999999'])
+@pytest.mark.parametrize(
+    'score', ['', 'x', '-1', '11', '3.5', '999999999999', '9' * 5000]
+)
 def test_invalid_score_is_400(client, portal_headers, alice, synced_show, score):
     track(alice, synced_show)
     response = post(client, portal_headers, synced_show, 'score', score=score)
@@ -643,3 +646,127 @@ def test_syncing_and_empty_states_are_translated_to_russian(
     )
     html = open_title(client, portal_headers, title)
     assert 'Повторить' in html and 'Try again' not in html
+
+
+def star_buttons(html: str) -> list[dict[str, str]]:
+    """Return the attributes of the star buttons of the library panel."""
+    group = re.search(
+        r'<span[^>]*role="group"[^>]*aria-label="My rating".*?</span>\s*<select',
+        html,
+        re.S,
+    )
+    assert group, 'no star group'
+    buttons = re.findall(r'<button[^>]*>', group.group())
+    return [dict(re.findall(r'([\w-]+)="([^"]*)"', tag)) for tag in buttons]
+
+
+@pytest.mark.parametrize(
+    ('score', 'values', 'pressed', 'classes'),
+    [
+        (6, ['2', '4', '0', '8', '10'], 'ttt' + 'ff', 'full full full empty empty'),
+        (7, ['2', '4', '6', '8', '10'], 'ttt' + 'ff', 'full full full half empty'),
+        (0, ['2', '4', '6', '8', '10'], 'fffff', 'empty empty empty empty empty'),
+    ],
+)
+def test_star_buttons_rate_the_title(
+    client, portal_headers, alice, synced_show, score, values, pressed, classes
+):
+    track(alice, synced_show, score=score)
+    html = open_title(client, portal_headers, synced_show)
+    panel = re.search(
+        r'<section[^>]*id="library-panel".*?</section>', html, re.S
+    ).group()
+    form = re.search(r'<form[^>]*class="mt-lib-score"[^>]*>', panel).group()
+    assert f'hx-post="/titles/{synced_show.pk}/score/"' in form
+    buttons = star_buttons(panel)
+    assert [b['type'] for b in buttons] == ['submit'] * 5
+    assert [b['name'] for b in buttons] == ['score'] * 5
+    assert [b['value'] for b in buttons] == values  # the current whole star clears
+    assert (
+        ''.join('t' if b['aria-pressed'] == 'true' else 'f' for b in buttons) == pressed
+    )
+    assert [b['class'].split('--')[1] for b in buttons] == classes.split()
+    assert all(b['aria-label'] for b in buttons)
+    assert 'mt-touch' in buttons[0]['class']
+    assert '<select id="score-select"' in panel  # the fine-grained fallback stays
+
+
+def test_clicking_the_current_star_clears_the_score(
+    client, portal_headers, alice, synced_show
+):
+    track(alice, synced_show, score=6)
+    response = post(client, portal_headers, synced_show, 'score', score='0')
+    assert response.status_code == 200
+    assert LibraryEntry.objects.for_user(alice).get().score == 0
+
+
+def test_the_star_row_is_shown_from_600_px_only():
+    css = (Path(__file__).parents[1] / 'sources/web/static/web/app.css').read_text()
+    assert re.search(r'\.mt-stars \{[^}]*display: none', css)
+    assert re.search(
+        r'@media \(min-width: 600px\) \{[^@]*\.mt-stars \{[^}]*display: inline-flex',
+        css,
+    )
+
+
+def test_progress_survives_removing_the_entry(
+    client, portal_headers, alice, synced_show
+):
+    track(alice, synced_show, status='watching')
+    watch(alice, first_episode(synced_show))
+    post(client, portal_headers, synced_show, 'status', status='remove')
+    html = open_title(client, portal_headers, synced_show)
+    assert 'mt-progress-bar' in html
+    assert '1/5' in html
+    assert 'mt-check--watched' in html
+
+
+def test_no_progress_bar_without_an_entry_or_a_viewing(
+    client, portal_headers, alice, synced_show
+):
+    assert 'mt-progress-bar' not in open_title(client, portal_headers, synced_show)
+
+
+def test_an_empty_name_falls_back_to_untitled(
+    client, portal_headers, alice, synced_show
+):
+    Title.objects.filter(pk=synced_show.pk).update(original_title='')
+    html = open_title(client, portal_headers, synced_show)
+    assert '<h1 class="mt-th-title">Untitled</h1>' in html
+    assert '<title>Untitled · mitaroku</title>' in html
+    assert 'mt-th-original' not in html
+    alice.profile.interface_language = 'ru'
+    alice.profile.save()
+    assert 'Без названия' in open_title(client, portal_headers, synced_show)
+
+
+def test_a_tmdb_season_without_rows_says_so(client, portal_headers, alice, synced_show):
+    Season.objects.create(
+        title=synced_show,
+        number=3,
+        kind=Season.Kind.TV,
+        episode_source=Season.EpisodeSource.TMDB,
+    )
+    html = open_title(client, portal_headers, synced_show)
+    assert html.count('No episodes yet') == 1
+    alice.profile.interface_language = 'ru'
+    alice.profile.save()
+    assert 'Серий пока нет' in open_title(client, portal_headers, synced_show)
+
+
+def test_status_of_a_never_synced_title_is_409_and_writes_nothing(
+    client, portal_headers, alice, queued_language
+):
+    title = Title.objects.create(kind=Title.Kind.TV, original_title='Fresh')
+    response = post(client, portal_headers, title, 'status', status='watching')
+    assert response.status_code == 409
+    assert not LibraryEntry.objects.for_user(alice).exists()
+
+
+def test_the_panel_is_named_by_its_heading(client, portal_headers, alice, synced_show):
+    html = open_title(client, portal_headers, synced_show)
+    section = re.search(r'<section[^>]*id="library-panel"[^>]*>', html).group()
+    assert (
+        'aria-labelledby="library-heading"' in section and 'aria-label=' not in section
+    )
+    assert 'id="library-heading"' in html
