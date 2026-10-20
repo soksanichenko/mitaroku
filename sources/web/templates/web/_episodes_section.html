@@ -12,7 +12,8 @@ control that gets the focus once a menu action has been swapped in (focusAfter).
 {% endcomment %}{% load i18n web_extras %}
 <section id="episodes" class="mt-section mt-episodes" aria-labelledby="episodes-heading"{% if oob %} hx-swap-oob="true"{% endif %}
          x-data="{ open: [{{ open_ids|join:', ' }}], has(id) { return this.open.includes(id) }, toggle(id) { this.open = this.has(id) ? this.open.filter(i => i !== id) : [...this.open, id] }, show(id) { if (!this.has(id)) this.open.push(id); this.$nextTick(() => document.getElementById('grp-' + id).scrollIntoView({ block: 'start' })) },
-                  menu: null, held: false, timer: null, focusAfter: null,
+                  menu: null, menuUp: false, held: false, timer: null, focusAfter: null,
+                  init() { this.$watch('menu', id => { this.menuUp = false; if (id) this.$nextTick(() => { const li = document.getElementById('ep-' + id); this.menuUp = mtMenuUp(li.querySelector('.mt-ep-more'), li.querySelector('.mt-ep-menu')) }) }) },
                   pressStart(id) { this.held = false; clearTimeout(this.timer); this.timer = setTimeout(() => { this.held = true; this.menu = id }, 500) },
                   pressEnd() { clearTimeout(this.timer); setTimeout(() => { this.held = false }, 400) },
                   pressMenu(e) { if (this.held) e.preventDefault() },

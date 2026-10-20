@@ -770,3 +770,10 @@ def test_the_panel_is_named_by_its_heading(client, portal_headers, alice, synced
         'aria-labelledby="library-heading"' in section and 'aria-label=' not in section
     )
     assert 'id="library-heading"' in html
+
+
+def test_movie_that_ended_is_tagged_released_not_ended(client, portal_headers, alice):
+    movie = make_movie(status='ended')
+    html = open_title(client, portal_headers, movie)
+    tags = re.findall(r'<li class="mt-tag">(.*?)</li>', html)
+    assert tags == ['Movie', 'Released']

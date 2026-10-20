@@ -624,6 +624,21 @@ msgstr "Позже"
 msgid "No date yet"
 msgstr "Даты пока нет"
 
+msgid "Released"
+msgstr "Вышел"
+
+msgid "Page not found"
+msgstr "Страница не найдена"
+
+msgid "This page does not exist, or it was moved."
+msgstr "Такой страницы нет или она переехала."
+
+msgid "Something went wrong"
+msgstr "Что-то пошло не так"
+
+msgid "The server hit an error. Nothing was lost. Try again in a moment."
+msgstr "На сервере произошла ошибка. Ничего не потеряно. Попробуйте ещё раз через минуту."
+
 #~ msgid "Upcoming episodes and premieres will appear here."
 #~ msgstr "Здесь появятся ближайшие серии и премьеры."
 

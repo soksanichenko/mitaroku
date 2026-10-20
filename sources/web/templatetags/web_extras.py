@@ -132,8 +132,15 @@ def kind_label(kind: str) -> str:
 
 
 @register.filter
-def airing_label(status: str) -> str:
-    """Return the translated label of a ``Title.Status`` value, or an empty string."""
+def airing_label(status: str, kind: str = '') -> str:
+    """Return the translated label of a ``Title.Status`` value, or an empty string.
+
+    Args:
+        status: A ``Title.Status`` value.
+        kind: Optional ``Title.Kind`` value; a movie that has ended is "Released".
+    """
+    if kind == Title.Kind.MOVIE and status == Title.Status.ENDED:
+        return str(_('Released'))
     return str(AIRING_LABELS.get(status, ''))
 
 

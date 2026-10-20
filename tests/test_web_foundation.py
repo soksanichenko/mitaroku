@@ -285,3 +285,114 @@ def test_shared_clients_is_built_once(monkeypatch):
         assert len(built) == 1
     finally:
         clients.shared_clients.cache_clear()
+
+
+def css_rule(selector: str) -> str:
+    """Return the body of the first rule of ``app.css`` that starts with ``selector``."""
+    match = re.search(
+        rf'(?m)^{re.escape(selector)}\s*{{([^}}]*)}}', APP_CSS.read_text()
+    )
+    assert match, f'no rule for {selector}'
+    return match.group(1)
+
+
+@pytest.mark.parametrize(
+    'selector', ['.mt-title', '.mt-lib-all', '.mt-lib-filters', '.mt-lib']
+)
+def test_grids_holding_scrolling_rows_have_a_shrinkable_column(selector):
+    # An implicit `auto` column grows to the width of an overflow-x row inside it.
+    assert 'grid-template-columns: minmax(0, 1fr)' in css_rule(selector)
+
+
+def test_picker_menu_can_open_upward_above_the_bottom_nav(title, alice):
+    html = picker(title, LibraryEntry(user=alice, title=title, status='watching'))
+    assert 'x-ref="menu"' in html
+    assert "'mt-picker-menu--up': up" in html
+    assert 'mtMenuUp(' in html
+    # The contract of the control is unchanged.
+    assert 'aria-haspopup="menu"' in html
+    assert '@keydown.escape="open = false; $refs.trigger.focus()"' in html
+    assert '@click.outside="open = false"' in html
+    assert 'bottom: calc(100% + 4px)' in css_rule('.mt-picker-menu--up')
+    assert 'bottom:' in css_rule('.mt-ep-menu.mt-ep-menu--up')
+    assert re.search(
+        r'\.mt-page\s*{[^}]*padding-bottom:\s*calc\(88px', APP_CSS.read_text()
+    )
+
+
+def test_menu_placement_script_is_loaded_by_the_shell():
+    script = (APP_CSS.parent / 'menu.js').read_text()
+    assert 'window.mtMenuUp' in script
+    assert '.mt-bottom-nav' in script
+    assert 'getBoundingClientRect' in script
+    html = render_to_string('web/base.html', {})
+    assert 'web/menu.js' in html
+
+
+def test_episode_menu_follows_the_placement_state():
+    html = render_to_string('web/_episodes_section.html', {})
+    assert 'menuUp' in html and 'mtMenuUp(' in html
+    row = Path(APP_CSS.parents[2] / 'templates/web/_episode_row.html').read_text()
+    assert "'mt-ep-menu--up': menuUp" in row
+
+
+@pytest.mark.parametrize(
+    'selector',
+    [
+        '.mt-cw-name::after',
+        '.mt-result-name a::after',
+        '.mt-lcard-link::after',
+        '.mt-lrow-name::after',
+    ],
+)
+def test_text_links_stretch_over_their_card_or_row(selector):
+    rule = css_rule(selector)
+    assert 'position: absolute' in rule
+    assert 'inset: 0' in rule
+    # The containing block is the card or row, not a smaller box.
+    for container in ('.mt-cw-card', '.mt-result', '.mt-lcard', '.mt-lrow'):
+        assert 'position: relative' in css_rule(container)
+    # What must stay clickable sits above the stretched link.
+    for control in ('.mt-cw-check', '.mt-result-act'):
+        assert 'position: relative' in css_rule(control)
+    assert 'position: relative' in css_rule('.mt-ltable .mt-col-status')
+
+
+def test_group_header_is_one_row_that_wraps_only_the_name():
+    toggle = css_rule('.mt-gh-toggle')
+    assert 'display: flex' in toggle
+    assert 'flex-wrap' not in toggle
+    assert 'overflow-wrap' in css_rule('.mt-gh-name')
+    assert 'flex: none' in css_rule('.mt-gh-toggle > :not(.mt-gh-name)')
+
+
+def test_library_cards_are_columns_with_the_status_pinned_down():
+    cell = css_rule('.mt-lcard-cell')
+    assert 'display: flex' in cell
+    card = css_rule('.mt-lcard')
+    assert 'flex-direction: column' in card
+    assert 'flex: 1' in css_rule('.mt-lcard-link')
+
+
+def test_list_title_column_takes_the_width_the_hidden_columns_free():
+    assert 'width: 100%' in css_rule('.mt-ltable th:first-child')
+
+
+def test_posters_are_in_colour_where_there_is_no_hover():
+    css = APP_CSS.read_text()
+    assert re.search(
+        r'@media \(hover: none\)\s*{\s*\.mt-poster-ph,\s*\.mt-poster-img\s*{\s*filter: none;',
+        css,
+    )
+
+
+def test_movie_that_ended_is_released(title):
+    from web.templatetags.web_extras import airing_label
+
+    assert airing_label('ended', 'movie') == 'Released'
+    assert airing_label('ended', 'tv') == 'Ended'
+    assert airing_label('ended') == 'Ended'
+    assert airing_label('unknown', 'movie') == ''
+    with translation.override('ru'):
+        assert airing_label('ended', 'movie') == 'Вышел'
+        assert airing_label('ended', 'tv') == 'Завершён'

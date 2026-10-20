@@ -9,18 +9,19 @@ Variables:
   action  URL the choice is POSTed to (fields: status=watching|planned|completed|dropped|remove)
   fields  optional dict of extra hidden inputs sent with the choice
   align   optional "right" to open the menu towards the left edge
+          (the menu opens upward by itself when there is no room below it)
   confirm_remove  optional text of the confirmation asked before "Remove from library"
   target  optional hx-target for the response (default: this picker itself);
           the response replaces the target (hx-swap="outerHTML")
   swap    optional hx-swap; "none" for a page that ignores the response and refreshes
           itself afterwards (the library)
 {% endcomment %}{% load i18n web_extras %}{% if title %}{% title_name title as name %}{% elif display_name %}{% firstof display_name as name %}{% else %}{% trans 'Untitled' as name %}{% endif %}{% status_options as options %}
-<div class="mt-picker" x-data="{ open: false }" @keydown.escape="open = false; $refs.trigger.focus()" @click.outside="open = false">
+<div class="mt-picker" x-data="{ open: false, up: false, toggle() { this.open = !this.open; this.up = false; if (this.open) this.$nextTick(() => { this.up = mtMenuUp(this.$refs.trigger, this.$refs.menu) }) } }" @keydown.escape="open = false; $refs.trigger.focus()" @click.outside="open = false">
   {% for field, value in fields.items %}<input type="hidden" name="{{ field }}" value="{{ value }}">{% endfor %}
   {% if entry %}
   {% with label=entry.status|status_label %}
   <button type="button" x-ref="trigger" class="mt-picker-btn mt-touch" aria-haspopup="menu" aria-expanded="false" :aria-expanded="open"
-          aria-label="{% blocktrans trimmed %}Status of {{ name }}: {{ label }}. Change status{% endblocktrans %}" title="{% trans 'Change status' %}" @click="open = !open">
+          aria-label="{% blocktrans trimmed %}Status of {{ name }}: {{ label }}. Change status{% endblocktrans %}" title="{% trans 'Change status' %}" @click="toggle()">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
     <span class="mt-picker-label">{{ label }}</span>
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
@@ -28,13 +29,13 @@ Variables:
   {% endwith %}
   {% else %}
   <button type="button" x-ref="trigger" class="mt-picker-btn mt-picker-btn--add mt-touch" aria-haspopup="menu" aria-expanded="false" :aria-expanded="open"
-          aria-label="{% blocktrans trimmed %}Add {{ name }} to library{% endblocktrans %}" title="{% trans 'Add to library' %}" @click="open = !open">
+          aria-label="{% blocktrans trimmed %}Add {{ name }} to library{% endblocktrans %}" title="{% trans 'Add to library' %}" @click="toggle()">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg>
     <span class="mt-picker-label">{% trans 'Add' %}</span>
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
   </button>
   {% endif %}
-  <div class="mt-picker-menu{% if align == 'right' %} mt-picker-menu--right{% endif %}" role="menu" aria-label="{% if entry %}{% trans 'Change status' %}{% else %}{% trans 'Add with status' %}{% endif %}" x-show="open" x-cloak>
+  <div x-ref="menu" class="mt-picker-menu{% if align == 'right' %} mt-picker-menu--right{% endif %}" :class="{ 'mt-picker-menu--up': up }" role="menu" aria-label="{% if entry %}{% trans 'Change status' %}{% else %}{% trans 'Add with status' %}{% endif %}" x-show="open" x-cloak>
     {% for value, label in options %}
     <button type="button" role="menuitemradio" class="mt-picker-item mt-touch" aria-checked="{% if entry.status == value %}true{% else %}false{% endif %}"
             hx-post="{{ action }}" hx-vals='{"status": "{{ value }}"}' hx-include="closest .mt-picker" hx-target="{{ target|default:'closest .mt-picker' }}" hx-swap="{{ swap|default:'outerHTML' }}" @click="open = false">

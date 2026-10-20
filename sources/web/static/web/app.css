@@ -353,7 +353,7 @@ a:hover {
   }
 
   .mt-page {
-    padding-bottom: 88px;
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
   }
 
   .mt-bottom-nav {
@@ -478,8 +478,22 @@ a:hover {
 a:hover .mt-poster-ph,
 a:hover .mt-poster-img,
 a:focus-visible .mt-poster-ph,
-a:focus-visible .mt-poster-img {
+a:focus-visible .mt-poster-img,
+.mt-cw-card:hover .mt-poster-ph,
+.mt-cw-card:hover .mt-poster-img,
+.mt-result:hover .mt-poster-ph,
+.mt-result:hover .mt-poster-img,
+.mt-lrow:hover .mt-poster-ph,
+.mt-lrow:hover .mt-poster-img {
   filter: none;
+}
+
+/* There is no hover on a touch screen: the posters are in colour. */
+@media (hover: none) {
+  .mt-poster-ph,
+  .mt-poster-img {
+    filter: none;
+  }
 }
 
 .mt-poster-badge {
@@ -609,12 +623,23 @@ a:focus-visible .mt-poster-img {
   right: 0;
 }
 
+/* The menus open upward when Alpine finds no room below the button. */
+.mt-picker-menu--up {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
 /* The menu of an episode row opens under its "..." button. */
 .mt-ep-menu {
   left: auto;
   right: 8px;
   top: calc(100% - 6px);
   min-width: 240px;
+}
+
+.mt-ep-menu.mt-ep-menu--up {
+  top: auto;
+  bottom: calc(100% - 6px);
 }
 
 .mt-picker-item {
@@ -894,6 +919,7 @@ a:focus-visible .mt-poster-img {
 }
 
 .mt-result {
+  position: relative;
   display: grid;
   grid-template-columns: 56px minmax(0, 1fr);
   grid-template-areas: 'img body' 'img act';
@@ -932,6 +958,14 @@ a:focus-visible .mt-poster-img {
   color: var(--color-text);
 }
 
+/* The title link is the tap target of the whole row; the controls in
+   .mt-result-act sit above it. */
+.mt-result-name a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
 .mt-result-sub {
   font-size: 13px;
   color: var(--mt-muted);
@@ -950,6 +984,7 @@ a:focus-visible .mt-poster-img {
 }
 
 .mt-result-act {
+  position: relative;
   grid-area: act;
   width: min(100%, 180px);
   align-self: start;
@@ -1036,6 +1071,9 @@ a:focus-visible .mt-poster-img {
 /* Title page. */
 .mt-title {
   display: grid;
+  /* A plain `auto` column would grow to the width of the chip row, which scrolls
+     inside itself. */
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .mt-th {
@@ -1107,6 +1145,7 @@ a:focus-visible .mt-poster-img {
 
 .mt-lib {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   padding: 16px 0 20px;
   border-top: 2px solid var(--color-divider);
@@ -1317,7 +1356,6 @@ a:focus-visible .mt-poster-img {
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 4px 10px;
   padding: 0;
@@ -1330,11 +1368,19 @@ a:focus-visible .mt-poster-img {
 }
 
 .mt-gh-name {
+  min-width: 0;
   font-size: 17px;
   font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+/* The name wraps; the tag, the count and the chevron stay on its line. */
+.mt-gh-toggle > :not(.mt-gh-name) {
+  flex: none;
 }
 
 .mt-gh-count {
+  margin-left: auto;
   font-size: 13px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -1342,6 +1388,7 @@ a:focus-visible .mt-poster-img {
 }
 
 .mt-gh-toggle svg {
+  margin-left: auto;
   width: 16px;
   height: 16px;
   fill: none;
@@ -1350,6 +1397,10 @@ a:focus-visible .mt-poster-img {
   stroke-linecap: round;
   stroke-linejoin: round;
   transition: transform 0.15s;
+}
+
+.mt-gh-toggle .mt-gh-count + svg {
+  margin-left: 0;
 }
 
 .mt-gh-toggle[aria-expanded='true'] svg {
@@ -1697,6 +1748,7 @@ a:focus-visible .mt-poster-img {
 }
 
 .mt-cw-card {
+  position: relative;
   flex: none;
   width: min(300px, 82vw);
   scroll-snap-align: start;
@@ -1723,6 +1775,13 @@ a:focus-visible .mt-poster-img {
   overflow-wrap: break-word;
 }
 
+/* The name link is the tap target of the whole card; the check button sits above. */
+.mt-cw-name::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
 .mt-cw-ep {
   font-size: 13px;
   font-weight: 600;
@@ -1740,6 +1799,7 @@ a:focus-visible .mt-poster-img {
 }
 
 .mt-cw-check {
+  position: relative;
   display: grid;
   place-items: center;
   padding: 0;
@@ -1784,6 +1844,7 @@ a:focus-visible .mt-poster-img {
 /* Filters: type tabs, status chips, search, sort and the view switch. */
 .mt-lib-all {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   padding-top: 16px;
   border-top: 2px solid var(--color-divider);
@@ -1791,6 +1852,7 @@ a:focus-visible .mt-poster-img {
 
 .mt-lib-filters {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
 
@@ -1985,20 +2047,35 @@ a:focus-visible .mt-poster-img {
 }
 
 .mt-lcard-cell {
+  display: flex;
   min-width: 0;
 }
 
+/* A column as tall as its row: the link takes the spare height, so the progress,
+   the next episode and the status button line up across cards. */
 .mt-lcard {
-  display: grid;
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
-  align-content: start;
   min-width: 0;
 }
 
 .mt-lcard-link {
+  flex: 1;
   display: grid;
   gap: 8px;
+  align-content: start;
   color: var(--color-text);
+}
+
+/* The link is the tap target of the whole card; the status button (positioned, later in the
+   document) sits above. */
+.mt-lcard-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
 }
 
 .mt-lcard-link:hover {
@@ -2070,6 +2147,8 @@ a:focus-visible .mt-poster-img {
 }
 
 .mt-ltable th:first-child {
+  /* The other columns shrink to their content; the title takes what is left. */
+  width: 100%;
   padding-left: 0;
 }
 
@@ -2082,6 +2161,7 @@ a:focus-visible .mt-poster-img {
 }
 
 .mt-lrow {
+  position: relative;
   border-bottom: 1px solid var(--color-divider);
 }
 
@@ -2117,6 +2197,13 @@ a:focus-visible .mt-poster-img {
   overflow-wrap: break-word;
 }
 
+/* The name link is the tap target of the whole row; the status button sits above. */
+.mt-lrow-name::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
 .mt-lrow-meta {
   font-size: 12px;
   color: var(--mt-muted);
@@ -2127,17 +2214,41 @@ a:focus-visible .mt-poster-img {
   white-space: nowrap;
 }
 
+/* A word, not a count: smaller, so a long translation does not widen the column. */
+.mt-lrow-done {
+  font-size: 12px;
+}
+
 .mt-lrow-next {
   font-size: 13px;
 }
 
 .mt-ltable .mt-col-status {
+  position: relative;
   width: 128px;
   padding-right: 0;
 }
 
+/* The button's label must not widen the column: it is cut with an ellipsis instead. */
+.mt-ltable .mt-picker {
+  width: 128px;
+}
+
 .mt-col-wide {
   display: none;
+}
+
+@media (max-width: 719px) {
+  /* Every pixel counts for the title on a phone. */
+  .mt-ltable th,
+  .mt-ltable td {
+    padding-inline: 4px;
+  }
+
+  /* The label is the status; the leading check icon only takes its room. */
+  .mt-ltable .mt-picker-btn > svg:first-child {
+    display: none;
+  }
 }
 
 @media (min-width: 720px) {
@@ -2150,6 +2261,10 @@ a:focus-visible .mt-poster-img {
   }
 
   .mt-ltable .mt-col-status {
+    width: 160px;
+  }
+
+  .mt-ltable .mt-picker {
     width: 160px;
   }
 }

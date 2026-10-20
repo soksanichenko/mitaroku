@@ -7,7 +7,7 @@
     {% if title.original_title and title.original_title != name %}<p class="mt-th-original"{% if title.original_language %} lang="{{ title.original_language }}"{% endif %}>{{ title.original_title }}</p>{% endif %}
     <ul class="mt-th-tags">
       <li class="mt-tag">{{ title.kind|kind_label }}</li>
-      {% with airing=title.status|airing_label %}{% if airing %}<li class="mt-tag">{{ airing }}</li>{% endif %}{% endwith %}
+      {% with airing=title.status|airing_label:title.kind %}{% if airing %}<li class="mt-tag">{{ airing }}</li>{% endif %}{% endwith %}
     </ul>
     {% if title.release_date or title.runtime_minutes %}
     <p class="mt-th-meta">
