@@ -1,0 +1,33 @@
+{% comment %}
+One season (or franchise entry) of the episode list. Context: g (GroupView), multi;
+fragment (optional): the group is an answer to a request, not the first paint. Then it
+is not x-cloak: Alpine is running, and a cloaked (display: none) row would refuse the
+focus htmx gives back to the control that was just used.
+DOM: section#grp-<season pk>; with several groups a header carries the toggle
+and the group check (button#mark-grp-<season pk>). oob (optional): send the group as
+an out-of-band swap of itself.
+A lazy group (g.lazy: collapsed and long) renders its header and an empty rows
+container marked data-lazy. The Alpine scope of #episodes fires `mt-load-rows` on it
+the first time it opens; htmx then GETs season_rows into the container and the
+swap drops data-lazy, so later toggles fetch nothing. The scope of #episodes sets
+data-state (loading, error) and aria-busy from the htmx events of the container;
+the state shows the loading line, the error with its retry button, or (the season is
+gone, a 404) the "reload the page" message without a button. hx-disinherit keeps the
+container's hx-target/hx-swap/hx-sync from reaching the loaded rows, whose ul sets its
+own (_episode_rows.html). If the group is
+replaced out of band while the user has it open, x-init collapses it again (the
+open list lives outside the group), so the rows reload on the next expand.
+{% endcomment %}{% load i18n web_extras %}{% with season=g.group.season %}
+<section class="mt-grp" id="grp-{{ season.pk }}"{% if multi %} aria-labelledby="grp-{{ season.pk }}-name"{% endif %}{% if oob %} hx-swap-oob="true"{% endif %}>
+{% if multi %}<div class="mt-gh">
+<button type="button" id="grp-{{ season.pk }}-toggle" class="mt-gh-toggle mt-touch" aria-controls="grp-{{ season.pk }}-rows" aria-expanded="{% if g.open %}true{% else %}false{% endif %}" :aria-expanded="has({{ season.pk }})" @click="toggle({{ season.pk }})">
+<span id="grp-{{ season.pk }}-name" class="mt-gh-name">{{ g.label }}</span>{% if g.tag %}<span class="mt-tag">{{ g.tag }}</span>{% endif %}{% if g.group.total %}<span class="mt-gh-count">{{ g.group.watched }}/{{ g.group.total }}</span>{% endif %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+</button>
+{% if g.rows %}{% url 'season_watch' season.pk as watch_url %}{% include 'web/_episode_check.html' with prefix='grp' scope='season' object_id=season.pk state=g.check undated=g.undated name=g.label grp=season.pk post_url=watch_url %}{% endif %}
+</div>{% endif %}
+<div id="grp-{{ season.pk }}-rows"{% if multi %} x-show="has({{ season.pk }})"{% if not g.open and not fragment %} x-cloak{% endif %}{% endif %}{% if g.lazy %} data-lazy hx-get="{% url 'season_rows' season.pk %}" hx-trigger="mt-load-rows" hx-target="this" hx-swap="innerHTML" hx-sync="this:drop" hx-disinherit="*" x-init="if (has({{ season.pk }})) toggle({{ season.pk }})">
+<p class="mt-lazy-loading" role="status">{% trans 'Loading episodes…' %}</p>
+<div class="mt-lazy-error" role="alert"><p><span class="mt-lazy-msg">{% trans 'Couldn’t load the episodes' %}</span><span class="mt-lazy-gone">{% trans 'This season is no longer available. Reload the page.' %}</span></p><button type="button" class="btn btn-secondary mt-touch" @click="retry({{ season.pk }})">{% trans 'Try again' %}</button></div>
+{% else %}>{% include 'web/_episode_rows.html' %}{% endif %}</div>
+</section>
+{% endwith %}

@@ -299,14 +299,61 @@ a:hover {
   display: none;
 }
 
+/* Header search. */
+.mt-search {
+  position: relative;
+  flex: 0 1 360px;
+  min-width: 120px;
+  display: flex;
+}
+
+.mt-search svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  transform: translateY(-50%);
+  fill: none;
+  stroke: var(--mt-muted);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.mt-search .input {
+  min-height: 44px;
+  padding-left: 34px;
+}
+
+/* Text for screen readers only. */
+.mt-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* A control that must be at least 44 px square to touch. */
+.mt-touch {
+  min-height: 44px;
+  min-width: 44px;
+}
+
 @media (max-width: 719.98px) {
   .mt-logo-name,
-  .mt-nav {
+  .mt-nav,
+  .mt-search {
     display: none;
   }
 
   .mt-page {
-    padding-bottom: 88px;
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
   }
 
   .mt-bottom-nav {
@@ -386,4 +433,2201 @@ a:hover {
 
 .btn-primary:active {
   background: var(--color-accent-900);
+}
+
+/* Poster: a tinted placeholder under the image; grayscale until hovered or focused. */
+.mt-poster {
+  position: relative;
+  display: block;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.mt-poster--thumb {
+  width: 56px;
+}
+
+.mt-poster-ph,
+.mt-poster-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  filter: grayscale(1) contrast(1.08);
+  transition: filter 0.2s;
+}
+
+.mt-poster-ph {
+  background-color: oklch(0.8 0.08 var(--mt-hue, 0));
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-text) 10%, transparent) 0 1px,
+    transparent 1px 9px
+  );
+}
+
+:root[data-theme='dark'] .mt-poster-ph {
+  background-color: oklch(0.42 0.07 var(--mt-hue, 0));
+}
+
+.mt-poster-img {
+  object-fit: cover;
+}
+
+a:hover .mt-poster-ph,
+a:hover .mt-poster-img,
+a:focus-visible .mt-poster-ph,
+a:focus-visible .mt-poster-img,
+.mt-cw-card:hover .mt-poster-ph,
+.mt-cw-card:hover .mt-poster-img,
+.mt-result:hover .mt-poster-ph,
+.mt-result:hover .mt-poster-img,
+.mt-lrow:hover .mt-poster-ph,
+.mt-lrow:hover .mt-poster-img {
+  filter: none;
+}
+
+/* There is no hover on a touch screen: the posters are in colour. */
+@media (hover: none) {
+  .mt-poster-ph,
+  .mt-poster-img {
+    filter: none;
+  }
+}
+
+.mt-poster-badge {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  display: flex;
+}
+
+/* Rating badge: value, then the source on a dark tab. */
+.mt-rating {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--color-text);
+  background: var(--color-bg);
+  color: var(--color-text);
+  cursor: help;
+}
+
+.mt-rating-value {
+  padding: 2px 5px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.mt-rating-source {
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  background: var(--color-text);
+  color: var(--color-bg);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.mt-rating--lg {
+  border-width: 2px;
+}
+
+.mt-rating--lg .mt-rating-value {
+  padding: 4px 8px;
+  font-size: 16px;
+  line-height: 1.15;
+}
+
+.mt-rating--lg .mt-rating-source {
+  padding: 0 6px;
+  letter-spacing: 0.04em;
+}
+
+/* Status picker: an Alpine dropdown. */
+.mt-picker {
+  position: relative;
+  min-width: 0;
+}
+
+.mt-picker-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 10px;
+  background: color-mix(in srgb, var(--color-text) 9%, transparent);
+  border: 1px solid transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mt-picker-btn:hover {
+  border-color: var(--color-text);
+}
+
+.mt-picker-btn--add {
+  background: transparent;
+  border-color: var(--color-text);
+}
+
+.mt-picker-btn--add:hover {
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
+}
+
+.mt-picker-btn svg,
+.mt-picker-item svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mt-picker-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mt-picker-menu,
+.mt-ep-menu {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px);
+  z-index: 40;
+  width: max-content;
+  min-width: 100%;
+  display: grid;
+  padding: 4px 0;
+  background: var(--color-bg);
+  border: 1px solid var(--color-text);
+  box-shadow: var(--shadow-md);
+}
+
+.mt-picker-menu--right {
+  left: auto;
+  right: 0;
+}
+
+/* The menus open upward when Alpine finds no room below the button. */
+.mt-picker-menu--up {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+/* The menu of an episode row opens under its "..." button. */
+.mt-ep-menu {
+  left: auto;
+  right: 8px;
+  top: calc(100% - 6px);
+  min-width: 240px;
+}
+
+.mt-ep-menu.mt-ep-menu--up {
+  top: auto;
+  bottom: calc(100% - 6px);
+}
+
+.mt-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px 0 10px;
+  background: none;
+  border: 0;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mt-picker-item:hover {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+
+.mt-picker-item[aria-checked='true'] {
+  font-weight: 800;
+}
+
+.mt-picker-item--remove {
+  padding-left: 34px;
+}
+
+.mt-picker-mark {
+  width: 16px;
+  display: grid;
+  place-items: center;
+}
+
+.mt-picker-sep {
+  height: 1px;
+  margin: 4px 0;
+  border: 0;
+  background: var(--color-divider);
+}
+
+/* Progress bar. */
+.mt-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mt-progress-bar {
+  flex: 1;
+  height: 3px;
+  background: color-mix(in srgb, var(--color-text) 14%, transparent);
+}
+
+.mt-progress-fill {
+  height: 100%;
+  width: min(var(--mt-pct, 0%), 100%);
+  background: var(--color-text);
+}
+
+.mt-progress-text {
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Poster grid, shared by the screens and the loading skeleton. */
+.mt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 20px 16px;
+}
+
+/* Loading, empty and error states. */
+.mt-state {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  padding: 20px 0 28px;
+  border-top: 2px solid var(--color-divider);
+}
+
+.mt-state--loading {
+  gap: 16px;
+  justify-items: stretch;
+}
+
+.mt-state--empty,
+.mt-state--error {
+  border-top-color: var(--color-text);
+}
+
+.mt-state-title {
+  margin: 0;
+  font-size: 22px;
+}
+
+.mt-state-text {
+  margin: 0;
+  max-width: 52ch;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--mt-muted);
+}
+
+.mt-state-label {
+  font-size: 13px;
+  color: var(--mt-muted);
+}
+
+.mt-state-icon,
+.mt-state--error .btn svg {
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mt-state--error .btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.mt-skeleton-card {
+  display: grid;
+  gap: 8px;
+}
+
+.mt-skeleton,
+.mt-skeleton-row {
+  background: color-mix(in srgb, var(--color-text) 9%, transparent);
+}
+
+.mt-skeleton-poster {
+  aspect-ratio: 2 / 3;
+}
+
+.mt-skeleton-line {
+  height: 14px;
+  width: 80%;
+}
+
+.mt-skeleton-line--short {
+  height: 12px;
+  width: 50%;
+}
+
+.mt-skeleton-rows {
+  display: grid;
+  gap: 8px;
+}
+
+.mt-skeleton-row {
+  height: 56px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mt-skeleton,
+  .mt-skeleton-row {
+    animation: mt-pulse 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes mt-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* Search and add. */
+.mt-search-head {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 14px;
+}
+
+.mt-search-head .mt-page-title {
+  margin: 0;
+  font-size: clamp(28px, 6vw, 40px);
+}
+
+.mt-search-form {
+  position: relative;
+  display: flex;
+  max-width: 640px;
+}
+
+.mt-search-form svg {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  transform: translateY(-50%);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.mt-search-form .input {
+  width: 100%;
+  min-height: 52px;
+  padding-left: 44px;
+  font-size: 17px;
+  border-width: 2px;
+}
+
+.mt-search-source {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* The skeleton shows only while HTMX waits for the results. */
+.mt-search-loading {
+  display: none;
+}
+
+.mt-search-loading.htmx-request {
+  display: block;
+}
+
+.mt-search-hint,
+.mt-search-count,
+.mt-search-notice {
+  margin: 0;
+  font-size: 14px;
+  color: var(--mt-muted);
+}
+
+.mt-search-hint {
+  padding-top: 16px;
+  border-top: 2px solid var(--color-divider);
+}
+
+.mt-search-count {
+  font-size: 13px;
+  padding-bottom: 4px;
+}
+
+.mt-search-notice {
+  padding: 8px 12px;
+  margin-bottom: 4px;
+  border: 1px solid var(--color-divider);
+  border-left: 4px solid var(--color-text);
+  color: var(--color-text);
+}
+
+.mt-group {
+  padding: 16px 0 8px;
+  border-top: 2px solid var(--color-divider);
+}
+
+.mt-group-title {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+
+.mt-group-count {
+  margin-left: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  vertical-align: super;
+  line-height: 0;
+  color: var(--mt-muted);
+}
+
+.mt-result-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mt-result {
+  position: relative;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  grid-template-areas: 'img body' 'img act';
+  gap: 6px 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.mt-result:last-child {
+  border-bottom: 0;
+}
+
+.mt-result-img {
+  grid-area: img;
+}
+
+.mt-result-img a {
+  display: block;
+}
+
+.mt-result-body {
+  grid-area: body;
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.mt-result-name {
+  font-size: 16px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.mt-result-name a {
+  color: var(--color-text);
+}
+
+/* The title link is the tap target of the whole row; the controls in
+   .mt-result-act sit above it. */
+.mt-result-name a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.mt-result-sub {
+  font-size: 13px;
+  color: var(--mt-muted);
+  overflow-wrap: anywhere;
+}
+
+.mt-result-desc {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  max-width: 60ch;
+  margin: 2px 0 0;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.mt-result-act {
+  position: relative;
+  grid-area: act;
+  width: min(100%, 180px);
+  align-self: start;
+}
+
+.mt-result-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mt-result-status svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mt-result-more {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* The control that replaces the add picker. */
+.mt-add {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  font-size: 13px;
+}
+
+.mt-add--pending {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: var(--mt-muted);
+}
+
+.mt-add-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-divider);
+  border-top-color: var(--color-text);
+  border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mt-add-spinner {
+    animation: mt-spin 0.8s linear infinite;
+  }
+}
+
+@keyframes mt-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.mt-add-text {
+  color: var(--mt-muted);
+}
+
+@media (min-width: 600px) {
+  .mt-result {
+    grid-template-columns: 56px minmax(0, 1fr) 150px;
+    grid-template-areas: 'img body act';
+  }
+
+  .mt-result-act {
+    width: auto;
+  }
+}
+
+/* Title page. */
+.mt-title {
+  display: grid;
+  /* A plain `auto` column would grow to the width of the chip row, which scrolls
+     inside itself. */
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.mt-th {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  padding: 0 0 20px;
+}
+
+.mt-poster--hero {
+  width: 100%;
+}
+
+.mt-poster--hero .mt-poster-ph,
+.mt-poster--hero .mt-poster-img {
+  filter: none;
+}
+
+.mt-th-title {
+  margin: 0;
+  font-size: clamp(26px, 6vw, 40px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+.mt-th-original {
+  margin: 6px 0 0;
+  font-size: 15px;
+  color: var(--mt-muted);
+  overflow-wrap: anywhere;
+}
+
+.mt-th-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mt-tag {
+  padding: 1px 5px;
+  border: 1px solid var(--color-divider);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mt-muted);
+}
+
+.mt-th-meta {
+  margin: 10px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--mt-muted);
+}
+
+.mt-th-rating {
+  margin-top: 12px;
+}
+
+.mt-lib {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  padding: 16px 0 20px;
+  border-top: 2px solid var(--color-divider);
+}
+
+.mt-lib-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.mt-lib-heading {
+  margin: 0;
+  font-size: 17px;
+}
+
+.mt-lib-saved {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mt-lib-score {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.mt-lib-label {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mt-lib-score .input {
+  width: auto;
+}
+
+.mt-lib-note {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  max-width: 640px;
+}
+
+.mt-lib-note .input {
+  min-height: 90px;
+}
+
+.mt-lib-hint {
+  margin: 0;
+  font-size: 14px;
+}
+
+.mt-stars {
+  display: none;
+  gap: 0;
+  color: var(--color-text);
+}
+
+.mt-star {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.mt-star:hover {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+
+.mt-star-icon {
+  position: relative;
+  width: 22px;
+  height: 22px;
+}
+
+.mt-star svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.mt-star .mt-star-fill {
+  display: none;
+  fill: var(--color-accent);
+  stroke: var(--color-accent);
+}
+
+.mt-star--full .mt-star-fill {
+  display: block;
+}
+
+.mt-star--half .mt-star-fill {
+  display: block;
+  clip-path: inset(0 50% 0 0);
+}
+
+.mt-section {
+  padding: 20px 0 8px;
+  border-top: 2px solid var(--color-divider);
+}
+
+.mt-section-title {
+  margin: 0 0 10px;
+  font-size: 22px;
+}
+
+.mt-desc {
+  margin: 0;
+  max-width: 68ch;
+  font-size: 15px;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+.mt-desc--clamped {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  overflow: hidden;
+}
+
+.mt-link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mt-link);
+  cursor: pointer;
+}
+
+.mt-link-btn:hover {
+  text-decoration: underline;
+}
+
+.mt-episodes-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+  margin-bottom: 4px;
+}
+
+.mt-episodes-head .mt-section-title {
+  margin: 0;
+}
+
+.mt-episodes-head .mt-progress {
+  flex: 1;
+  min-width: 140px;
+  max-width: 280px;
+}
+
+.mt-chips {
+  display: flex;
+  gap: 6px;
+  margin: 10px 0 6px;
+  padding: 3px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.mt-chip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-divider);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--color-text);
+}
+
+.mt-chip:hover {
+  border-color: var(--color-text);
+  text-decoration: none;
+}
+
+.mt-chip-count {
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--mt-muted);
+}
+
+.mt-grp {
+  margin-top: 10px;
+  border-top: 1px solid var(--color-divider);
+}
+
+.mt-gh {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mt-gh-toggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mt-gh-name {
+  min-width: 0;
+  font-size: 17px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+/* The name wraps; the tag, the count and the chevron stay on its line. */
+.mt-gh-toggle > :not(.mt-gh-name) {
+  flex: none;
+}
+
+.mt-gh-count {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--mt-muted);
+}
+
+.mt-gh-toggle svg {
+  margin-left: auto;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.15s;
+}
+
+.mt-gh-toggle .mt-gh-count + svg {
+  margin-left: 0;
+}
+
+.mt-gh-toggle[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+.mt-ep-note {
+  margin: 4px 0 6px;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--mt-muted);
+}
+
+/* A lazy group's rows container: the loading line and the error show by data-state. */
+.mt-lazy-loading,
+.mt-lazy-error {
+  display: none;
+  margin: 8px 0;
+  font-size: 14px;
+  color: var(--mt-muted);
+}
+
+[data-state='loading'] > .mt-lazy-loading {
+  display: block;
+}
+
+[data-state='error'] > .mt-lazy-error,
+[data-state='gone'] > .mt-lazy-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.mt-lazy-error p {
+  margin: 0;
+}
+
+/* A 404 (the season is gone) has no retry: it shows its own message. */
+.mt-lazy-gone,
+[data-state='gone'] .mt-lazy-msg,
+[data-state='gone'] .mt-lazy-error button {
+  display: none;
+}
+
+[data-state='gone'] .mt-lazy-gone {
+  display: inline;
+}
+
+.mt-eps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mt-ep {
+  position: relative;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) 44px 44px;
+  align-items: center;
+  column-gap: 8px;
+  min-height: 44px;
+  padding-left: 6px;
+}
+
+.mt-ep-num {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  color: var(--mt-muted);
+  white-space: nowrap;
+}
+
+.mt-ep-num2 {
+  font-size: 11px;
+}
+
+.mt-ep-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 0;
+}
+
+.mt-ep-name {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.mt-ep--unaired .mt-ep-name {
+  font-weight: 400;
+  color: var(--mt-muted);
+}
+
+.mt-ep-date {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--mt-muted);
+}
+
+/* The watched mark: the circle inside the 44 px button of the control. */
+.mt-check-btn {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.mt-check-btn:hover:not(:disabled) .mt-check--unwatched,
+.mt-check-btn:hover:not(:disabled) .mt-check--partly {
+  background-color: color-mix(in srgb, var(--color-text) 14%, transparent);
+}
+
+.mt-check-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.mt-check-btn.htmx-request {
+  opacity: 0.6;
+}
+
+.mt-check {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  border: 2px solid var(--color-text);
+  border-radius: 50%;
+  box-sizing: border-box;
+  color: var(--color-bg);
+}
+
+/* The tick and the dots are drawn as masks: no <svg> in every row of a long list. */
+.mt-check--watched::after {
+  content: '';
+  width: 14px;
+  height: 14px;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M20 6 9 17l-5-5' fill='none' stroke='%23000' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.mt-check--watched {
+  background: var(--color-text);
+}
+
+.mt-check--partly {
+  background: linear-gradient(90deg, var(--color-text) 50%, transparent 50%);
+}
+
+.mt-check--unaired {
+  border-style: dashed;
+  border-color: var(--mt-muted);
+}
+
+@media (min-width: 600px) {
+  .mt-stars {
+    display: inline-flex;
+  }
+
+  .mt-th {
+    grid-template-columns: 200px minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .mt-ep {
+    grid-template-columns: 84px minmax(0, 1fr) 44px 44px;
+  }
+}
+
+/* Row menu button, repeated-viewing count. */
+.mt-ep-more {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mt-muted);
+  cursor: pointer;
+}
+
+.mt-ep-more:hover {
+  color: var(--color-text);
+}
+
+.mt-ep-more::before {
+  content: '';
+  width: 20px;
+  height: 20px;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12h.01M12 12h.01M19 12h.01' fill='none' stroke='%23000' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.mt-ep-views {
+  margin-left: 6px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+/* Progress, whole-show control, continue bar, tip. */
+.mt-title-progress {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mt-title-progress .mt-check-btn {
+  margin-left: auto;
+}
+
+.mt-continue > * {
+  margin-top: 12px;
+}
+
+.mt-continue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 16px;
+}
+
+.mt-continue-btn {
+  max-width: 100%;
+  justify-content: flex-start;
+  gap: 8px;
+  text-align: left;
+}
+
+.mt-continue-btn svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mt-continue-next {
+  cursor: default;
+  font-weight: 600;
+}
+
+.mt-continue-done {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.mt-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 4px 4px 4px 12px;
+  border: 1px solid var(--color-text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Not armed by the server, or dismissed for good (see hint.js). Neither state lives
+   on the element: an HTMX swap resets its attributes and styles. */
+.mt-hint[data-armed="false"],
+:root[data-hint-mark-up-to="dismissed"] .mt-hint {
+  display: none;
+}
+
+.mt-hint-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.mt-hint-close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.mt-hint-close svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+/* Movie watched block. */
+.mt-movie-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding-bottom: 12px;
+}
+
+.mt-movie-actions svg {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mt-movie-count,
+.mt-movie-note {
+  margin: 0;
+  font-size: 14px;
+}
+
+.mt-movie-count {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Library. */
+.mt-lib-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding-bottom: 14px;
+}
+
+.mt-lib-head .mt-page-title {
+  margin: 0;
+  font-size: clamp(28px, 6vw, 40px);
+}
+
+.mt-lib-total {
+  font-size: 14px;
+  color: var(--mt-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Continue watching: a horizontal strip of cards. */
+.mt-cw--full {
+  padding: 20px 0 24px;
+  border-top: 2px solid var(--color-divider);
+}
+
+.mt-cw-title {
+  margin: 0 0 12px;
+  font-size: 22px;
+}
+
+.mt-cw-count {
+  margin-left: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 0;
+  vertical-align: super;
+  color: var(--mt-muted);
+}
+
+.mt-cw-list {
+  display: flex;
+  gap: 12px;
+  margin: 0 -16px;
+  padding: 0 16px 4px;
+  list-style: none;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scroll-padding: 0 16px;
+  scrollbar-width: thin;
+}
+
+.mt-cw-card {
+  position: relative;
+  flex: none;
+  width: min(300px, 82vw);
+  scroll-snap-align: start;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) 44px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 4px 8px 8px;
+  border: 1px solid var(--color-divider);
+  background: var(--color-bg);
+}
+
+.mt-cw-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.mt-cw-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--color-text);
+  overflow-wrap: break-word;
+}
+
+/* The name link is the tap target of the whole card; the check button sits above. */
+.mt-cw-name::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.mt-cw-ep {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mt-link);
+  overflow-wrap: break-word;
+}
+
+.mt-cw-when {
+  font-size: 12px;
+  color: var(--mt-muted);
+}
+
+.mt-cw-body .mt-progress {
+  margin-top: 4px;
+}
+
+.mt-cw-check {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.mt-cw-check:hover {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+
+.mt-cw-check.htmx-request {
+  opacity: 0.5;
+}
+
+.mt-cw-circle {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--color-text);
+  border-radius: 50%;
+}
+
+.mt-cw-circle svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.35;
+}
+
+.mt-cw-check:hover .mt-cw-circle svg {
+  opacity: 1;
+}
+
+/* Filters: type tabs, status chips, search, sort and the view switch. */
+.mt-lib-all {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 2px solid var(--color-divider);
+}
+
+.mt-lib-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.mt-fc-row {
+  display: flex;
+  gap: 6px;
+  margin: -3px;
+  padding: 3px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.mt-fc {
+  flex: none;
+  display: flex;
+}
+
+/* The radio is hidden; its label is the chip and shows the focus and the choice. */
+.mt-fc-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mt-fc-face {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid var(--color-divider);
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mt-fc-face--tab {
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.mt-fc-face:hover {
+  border-color: var(--color-text);
+}
+
+.mt-fc-input:checked + .mt-fc-face {
+  background: var(--color-text);
+  border-color: var(--color-text);
+  color: var(--color-bg);
+}
+
+.mt-fc-input:focus-visible + .mt-fc-face,
+.mt-fc-input:focus-visible + .mt-view-face {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.mt-fc-count {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mt-lib-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.mt-lib-q {
+  position: relative;
+  flex: 1 1 200px;
+  display: flex;
+  min-width: 0;
+}
+
+.mt-lib-q svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  transform: translateY(-50%);
+  fill: none;
+  stroke: var(--mt-muted);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.mt-lib-q .input {
+  padding-left: 36px;
+}
+
+.mt-lib-sort {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--mt-muted);
+}
+
+.mt-lib-sort .input {
+  width: auto;
+}
+
+.mt-view {
+  display: flex;
+  border: 1px solid var(--color-divider);
+}
+
+.mt-view-opt {
+  display: flex;
+}
+
+.mt-view-face {
+  width: 44px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.mt-view-face svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mt-fc-input:checked + .mt-view-face {
+  background: var(--color-text);
+  color: var(--color-bg);
+}
+
+/* The skeleton covers the results while HTMX waits, but only after a short while,
+   so a quick answer does not flash. */
+.mt-lib-body {
+  position: relative;
+}
+
+.mt-lib-loading {
+  display: none;
+  pointer-events: none;
+}
+
+.mt-lib-loading.htmx-request {
+  display: block;
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow: hidden;
+  background: var(--color-bg);
+  animation: mt-appear 0.01s linear 0.2s backwards;
+}
+
+@keyframes mt-appear {
+  from {
+    opacity: 0;
+  }
+}
+
+.mt-lib-loading .mt-state {
+  border-top: 0;
+  padding-top: 8px;
+}
+
+.mt-lib-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.mt-lib-more .htmx-request {
+  opacity: 0.6;
+}
+
+/* Grid view. */
+.mt-lgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 24px 16px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mt-lcard-cell {
+  display: flex;
+  min-width: 0;
+}
+
+/* A column as tall as its row: the link takes the spare height, so the progress,
+   the next episode and the status button line up across cards. */
+.mt-lcard {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mt-lcard-link {
+  flex: 1;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  color: var(--color-text);
+}
+
+/* The link is the tap target of the whole card; the status button (positioned, later in the
+   document) sits above. */
+.mt-lcard-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.mt-lcard-link:hover {
+  text-decoration: none;
+}
+
+.mt-lcard-img {
+  position: relative;
+  display: block;
+}
+
+.mt-lcard-airing {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  padding: 2px 5px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mt-lcard-text {
+  display: grid;
+  gap: 1px;
+  align-content: start;
+  min-height: 44px;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.mt-lcard-name {
+  font-size: 14px;
+  font-weight: 800;
+  overflow-wrap: break-word;
+}
+
+.mt-lcard-meta {
+  font-size: 12px;
+  color: var(--mt-muted);
+}
+
+.mt-lcard-next {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--mt-muted);
+}
+
+/* List view. */
+.mt-ltable {
+  width: 100%;
+  margin-top: 4px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.mt-ltable thead tr {
+  border-bottom: 2px solid var(--color-text);
+  text-align: left;
+}
+
+.mt-ltable th {
+  padding: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: left;
+}
+
+.mt-ltable th:first-child {
+  /* The other columns shrink to their content; the title takes what is left. */
+  width: 100%;
+  padding-left: 0;
+}
+
+.mt-ltable td {
+  padding: 6px 8px;
+}
+
+.mt-ltable td:first-child {
+  padding-left: 0;
+}
+
+.mt-lrow {
+  position: relative;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.mt-lrow:nth-child(even) {
+  background: color-mix(in srgb, var(--color-text) 4%, transparent);
+}
+
+.mt-lrow-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mt-lrow-thumb {
+  flex: none;
+  width: 32px;
+}
+
+.mt-lrow-thumb .mt-poster--thumb {
+  width: 100%;
+}
+
+.mt-lrow-text {
+  display: grid;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.mt-lrow-name {
+  font-weight: 800;
+  color: var(--color-text);
+  overflow-wrap: break-word;
+}
+
+/* The name link is the tap target of the whole row; the status button sits above. */
+.mt-lrow-name::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.mt-lrow-meta {
+  font-size: 12px;
+  color: var(--mt-muted);
+}
+
+.mt-lrow-progress {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* A word, not a count: smaller, so a long translation does not widen the column. */
+.mt-lrow-done {
+  font-size: 12px;
+}
+
+.mt-lrow-next {
+  font-size: 13px;
+}
+
+.mt-ltable .mt-col-status {
+  position: relative;
+  width: 128px;
+  padding-right: 0;
+}
+
+/* The button's label must not widen the column: it is cut with an ellipsis instead. */
+.mt-ltable .mt-picker {
+  width: 128px;
+}
+
+.mt-col-wide {
+  display: none;
+}
+
+@media (max-width: 719px) {
+  /* Every pixel counts for the title on a phone. */
+  .mt-ltable th,
+  .mt-ltable td {
+    padding-inline: 4px;
+  }
+
+  /* The label is the status; the leading check icon only takes its room. */
+  .mt-ltable .mt-picker-btn > svg:first-child {
+    display: none;
+  }
+}
+
+@media (min-width: 720px) {
+  .mt-col-wide {
+    display: table-cell;
+  }
+
+  .mt-lrow-kind {
+    display: none;
+  }
+
+  .mt-ltable .mt-col-status {
+    width: 160px;
+  }
+
+  .mt-ltable .mt-picker {
+    width: 160px;
+  }
+}
+
+/* An empty library: what to do first. */
+.mt-onb {
+  display: grid;
+  gap: 18px;
+  padding: 24px 0;
+  border-top: 2px solid var(--color-text);
+}
+
+.mt-onb-head {
+  display: grid;
+  gap: 6px;
+  max-width: 60ch;
+}
+
+.mt-onb-title {
+  margin: 0;
+  font-size: 24px;
+}
+
+.mt-onb-text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--mt-muted);
+}
+
+.mt-onb-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--color-divider);
+}
+
+.mt-onb-steps li {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  padding: 14px 16px 14px 0;
+  border-bottom: 1px solid var(--color-divider);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--mt-muted);
+}
+
+.mt-onb-steps strong {
+  font-size: 15px;
+  color: var(--color-text);
+}
+
+.mt-onb-num {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+/* Upcoming. */
+.mt-up-head {
+  display: grid;
+  gap: 4px;
+  padding-bottom: 14px;
+}
+
+.mt-up-head .mt-page-title {
+  margin: 0;
+  font-size: clamp(28px, 6vw, 40px);
+}
+
+.mt-up-head .mt-muted {
+  margin: 0;
+  font-size: 14px;
+}
+
+.mt-up-group {
+  padding: 18px 0 8px;
+  border-top: 2px solid var(--color-divider);
+}
+
+.mt-up-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 10px;
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.mt-up-sub {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mt-muted);
+}
+
+.mt-up-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mt-up-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: center;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.mt-up-link {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 0;
+  color: var(--color-text);
+}
+
+.mt-up-link:hover {
+  text-decoration: none;
+}
+
+.mt-up-thumb .mt-poster--thumb {
+  width: 100%;
+}
+
+.mt-up-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.mt-up-name {
+  font-size: 15px;
+  font-weight: 800;
+  overflow-wrap: break-word;
+}
+
+.mt-up-line {
+  font-size: 14px;
+  color: var(--mt-link);
+  overflow-wrap: break-word;
+}
+
+.mt-up-when {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 12px;
+  color: var(--mt-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mt-up-today {
+  padding: 2px 6px;
+  background: var(--color-accent-700);
+  color: var(--color-neutral-100);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.mt-up-status {
+  justify-self: end;
+  padding: 3px 7px;
+  background: color-mix(in srgb, var(--color-text) 9%, transparent);
+  color: var(--color-text);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Settings. */
+.mt-menu-item[aria-current='page'] {
+  font-weight: 700;
+  box-shadow: inset 3px 0 0 var(--color-text);
+}
+
+.mt-set-head {
+  display: grid;
+  gap: 10px;
+  padding-bottom: 14px;
+}
+
+.mt-set-head .mt-page-title {
+  margin: 0;
+  font-size: clamp(28px, 6vw, 40px);
+}
+
+.mt-set-saved {
+  margin: 0;
+  padding: 10px 12px;
+  border: 2px solid var(--color-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mt-set-section {
+  display: grid;
+  gap: 12px 24px;
+  padding: 20px 0;
+  border-top: 2px solid var(--color-divider);
+}
+
+@media (min-width: 720px) {
+  .mt-set-section {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+}
+
+.mt-set-title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.mt-set-body {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  align-content: start;
+}
+
+.mt-set-who {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.mt-set-avatar {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  background: var(--color-text);
+  color: var(--color-bg);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.mt-set-name {
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+
+.mt-set-facts {
+  display: grid;
+  grid-template-columns: minmax(96px, max-content) minmax(0, 1fr);
+  gap: 6px 16px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.mt-set-facts dt {
+  color: var(--mt-muted);
+}
+
+.mt-set-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.mt-set-note {
+  margin: 0;
+  max-width: 60ch;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--mt-muted);
+}
+
+.mt-set-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.mt-set-field {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+
+.mt-set-field > label {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.mt-set-help {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--mt-muted);
+}
+
+.mt-set-error {
+  padding-left: 8px;
+  border-left: 3px solid var(--color-accent-700);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mt-set-field select[aria-invalid='true'] {
+  border-color: var(--color-accent-700);
+  border-width: 2px;
 }

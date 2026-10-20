@@ -1,0 +1,23 @@
+{% comment %}
+A title in the list view: a table row with the same status picker as the card.
+Context: item (web.views.library.Item), remove_text.
+{% endcomment %}{% load i18n web_extras %}{% with entry=item.row.entry title=item.row.entry.title %}
+<tr class="mt-lrow">
+  <td class="mt-lrow-title">
+    <div class="mt-lrow-main">
+      <a class="mt-lrow-thumb" href="{% url 'title' title.pk %}" aria-hidden="true" tabindex="-1">{% include 'web/components/_poster.html' with title=title variant='thumb' %}</a>
+      <span class="mt-lrow-text">
+        <a href="{% url 'title' title.pk %}" class="mt-lrow-name">{{ item.name }}</a>
+        <span class="mt-lrow-meta"><span class="mt-lrow-year">{% if title.release_date %}{{ title.release_date|date:'Y' }}{% endif %}</span><span class="mt-lrow-kind"> · {{ title.kind|kind_label }}</span></span>
+      </span>
+    </div>
+  </td>
+  <td class="mt-col-wide mt-muted">{{ title.kind|kind_label }}</td>
+  <td class="mt-lrow-progress">{% if title.kind == 'movie' %}{% if entry.status == 'completed' %}<span class="mt-lrow-done">{% trans 'Watched' %}</span>{% else %}—{% endif %}{% else %}{{ item.row.watched }}/{{ item.row.total }}{% endif %}</td>
+  <td class="mt-col-wide mt-muted mt-lrow-next">{% include 'web/_library_next.html' %}</td>
+  <td class="mt-col-status" hx-vals='{"ui": "library"}'>
+    {% url 'title_status' title.pk as status_url %}
+    {% include 'web/components/_status_picker.html' with title=title entry=entry action=status_url swap='none' align='right' confirm_remove=remove_text %}
+  </td>
+</tr>
+{% endwith %}

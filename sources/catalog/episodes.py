@@ -37,7 +37,7 @@ class EntrySpec:
     expected: int | None
     tmdb_season: int | None
     offset: int
-    sort_key: tuple[int, int, int]
+    sort_key: tuple[int, ...]
 
 
 def passes_guard(

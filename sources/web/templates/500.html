@@ -1,0 +1,33 @@
+{% load i18n static %}{% get_current_language as LANGUAGE_CODE %}<!doctype html>
+{% comment %}
+Django's 500 handler renders this without a request or context processors, and the
+failure may be the database or the cache. So this page is standalone: it does not
+extend the shell and uses nothing but static files, translations and one URL.
+{% endcomment %}
+<html lang="{{ LANGUAGE_CODE }}" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% trans 'Something went wrong' %} · mitaroku</title>
+  <link rel="stylesheet" href="{% static 'web/ds.css' %}">
+  <link rel="stylesheet" href="{% static 'web/app.css' %}">
+  <script src="{% static 'web/theme.js' %}"></script>
+</head>
+<body>
+  <header class="mt-header">
+    <div class="mt-header-inner">
+      <a class="mt-logo" href="{% url 'library' %}" aria-label="{% trans 'mitaroku, go to library' %}">
+        <span class="mt-logo-mark">見た録</span>
+        <span class="mt-logo-name">mitaroku</span>
+      </a>
+    </div>
+  </header>
+  <main id="main" class="mt-page">
+    <div class="mt-state mt-state--error" role="alert">
+      <h1 class="mt-state-title">{% trans 'Something went wrong' %}</h1>
+      <p class="mt-state-text">{% trans 'The server hit an error. Nothing was lost. Try again in a moment.' %}</p>
+      <a class="btn btn-primary mt-touch" href="{% url 'library' %}">{% trans 'Open your library' %}</a>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,52 @@
+{% comment %}
+The episode list of a series or an anime franchise. Alpine keeps the open accordion
+groups; the franchise chips open a group and scroll to it.
+Context: groups (GroupView list), multi (more than one group), open_ids (groups that
+start open), chips (groups again for anime with several entries, else empty), entry,
+progress, has_views (the user has a viewing of the title: the bar shows without an entry),
+whole, has_rows, next_row (see _title_progress.html and _continue_bar.html); oob
+(optional): send it as an out-of-band swap of #episodes. It holds #title-progress,
+#continue-bar and #mark-up-to-hint, so a response with the section sends none of them
+separately. A collapsed group with many rows is lazy (see _episode_group.html):
+opening it (toggle, or a chip through show) calls load, which fires the htmx request
+for its rows only while the container still has data-lazy. A chip scrolls to the group
+at once and again when its rows arrive (jumpTo), since the page grows then. The Alpine scope also keeps
+the open row menu (menu), the long press and the control that gets the focus once a
+menu action has been swapped in (focusAfter).
+{% endcomment %}{% load i18n web_extras %}
+<section id="episodes" class="mt-section mt-episodes" aria-labelledby="episodes-heading"{% if oob %} hx-swap-oob="true"{% endif %}
+         x-data="{ open: [{{ open_ids|join:', ' }}], has(id) { return this.open.includes(id) }, load(id) { const rows = document.getElementById('grp-' + id + '-rows'); if (rows && rows.hasAttribute('data-lazy')) { htmx.trigger(rows, 'mt-load-rows'); return true } return false }, retry(id) { document.getElementById('grp-' + id + '-toggle').focus(); this.load(id) }, lazyState(e, state) { const el = e.target; if (el.hasAttribute('data-lazy')) { el.dataset.state = state; if (state === 'loading') el.setAttribute('aria-busy', 'true') } }, toggle(id) { if (this.has(id)) { this.open = this.open.filter(i => i !== id) } else { this.open = [...this.open, id]; this.load(id) } }, show(id) { this.jumpTo = null; if (!this.has(id)) { this.open.push(id); if (this.load(id)) this.jumpTo = id } this.jump(id) }, jump(id) { this.$nextTick(() => document.getElementById('grp-' + id).scrollIntoView({ block: 'start' })) },
+                  menu: null, menuUp: false, jumpTo: null, held: false, timer: null, focusAfter: null,
+                  init() { this.$watch('menu', id => { this.menuUp = false; if (id) this.$nextTick(() => { const li = document.getElementById('ep-' + id); this.menuUp = mtMenuUp(li.querySelector('.mt-ep-more'), li.querySelector('.mt-ep-menu')) }) }) },
+                  press(id) { return { '@click.capture': 'pressClick($event)', '@touchstart.passive': 'pressStart(' + id + ')', '@touchend': 'pressEnd()', '@touchmove.passive': 'pressEnd()', '@touchcancel': 'pressEnd()', '@contextmenu': 'pressMenu($event)' } },
+                  pressStart(id) { this.held = false; clearTimeout(this.timer); this.timer = setTimeout(() => { this.held = true; this.menu = id }, 500) },
+                  pressEnd() { clearTimeout(this.timer); setTimeout(() => { this.held = false }, 400) },
+                  pressMenu(e) { if (this.held) e.preventDefault() },
+                  pressClick(e) { if (this.held) { e.stopPropagation(); e.preventDefault() } } }"
+         @htmx:after-settle="if (focusAfter) { const el = document.getElementById(focusAfter); focusAfter = null; if (el) el.focus() }"
+         @htmx:before-request="lazyState($event, 'loading')"
+         @htmx:after-request="if ($event.target.hasAttribute('data-lazy')) $event.target.removeAttribute('aria-busy')"
+         @htmx:after-swap="if ($event.target.hasAttribute('data-lazy')) { for (const a of ['data-lazy', 'data-state', 'aria-busy']) $event.target.removeAttribute(a); if ($event.target.id === 'grp-' + jumpTo + '-rows') { jump(jumpTo); jumpTo = null } }"
+         @htmx:response-error="focusAfter = null; lazyState($event, $event.detail.xhr.status === 404 ? 'gone' : 'error')"
+         @htmx:send-error="lazyState($event, 'error')"
+         @htmx:timeout="lazyState($event, 'error')"
+         @click.window="if (!$event.target.closest('.mt-ep-menu, .mt-ep-more')) menu = null"
+         @keydown.escape.window="if (menu) { document.getElementById('more-ep-' + menu).focus(); menu = null }">
+  <div class="mt-episodes-head">
+    <h2 id="episodes-heading" class="mt-section-title">{% trans 'Episodes' %}</h2>
+    {% if groups %}{% include 'web/_title_progress.html' with oob=False %}{% endif %}
+  </div>
+  {% if groups %}
+  {% include 'web/_continue_bar.html' with oob=False %}
+  {% include 'web/_hint_mark_up_to.html' with oob=False armed=False %}
+  {% endif %}
+  {% if chips %}
+  <nav class="mt-chips" aria-label="{% trans 'Entries of this franchise' %}">
+    {% for g in chips %}<a class="mt-chip mt-touch" href="#grp-{{ g.group.season.pk }}" @click.prevent="show({{ g.group.season.pk }})">{{ g.label }}<span class="mt-chip-count">{{ g.group.total }}</span></a>{% endfor %}
+  </nav>
+  {% endif %}
+  {% for g in groups %}{% include 'web/_episode_group.html' with oob=False %}{% empty %}
+  {% trans 'No episodes announced yet' as empty_heading %}
+  {% include 'web/components/_state_empty.html' with heading=empty_heading %}
+  {% endfor %}
+</section>

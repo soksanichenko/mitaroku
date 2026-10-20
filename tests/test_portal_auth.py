@@ -129,3 +129,9 @@ def test_x_forwarded_for_is_not_honoured(client, portal_headers):
     )
     assert response.status_code == 403
     assert not User.objects.exists()
+
+
+def test_an_anonymous_htmx_request_still_gets_401(client):
+    response = client.post('/library/', HTTP_HX_REQUEST='true')
+    assert response.status_code == 401
+    assert 'HX-Redirect' not in response

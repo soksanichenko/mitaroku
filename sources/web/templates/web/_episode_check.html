@@ -1,0 +1,17 @@
+{% comment %}
+The watched control of an episode, a season group or the whole show: a 44 px button
+around the circle. The circle keeps the contract of the display: span#check-<prefix>-
+<object_id> with class "mt-check mt-check--<state>", data-scope and data-id. The
+button is #mark-<prefix>-<object_id> (#mark-all for the whole show) and carries the
+WANTED state (hx-vals watched), so a repeated request changes nothing.
+Variables: prefix ("ep", "grp" or "all"), scope ("episode", "season" or "title"),
+object_id, state (watched, partly, unwatched or unaired), name (what the control
+acts on), code (episode scope: "S1E3"), grp (season pk, for the swap target),
+post_url, undated (optional, see below), inherit (optional): leave out hx-target,
+hx-swap and hx-sync because an ancestor sets them (the ul of the rows). A newer click in a group aborts the older request of that group (hx-sync).
+A state "unaired" renders the button disabled and without hx-post; its tooltip and
+accessible name say why: "Air date not announced" when undated is true (nothing in
+the scope has a date), else "Not aired yet".
+{% endcomment %}{% load i18n %}{% if state == 'unaired' %}{% if undated %}{% trans 'Air date not announced' as reason %}{% else %}{% trans 'Not aired yet' as reason %}{% endif %}{% endif %}{% if scope == 'episode' %}{% if state == 'watched' %}{% blocktrans asvar label %}Mark as unwatched: {{ code }} · {{ name }}{% endblocktrans %}{% else %}{% blocktrans asvar label %}Mark as watched: {{ code }} · {{ name }}{% endblocktrans %}{% endif %}{% elif scope == 'season' %}{% if state == 'watched' %}{% blocktrans asvar label %}Mark all aired episodes as unwatched: {{ name }}{% endblocktrans %}{% else %}{% blocktrans asvar label %}Mark all aired episodes as watched: {{ name }}{% endblocktrans %}{% endif %}{% elif state == 'watched' %}{% trans 'Mark whole show as unwatched' as label %}{% else %}{% trans 'Mark whole show as watched' as label %}{% endif %}
+<button type="button" id="mark-{{ prefix }}{% if prefix != 'all' %}-{{ object_id }}{% endif %}" class="mt-check-btn mt-touch" aria-label="{{ label }}{% if reason %}. {{ reason }}{% endif %}" aria-pressed="{% if state == 'watched' %}true{% elif state == 'partly' %}mixed{% else %}false{% endif %}" {% if state == 'unaired' %}disabled aria-disabled="true" title="{{ reason }}"{% else %}hx-post="{{ post_url }}" hx-vals='{"watched": "{% if state == 'watched' %}0{% else %}1{% endif %}"}' {% if not inherit %} hx-target="{% if scope == 'title' %}#episodes{% else %}#grp-{{ grp }}{% endif %}" hx-swap="outerHTML"{% if scope != 'title' %} hx-sync="closest section.mt-grp:replace"{% endif %}{% endif %}{% endif %}><span class="mt-check mt-check--{{ state }}" id="check-{{ prefix }}-{{ object_id }}" data-scope="{{ scope }}" data-id="{{ object_id }}" aria-hidden="true"></span>
+</button>

@@ -87,10 +87,10 @@ class AniListMedia:
         return date(year, month, day) if year and month and day else None
 
     @property
-    def sort_key(self) -> tuple[int, int, int]:
-        """Chronological sort key that puts unknown dates last."""
+    def sort_key(self) -> tuple[int, int, int, int]:
+        """Chronological sort key: unknown dates last, equal dates by AniList id."""
         year, month, day = self.start
-        return (year or 9999, month or 12, day or 31)
+        return (year or 9999, month or 12, day or 31, self.anilist_id)
 
 
 @dataclass(frozen=True)
@@ -136,6 +136,29 @@ def media_from_json(data: dict) -> AniListMedia:
     )
 
 
+def _validate(body: object) -> None:
+    """Reject a GraphQL body without usable ``data`` so it is never cached.
+
+    Partial data next to ``errors`` is accepted; ``errors`` alone is not.
+
+    Raises:
+        ProviderError: The body is not an object or has no ``data`` object.
+    """
+    if isinstance(body, dict) and body.get('data'):
+        return
+    errors = body.get('errors') if isinstance(body, dict) else None
+    message = errors[0].get('message') if errors else 'no data in the response'
+    raise ProviderError(f'AniList error: {message}')
+
+
+def _media_items(data: dict | None) -> list[dict]:
+    """Return ``data['Page']['media']`` or raise when any level is missing."""
+    media = ((data or {}).get('Page') or {}).get('media')
+    if media is None:
+        raise ProviderError('AniList error: no media in the response')
+    return media
+
+
 def _nodes(connection: dict | None) -> dict[int, datetime]:
     """Turn an ``airingSchedule`` connection into ``{episode: datetime}``."""
     return {
@@ -160,13 +183,12 @@ class AniListClient:
     ) -> dict | None:
         """Run a GraphQL query and return its ``data`` object."""
         body = self._http.post_json(
-            URL, json={'query': query, 'variables': variables}, ttl=ttl
+            URL,
+            json={'query': query, 'variables': variables},
+            ttl=ttl,
+            validate=_validate,
         )
-        if body is None:
-            return None
-        if body.get('errors') and not body.get('data'):
-            raise ProviderError(f'AniList error: {body["errors"][0].get("message")}')
-        return body['data']
+        return None if body is None else body['data']
 
     def media_many(self, ids: Sequence[int]) -> list[AniListMedia]:
         """Fetch entries by AniList id, 50 per request.
@@ -184,7 +206,7 @@ class AniListClient:
                 MEDIA_QUERY,
                 {'ids': unique[start : start + PAGE_SIZE], 'perPage': PAGE_SIZE},
             )
-            result.extend(media_from_json(item) for item in data['Page']['media'])
+            result.extend(media_from_json(item) for item in _media_items(data))
         return result
 
     def schedule(self, anilist_id: int) -> AniListSchedule:
@@ -207,7 +229,7 @@ class AniListClient:
         """
         data = self._query(SEARCH_QUERY, {'search': query, 'perPage': 10}, ttl=3600)
         hits = []
-        for item in data['Page']['media']:
+        for item in _media_items(data):
             if item.get('isAdult') or item.get('format') not in ANIME_FORMATS:
                 continue
             media = media_from_json(item)

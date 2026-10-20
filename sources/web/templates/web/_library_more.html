@@ -1,0 +1,2 @@
+{% comment %}"Show more": appends the next page to #library-list. Context: more_url.{% endcomment %}{% load i18n %}
+<a class="btn btn-secondary mt-touch" href="{{ more_url }}" hx-get="{{ more_url }}" hx-target="#library-list" hx-swap="beforeend">{% trans 'Show more' %}</a>

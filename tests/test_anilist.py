@@ -174,3 +174,24 @@ def test_graphql_errors_without_data_are_a_provider_error(provider_http):
     client = AniListClient(provider_http(handler, name='anilist'))
     with pytest.raises(ProviderError, match='boom'):
         client.media_many([1])
+
+
+def test_null_page_is_a_provider_error(provider_http):
+    handler = lambda request: httpx.Response(200, json={'data': {'Page': None}})  # noqa: E731
+    client = AniListClient(provider_http(handler, name='anilist'))
+    with pytest.raises(ProviderError):
+        client.media_many([1])
+    with pytest.raises(ProviderError):
+        client.search('x')
+
+
+def test_an_error_body_without_data_is_a_provider_error_and_not_cached(provider_http):
+    bodies = iter(
+        [{'errors': [{'message': 'boom'}]}, {'data': {'Page': {'media': []}}}]
+    )
+    client = AniListClient(
+        provider_http(lambda r: httpx.Response(200, json=next(bodies)), name='anilist')
+    )
+    with pytest.raises(ProviderError):
+        client.media_many([1])
+    assert client.media_many([1]) == []  # the error was not cached

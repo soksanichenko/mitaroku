@@ -1,0 +1,61 @@
+{% comment %}
+The part of the library an HTMX request replaces: #library-results with the titles
+(grid or list), the "Show more" button and the states for an empty library and for
+filters that match nothing. As an HTMX answer (oob) it also updates the counts on
+the chips and the total in the heading out of band.
+With append (page 2 and later) it is only the next titles, to add to #library-list,
+and the new "Show more" button, which replaces the old one out of band.
+Context: items, total, view, tabs, statuses, more_url, pages, append, oob. Both kinds
+of answer set the number of loaded pages (#library-pages) out of band.
+{% endcomment %}{% load i18n %}{% trans 'Remove this title from your library? Your watched episodes are kept.' as remove_text %}
+{% if append %}
+{% for item in items %}{% if view == 'list' %}{% include 'web/_library_row.html' %}{% else %}<li class="mt-lcard-cell">{% include 'web/_library_card.html' %}</li>{% endif %}{% endfor %}
+<template><div id="library-more" class="mt-lib-more" hx-swap-oob="true">{% if more_url %}{% include 'web/_library_more.html' %}{% endif %}</div><input type="hidden" id="library-pages" name="pages" value="{{ pages }}" hx-swap-oob="true"></template>
+{% else %}
+<div id="library-results" class="mt-lib-results">
+  {% if oob %}
+  <input type="hidden" id="library-pages" name="pages" value="{{ pages }}" hx-swap-oob="true">
+  {% for t in tabs %}<span id="count-tab-{{ t.value }}" class="mt-fc-count" hx-swap-oob="true">{{ t.count }}</span>{% endfor %}
+  {% for s in statuses %}<span id="count-status-{{ s.value }}" class="mt-fc-count" hx-swap-oob="true">{{ s.count }}</span>{% endfor %}
+  <span id="library-total" class="mt-lib-total" hx-swap-oob="true">{% if total %}{% blocktrans trimmed count count=total %}{{ count }} title{% plural %}{{ count }} titles{% endblocktrans %}{% endif %}</span>
+  {% endif %}
+  {% if not total %}
+  <section class="mt-onb" aria-labelledby="onb-heading">
+    <div class="mt-onb-head">
+      <h2 id="onb-heading" class="mt-onb-title">{% trans 'Your library is empty' %}</h2>
+      <p class="mt-onb-text">{% trans 'Add the shows, anime and movies you watch. mitaroku tracks your progress and tells you when new episodes air.' %}</p>
+    </div>
+    <ol class="mt-onb-steps">
+      <li><span class="mt-onb-num">1</span><strong>{% trans 'Find a title' %}</strong><span>{% trans 'Search TMDB and AniList from the search bar.' %}</span></li>
+      <li><span class="mt-onb-num">2</span><strong>{% trans 'Pick a status' %}</strong><span>{% trans 'Watching, Plan to watch, Completed or Dropped.' %}</span></li>
+      <li><span class="mt-onb-num">3</span><strong>{% trans 'Check off episodes' %}</strong><span>{% trans 'Your next episode appears under Continue watching.' %}</span></li>
+    </ol>
+    <div><a class="btn btn-primary mt-touch" href="{% url 'search' %}">{% trans 'Find a title' %}</a></div>
+  </section>
+  {% elif not items %}
+  <div class="mt-state mt-state--empty mt-lib-nomatch">
+    <h2 class="mt-state-title">{% trans 'No titles match' %}</h2>
+    <p class="mt-state-text">{% trans 'Try another status or clear the search.' %}</p>
+    <a class="btn btn-secondary mt-touch" href="{% url 'library' %}">{% trans 'Clear filters' %}</a>
+  </div>
+  {% elif view == 'list' %}
+  <table class="mt-ltable">
+    <thead><tr>
+      <th scope="col">{% trans 'Title' %}</th>
+      <th scope="col" class="mt-col-wide">{% trans 'Type' %}</th>
+      <th scope="col">{% trans 'Progress' %}</th>
+      <th scope="col" class="mt-col-wide">{% trans 'Next' %}</th>
+      <th scope="col" class="mt-col-status">{% trans 'Status' %}</th>
+    </tr></thead>
+    <tbody id="library-list">
+      {% for item in items %}{% include 'web/_library_row.html' %}{% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <ul id="library-list" class="mt-lgrid">
+    {% for item in items %}<li class="mt-lcard-cell">{% include 'web/_library_card.html' %}</li>{% endfor %}
+  </ul>
+  {% endif %}
+  {% if total and items %}<div id="library-more" class="mt-lib-more">{% if more_url %}{% include 'web/_library_more.html' %}{% endif %}</div>{% endif %}
+</div>
+{% endif %}

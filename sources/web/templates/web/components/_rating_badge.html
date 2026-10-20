@@ -1,0 +1,10 @@
+{% comment %}
+Rating of a title: the source on a dark tab, then the value out of 10. Renders
+nothing when the title has no rating.
+Variables: title (catalog.Title); size (optional): "sm" (default) or "lg".
+{% endcomment %}{% load i18n web_extras %}{% if title.rating is not None %}{% with source=title.rating_source|rating_source_name value=title.rating|floatformat:1 %}
+<span class="mt-rating{% if size == 'lg' %} mt-rating--lg{% endif %}" role="img" aria-label="{% blocktrans trimmed %}{{ source }} rating {{ value }} out of 10{% endblocktrans %}" title="{% blocktrans trimmed %}{{ source }} rating, out of 10{% endblocktrans %}">
+  <span class="mt-rating-value">{{ value }}</span>
+  <span class="mt-rating-source">{{ source }}</span>
+</span>
+{% endwith %}{% endif %}

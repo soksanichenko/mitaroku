@@ -1,6 +1,7 @@
 """Middleware for portal authentication and per-user language."""
 
 from collections.abc import Callable
+from urllib.parse import urlencode, urlsplit
 
 from accounts.portal import is_trusted_peer, is_valid_discord_id, sync_user
 from django.conf import settings
@@ -12,6 +13,7 @@ from django.http import (
     HttpResponseForbidden,
 )
 from django.utils import translation
+from django.utils.http import url_has_allowed_host_and_scheme
 
 ID_HEADER = 'HTTP_X_DISCORD_USER_ID'
 
@@ -96,3 +98,53 @@ class ProfileLanguageMiddleware:
             translation.activate(language)
             request.LANGUAGE_CODE = language
         return self.get_response(request)
+
+
+class HtmxLoginRedirectMiddleware:
+    """Answer an anonymous HTMX request with ``HX-Redirect`` to the login page.
+
+    Placed before ``LoginRequiredMiddleware`` (local mode), it turns that 302
+    into a 204 that htmx follows with a full page load. Otherwise the XHR would
+    follow the redirect and swap the login page into a fragment. The login page
+    sends the user back to the page they were on (``HX-Current-URL``).
+    """
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
+        """Store the next handler."""
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        """Replace the login redirect for HTMX requests."""
+        response = self.get_response(request)
+        if (
+            request.headers.get('HX-Request') == 'true'
+            and not request.user.is_authenticated
+            and response.status_code == 302
+            and urlsplit(response['Location']).path == settings.LOGIN_URL
+        ):
+            login = HttpResponse(status=204)
+            login['HX-Redirect'] = (
+                f'{settings.LOGIN_URL}?{urlencode({"next": self._next(request)})}'
+            )
+            return login
+        return response
+
+    @staticmethod
+    def _next(request: HttpRequest) -> str:
+        """Return the path of the page the request came from, or ``/``.
+
+        Only a same-host URL is used, and only as a local path: an absolute or
+        protocol-relative target (``//host``, ``/\\host``) never gets through.
+        """
+        current = urlsplit(request.headers.get('HX-Current-URL', ''))
+        if current.netloc and current.netloc != request.get_host():
+            return '/'
+        target = current.path + (f'?{current.query}' if current.query else '')
+        if (
+            not target.startswith('/')
+            or target.startswith(('//', '/\\'))
+            or target.startswith(settings.LOGIN_URL)
+            or not url_has_allowed_host_and_scheme(target, allowed_hosts=None)
+        ):
+            return '/'
+        return target

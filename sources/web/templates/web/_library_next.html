@@ -1,0 +1,11 @@
+{% comment %}
+What comes next for a library item, as text: a movie's release date and runtime, a
+series' next episode (available, dated, undated) or "No upcoming episodes".
+Context: item (web.views.library.Item).
+{% endcomment %}{% load i18n web_extras %}{% with title=item.row.entry.title next=item.row.next %}
+{% if title.kind == 'movie' %}{% if title.release_date %}{{ title.release_date|short_date }}{% endif %}{% if title.release_date and title.runtime_minutes %} · {% endif %}{% if title.runtime_minutes %}{% blocktrans trimmed with minutes=title.runtime_minutes %}{{ minutes }} min{% endblocktrans %}{% endif %}
+{% elif item.next_state == 'aired' %}{% blocktrans trimmed with code=item.code %}{{ code }} available{% endblocktrans %}
+{% elif item.next_state == 'dated' %}{% blocktrans trimmed with code=item.code date=next.air_date|short_date %}Next {{ code }} · {{ date }}{% endblocktrans %}
+{% elif item.next_state == 'undated' %}{% trans 'Next: date not announced' %}
+{% else %}{% trans 'No upcoming episodes' %}{% endif %}
+{% endwith %}

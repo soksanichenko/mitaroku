@@ -254,3 +254,37 @@ def test_waiter_warns_when_it_proceeds_without_the_lock(
     finally:
         held.release()
     assert 'test: proceeding without the request lock' in caplog.messages
+
+
+def test_an_invalid_body_is_not_cached_and_the_stale_copy_survives(
+    provider_http, redis_client, redis_prefix
+):
+    calls = []
+
+    def handler(request):
+        calls.append(1)
+        body = (
+            {'data': {'ok': 1}}
+            if len(calls) == 1
+            else {'errors': [{'message': 'boom'}]}
+        )
+        return httpx.Response(200, json=body)
+
+    def validate(body):
+        if not body.get('data'):
+            raise ProviderError('boom')
+
+    http = provider_http(handler)
+    url = 'https://x/graphql'
+    assert http.post_json(url, json={'q': 1}, validate=validate) == {'data': {'ok': 1}}
+    for key in redis_client.scan_iter(redis_prefix + 'test:*'):
+        if ':stale:' not in key and ':lock:' not in key:
+            redis_client.delete(key)  # the fresh copy expires, the stale one stays
+    # the provider now answers with an error body: the stale copy is served
+    assert http.post_json(url, json={'q': 1}, validate=validate) == {'data': {'ok': 1}}
+    # with no stale copy the same body is an error, and it is not cached
+    with pytest.raises(ProviderError, match='boom'):
+        http.post_json(url, json={'q': 2}, validate=validate)
+    with pytest.raises(ProviderError, match='boom'):
+        http.post_json(url, json={'q': 2}, validate=validate)
+    assert len(calls) == 4

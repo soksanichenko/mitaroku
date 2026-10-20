@@ -1,0 +1,13 @@
+{% extends 'web/base.html' %}{% load i18n %}
+{% block title %}{% trans 'Page not found' %}{% endblock %}
+{% block content %}
+{% comment %}
+Django's 404 handler renders this with the request, so the shell (header, bottom
+navigation) is the normal one.
+{% endcomment %}
+{% trans 'Page not found' as heading %}
+{% trans 'This page does not exist, or it was moved.' as text %}
+{% trans 'Open your library' as action_label %}
+{% url 'library' as library_url %}
+{% include 'web/components/_state_empty.html' with heading=heading text=text action_url=library_url action_label=action_label %}
+{% endblock %}

@@ -1,0 +1,44 @@
+{% comment %}
+The whole title page below the shell. It is the unit the page polls and the retry
+button replaces (outerHTML), so everything that changes with the sync state is in here.
+Context: title, sync_state (syncing, stuck or ready); when ready also entry, progress
+and, for series and anime, has_episodes, groups, multi, open_ids, chips.
+{% endcomment %}{% load i18n web_extras %}
+<div id="title-body" class="mt-title"{% if sync_state == 'syncing' %} hx-get="{% url 'title' title.pk %}" hx-trigger="every 3s" hx-select="#title-body" hx-target="#title-body" hx-swap="outerHTML" hx-on::response-error="this.removeAttribute('hx-trigger'); this.removeAttribute('hx-get'); htmx.process(this); this.querySelector('.mt-poll-loading').hidden = true; this.querySelector('.mt-poll-error').hidden = false"{% endif %}>
+  {% include 'web/_title_header.html' %}
+  {% if sync_state == 'ready' %}
+  {% include 'web/_library_panel.html' %}
+  {% title_overview title as overview %}
+  <section class="mt-section" aria-labelledby="desc-heading">
+    <h2 id="desc-heading" class="mt-section-title">{% trans 'Description' %}</h2>
+    {% if overview %}
+    {% if overview|length > 280 %}
+    <div x-data="{ more: false }">
+      <p class="mt-desc" :class="{ 'mt-desc--clamped': !more }">{{ overview }}</p>
+      <button type="button" class="mt-link-btn mt-touch" :aria-expanded="more" aria-expanded="false" @click="more = !more">
+        <span x-show="!more">{% trans '… more' %}</span><span x-show="more" x-cloak>{% trans 'Less' %}</span>
+      </button>
+    </div>
+    {% else %}
+    <p class="mt-desc">{{ overview }}</p>
+    {% endif %}
+    {% else %}
+    <p class="mt-desc mt-muted">{% trans 'There is no description yet.' %}</p>
+    {% endif %}
+  </section>
+  {% if title.kind == 'movie' %}{% include 'web/_movie_watch.html' %}{% endif %}
+  {% if has_episodes %}{% include 'web/_episodes_section.html' %}{% endif %}
+  {% elif sync_state == 'syncing' %}
+  {% trans 'Fetching the details of this title…' as syncing_label %}
+  <div class="mt-poll-loading">{% include 'web/components/_state_loading.html' with variant='rows' label=syncing_label %}</div>
+  {# Shown when a poll fails (the title is gone or the server errors), instead of polling for ever. #}
+  <div class="mt-poll-error" hidden x-data>
+    {% trans "We couldn't load this title" as failed_heading %}{% trans "The metadata providers haven't answered yet. Nothing was lost. Try again in a moment." as failed_text %}
+    {% include 'web/components/_state_error.html' with heading=failed_heading text=failed_text retry_click='window.location.reload()' %}
+  </div>
+  {% else %}
+  {% url 'title_refresh' title.pk as refresh_url %}
+  {% trans "We couldn't load this title" as stuck_heading %}{% trans "The metadata providers haven't answered yet. Nothing was lost. Try again in a moment." as stuck_text %}
+  {% include 'web/components/_state_error.html' with heading=stuck_heading text=stuck_text retry_url=refresh_url retry_method='post' retry_target='#title-body' %}
+  {% endif %}
+</div>

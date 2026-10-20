@@ -112,7 +112,12 @@ class ProviderHttp:
         return self._cached(key, ttl, lambda: self._client.get(url, params=params))
 
     def post_json(
-        self, url: str, *, json: dict, ttl: int | None = None
+        self,
+        url: str,
+        *,
+        json: dict,
+        ttl: int | None = None,
+        validate: Callable[[object], None] | None = None,
     ) -> object | None:
         """POST a JSON body (GraphQL) and return the parsed JSON response.
 
@@ -120,15 +125,21 @@ class ProviderHttp:
             url: Absolute URL.
             json: Request body; it is part of the cache key.
             ttl: Cache lifetime override in seconds.
+            validate: Called with each parsed 200 body; it raises
+                ``ProviderError`` for a body that must not be used. Such a body
+                is neither cached nor retried, and the stale copy is served.
 
         Returns:
             The parsed JSON, or None when the provider answers 404.
 
         Raises:
-            ProviderError: The request failed and no stale copy exists.
+            ProviderError: The request failed or the body was rejected, and no
+                stale copy exists.
         """
         key = self._key('POST', url, json)
-        return self._cached(key, ttl, lambda: self._client.post(url, json=json))
+        return self._cached(
+            key, ttl, lambda: self._client.post(url, json=json), validate
+        )
 
     def _key(self, method: str, url: str, extra: object) -> str:
         """Return a stable cache key for a request."""
@@ -147,7 +158,11 @@ class ProviderHttp:
         self._redis.set(self._prefix + 'stale:' + key, raw, ex=self._stale_ttl)
 
     def _cached(
-        self, key: str, ttl: int | None, send: Callable[[], httpx.Response]
+        self,
+        key: str,
+        ttl: int | None,
+        send: Callable[[], httpx.Response],
+        validate: Callable[[object], None] | None = None,
     ) -> object | None:
         """Serve from cache, or fetch once under a lock, or fall back to stale."""
         hit = self._read(key)
@@ -163,7 +178,7 @@ class ProviderHttp:
             if hit is not None:
                 return hit[0]
             try:
-                value = self._send(send)
+                value = self._send(send, validate)
             except ProviderError:
                 stale = self._read('stale:' + key)
                 if stale is None:
@@ -204,8 +219,15 @@ class ProviderHttp:
         while not self._redis.set(slot, 1, nx=True, px=int(self._min_interval * 1000)):
             self._sleep(min(self._min_interval / 4, 0.05))
 
-    def _send(self, send: Callable[[], httpx.Response]) -> object | None:
-        """Send with retries on 429, 5xx and network errors."""
+    def _send(
+        self,
+        send: Callable[[], httpx.Response],
+        validate: Callable[[object], None] | None = None,
+    ) -> object | None:
+        """Send with retries on 429, 5xx and network errors.
+
+        ``validate`` runs on a parsed body; its ``ProviderError`` is final.
+        """
         for attempt in range(1, self._max_attempts + 1):
             self._throttle()
             delay = min(2.0 ** (attempt - 1), MAX_RETRY_DELAY)
@@ -220,11 +242,14 @@ class ProviderHttp:
                     return None
                 if status < 400:
                     try:
-                        return response.json()
+                        body = response.json()
                     except ValueError as error:
                         raise ProviderError(
                             f'{self.name} sent a body that is not JSON'
                         ) from error
+                    if validate is not None:
+                        validate(body)
+                    return body
                 if status != 429 and status < 500:
                     raise ProviderError(f'{self.name} answered HTTP {status}')
                 retry_after = parse_retry_after(response.headers.get('Retry-After'))

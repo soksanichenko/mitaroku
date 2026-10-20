@@ -1,0 +1,20 @@
+{% load i18n web_extras %}
+{% if state == 'pending' %}
+<div id="add-{{ add_request.pk }}" class="mt-add mt-add--pending" role="status" hx-get="{% url 'add_status' add_request.pk %}" hx-trigger="load delay:2s" hx-swap="outerHTML">
+  <span class="mt-add-spinner" aria-hidden="true"></span>{% trans 'Adding…' %}
+</div>
+{% elif state == 'added' %}
+<div class="mt-add mt-add--added" role="status">
+  <span class="mt-result-status"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>{% if entry %}{{ entry.status|status_label }}{% else %}{% trans 'Added' %}{% endif %}</span>
+  {% if title_id %}<a class="btn btn-secondary mt-touch" href="{% url 'title' title_id %}">{% trans 'Open' %}</a>{% endif %}
+</div>
+{% else %}
+<div class="mt-add mt-add--failed" role="alert">
+  <input type="hidden" name="provider" value="{{ provider }}">
+  <input type="hidden" name="external_id" value="{{ external_id }}">
+  <input type="hidden" name="status" value="{{ status }}">
+  <strong class="mt-add-title">{% trans "Couldn't add this title" %}</strong>
+  <span class="mt-add-text">{{ text }}</span>
+  <button type="button" class="btn btn-secondary mt-touch" hx-post="{% url 'search_add' %}" hx-include="closest .mt-add" hx-target="closest .mt-add" hx-swap="outerHTML">{% trans 'Try again' %}</button>
+</div>
+{% endif %}

@@ -1,0 +1,10 @@
+{% comment %}
+Empty state.
+Variables: heading (optional); text (optional); action_url and action_label
+(optional, together): a primary link such as "Search".
+{% endcomment %}{% load i18n %}
+<div class="mt-state mt-state--empty">
+  <h2 class="mt-state-title">{{ heading|default:_('Nothing here yet') }}</h2>
+  {% if text %}<p class="mt-state-text">{{ text }}</p>{% endif %}
+  {% if action_url %}<a class="btn btn-primary mt-touch" href="{{ action_url }}">{{ action_label }}</a>{% endif %}
+</div>

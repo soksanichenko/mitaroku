@@ -57,3 +57,10 @@ def test_initials(full_name, username, expected):
     user = User(username=username)
     user.first_name, _, user.last_name = full_name.partition(' ')
     assert initials(user) == expected
+
+
+def test_pages_declare_an_icon_so_browsers_do_not_ask_for_favicon_ico(
+    client, portal_headers
+):
+    html = client.get('/library/', **portal_headers).content.decode()
+    assert '<link rel="icon" href="data:image/svg+xml' in html

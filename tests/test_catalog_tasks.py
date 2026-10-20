@@ -9,6 +9,7 @@ from django.utils import timezone
 from fakes import FakeAniList, media
 from huey.contrib.djhuey import lock_task
 from providers.http import ProviderError
+from tracking.models import LibraryEntry
 
 pytestmark = pytest.mark.django_db
 
@@ -22,6 +23,12 @@ def synced(monkeypatch):
 
 def make_title(**kwargs):
     return Title.objects.create(kind='tv', original_title='x', **kwargs)
+
+
+def track(user, title):
+    """Put ``title`` in the user's library: only tracked titles are due again."""
+    LibraryEntry.objects.create(user=user, title=title)
+    return title
 
 
 def test_a_never_synced_title_is_synced(synced):
@@ -68,23 +75,32 @@ def queued(monkeypatch):
     return calls
 
 
-def test_the_scheduler_queues_unsynced_and_due_titles_only(queued):
+def test_the_scheduler_queues_unsynced_and_due_titles_only(queued, alice):
     now = timezone.now()
-    fresh = make_title(synced_at=now, next_sync_at=now + timedelta(days=1))
+    fresh = track(
+        alice, make_title(synced_at=now, next_sync_at=now + timedelta(days=1))
+    )
     never = make_title()
-    due = make_title(
-        synced_at=now - timedelta(days=2), next_sync_at=now - timedelta(minutes=1)
+    due = track(
+        alice,
+        make_title(
+            synced_at=now - timedelta(days=2), next_sync_at=now - timedelta(minutes=1)
+        ),
     )
     assert tasks.sync_due_titles.call_local() == 2
     assert {pk for pk, _ in queued} == {never.pk, due.pk}
     assert fresh.pk not in {pk for pk, _ in queued}
 
 
-def test_the_scheduler_serves_never_synced_titles_before_due_ones(queued):
+def test_the_scheduler_serves_never_synced_titles_before_due_ones(queued, alice):
     now = timezone.now()
     for _ in range(tasks.DUE_BATCH):
-        make_title(
-            synced_at=now - timedelta(days=2), next_sync_at=now - timedelta(minutes=1)
+        track(
+            alice,
+            make_title(
+                synced_at=now - timedelta(days=2),
+                next_sync_at=now - timedelta(minutes=1),
+            ),
         )
     never = make_title()
     tasks.sync_due_titles.call_local()
@@ -156,12 +172,15 @@ def test_a_leased_title_is_not_queued_again_until_the_lease_expires(queued):
     assert len(queued) == 1
 
 
-def test_titles_that_always_fail_do_not_starve_the_others(queued):
+def test_titles_that_always_fail_do_not_starve_the_others(queued, alice):
     now = timezone.now()
     for _ in range(tasks.DUE_BATCH):
         make_title()  # never synced, and their sync keeps failing
-    ordinary = make_title(
-        synced_at=now - timedelta(days=2), next_sync_at=now - timedelta(minutes=1)
+    ordinary = track(
+        alice,
+        make_title(
+            synced_at=now - timedelta(days=2), next_sync_at=now - timedelta(minutes=1)
+        ),
     )
     for _ in range(3):
         tasks.sync_due_titles.call_local()

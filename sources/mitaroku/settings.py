@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'huey.contrib.djhuey',
     'accounts',
+    'tracking',
     'catalog',
     'providers',
     'web',
@@ -50,19 +51,25 @@ def middleware_for(mode: str) -> list[str]:
     Returns:
         The ordered middleware dotted paths.
     """
+    # Portal mode answers an anonymous request with 401 by itself; local mode
+    # redirects to the login page, which HTMX must not follow into a fragment.
     auth_gate = (
-        'accounts.middleware.PortalAuthMiddleware'
+        ['accounts.middleware.PortalAuthMiddleware']
         if mode == 'portal'
-        else 'django.contrib.auth.middleware.LoginRequiredMiddleware'
+        else [
+            'accounts.middleware.HtmxLoginRedirectMiddleware',
+            'django.contrib.auth.middleware.LoginRequiredMiddleware',
+        ]
     )
     return [
+        'django.middleware.gzip.GZipMiddleware',
         'django.middleware.security.SecurityMiddleware',
         'django.contrib.sessions.middleware.SessionMiddleware',
         'django.middleware.locale.LocaleMiddleware',
         'django.middleware.common.CommonMiddleware',
         'django.middleware.csrf.CsrfViewMiddleware',
         'django.contrib.auth.middleware.AuthenticationMiddleware',
-        auth_gate,
+        *auth_gate,
         'accounts.middleware.ProfileLanguageMiddleware',
         'django.contrib.messages.middleware.MessageMiddleware',
         'django.middleware.clickjacking.XFrameOptionsMiddleware',

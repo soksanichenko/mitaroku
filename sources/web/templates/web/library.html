@@ -1,6 +1,78 @@
 {% extends 'web/base.html' %}{% load i18n %}
 {% block title %}{% trans 'Library' %}{% endblock %}
 {% block content %}
-<h1 class="mt-page-title">{% trans 'Library' %}</h1>
-<p class="mt-muted">{% trans 'Your titles will appear here.' %}</p>
+{% comment %}
+The library. The Alpine scope only tells a failed request from a good one: a failed
+GET (the filters, "Show more", the strip's refresh) shows the error block; a finished
+POST (a status change, "mark next as watched") announces `library-changed`, which
+makes the strip and the results fetch themselves again (the results with all the
+pages loaded so far).
+{% endcomment %}
+<div id="library" class="mt-library" x-data="{ failed: false }"
+     @htmx:response-error="if ($event.detail.requestConfig.verb === 'get') failed = true"
+     @htmx:send-error="if ($event.detail.requestConfig.verb === 'get') failed = true"
+     @htmx:after-swap="failed = false"
+     @htmx:after-request="if ($event.detail.requestConfig.verb === 'post') $dispatch('library-changed')">
+  <div class="mt-lib-head">
+    <h1 class="mt-page-title">{% trans 'Library' %}</h1>
+    <span id="library-total" class="mt-lib-total">{% if total %}{% blocktrans trimmed count count=total %}{{ count }} title{% plural %}{{ count }} titles{% endblocktrans %}{% endif %}</span>
+  </div>
+  {% if total %}
+  {% include 'web/_continue_watching.html' %}
+  <section class="mt-lib-all" aria-label="{% trans 'All titles' %}">
+    <form id="library-filters" class="mt-lib-filters" method="get" action="{% url 'library' %}"
+          hx-get="{% url 'library' %}" hx-trigger="change[target.name!='q'], input delay:300ms from:#library-q, submit"
+          hx-target="#library-results" hx-swap="outerHTML" hx-replace-url="true" hx-indicator="#library-loading" hx-sync="this:replace">
+      <div class="mt-fc-row" role="radiogroup" aria-label="{% trans 'Type' %}">
+        {% for t in tabs %}
+        <label class="mt-fc"><input class="mt-fc-input" type="radio" name="tab" value="{{ t.value }}"{% if t.checked %} checked{% endif %}><span class="mt-fc-face mt-fc-face--tab mt-touch">{{ t.label }} <span id="count-tab-{{ t.value }}" class="mt-fc-count">{{ t.count }}</span></span></label>
+        {% endfor %}
+      </div>
+      <div class="mt-fc-row" role="radiogroup" aria-label="{% trans 'Status' %}">
+        {% for s in statuses %}
+        <label class="mt-fc"><input class="mt-fc-input" type="radio" name="status" value="{{ s.value }}"{% if s.checked %} checked{% endif %}><span class="mt-fc-face mt-touch">{{ s.label }} <span id="count-status-{{ s.value }}" class="mt-fc-count">{{ s.count }}</span></span></label>
+        {% endfor %}
+      </div>
+      <div class="mt-lib-tools">
+        <label class="mt-lib-q">
+          <span class="mt-sr-only">{% trans 'Search in library' %}</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+          <input id="library-q" type="search" name="q" class="input mt-touch" value="{{ q }}" maxlength="100" autocomplete="off" placeholder="{% trans 'Search in library' %}">
+        </label>
+        <label class="mt-lib-sort">{% trans 'Sort' %}
+          <select name="sort" class="input mt-touch">
+            {% for value, label in sorts %}<option value="{{ value }}"{% if value == sort %} selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </label>
+        <div class="mt-view" role="radiogroup" aria-label="{% trans 'View' %}">
+          <label class="mt-view-opt" title="{% trans 'Grid view' %}"><input class="mt-fc-input" type="radio" name="view" value="grid"{% if view == 'grid' %} checked{% endif %}><span class="mt-view-face mt-touch"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="7" height="7" x="3" y="3"></rect><rect width="7" height="7" x="14" y="3"></rect><rect width="7" height="7" x="14" y="14"></rect><rect width="7" height="7" x="3" y="14"></rect></svg><span class="mt-sr-only">{% trans 'Grid view' %}</span></span></label>
+          <label class="mt-view-opt" title="{% trans 'List view' %}"><input class="mt-fc-input" type="radio" name="view" value="list"{% if view == 'list' %} checked{% endif %}><span class="mt-view-face mt-touch"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h.01M3 12h.01M3 18h.01M8 6h13M8 12h13M8 18h13"></path></svg><span class="mt-sr-only">{% trans 'List view' %}</span></span></label>
+        </div>
+        <noscript><button type="submit" class="btn btn-secondary mt-touch">{% trans 'Apply filters' %}</button></noscript>
+      </div>
+    </form>
+    {% comment %}
+    The refresh after a card or picker action asks for the rows the user has loaded
+    (pages) and keeps their place; the form's own changes do not send pages, so
+    they start from page 1. The input lives next to the form for that reason, and
+    every answer updates it out of band.
+    {% endcomment %}
+    <input type="hidden" id="library-pages" name="pages" value="{{ pages }}">
+    <div id="library-refresh" hidden hx-get="{% url 'library' %}" hx-trigger="library-changed from:body" hx-include="#library-filters, #library-pages"
+         hx-target="#library-results" hx-swap="outerHTML" hx-indicator="#library-loading" hx-sync="#library-filters:replace"></div>
+    <div id="library-error" x-show="failed" x-cloak>
+      {% trans 'Couldn’t load your library' as error_heading %}
+      {% include 'web/components/_state_error.html' with heading=error_heading retry_click="failed = false; htmx.trigger('#library-filters', 'submit')" %}
+    </div>
+    <div class="mt-lib-body" x-show="!failed">
+      <div id="library-loading" class="mt-lib-loading">
+        {% trans 'Loading your library…' as loading_label %}{% include 'web/components/_state_loading.html' with label=loading_label %}
+      </div>
+      {% include 'web/_library_results.html' %}
+    </div>
+  </section>
+  {% else %}
+  {% include 'web/_library_results.html' %}
+  {% endif %}
+</div>
 {% endblock %}
