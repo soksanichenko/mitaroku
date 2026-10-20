@@ -1,3 +1,4 @@
+import gzip
 import re
 from datetime import timedelta
 from pathlib import Path
@@ -779,3 +780,50 @@ def test_movie_that_ended_is_tagged_released_not_ended(client, portal_headers, a
     html = open_title(client, portal_headers, movie)
     tags = re.findall(r'<li class="mt-tag">(.*?)</li>', html)
     assert tags == ['Movie', 'Released']
+
+
+def test_a_long_series_page_is_served_gzipped(
+    client, portal_headers, alice, synced_show
+):
+    seasons = Season.objects.bulk_create(
+        Season(
+            title=synced_show,
+            number=number,
+            kind=Season.Kind.TV,
+            episode_count=60,
+            episode_source=Season.EpisodeSource.TMDB,
+        )
+        for number in range(3, 22)
+    )
+    Episode.objects.bulk_create(
+        Episode(
+            season=season,
+            number=n,
+            absolute_number=n,
+            air_date=TODAY - timedelta(days=n),
+        )
+        for season in seasons
+        for n in range(1, 61)
+    )
+    url = f'/titles/{synced_show.pk}/'
+    plain = client.get(url, **portal_headers)
+    packed = client.get(url, HTTP_ACCEPT_ENCODING='gzip', **portal_headers)
+    assert 'Content-Encoding' not in plain
+    assert packed['Content-Encoding'] == 'gzip'
+    assert 'Accept-Encoding' in packed['Vary']
+    # The masked CSRF token differs between responses, so compare the size.
+    assert len(gzip.decompress(packed.content)) == len(plain.content)
+    assert len(packed.content) < len(plain.content) / 5
+
+
+def test_htmx_fragments_survive_gzip(client, portal_headers, alice, synced_show):
+    response = client.post(
+        f'/titles/{synced_show.pk}/status/',
+        {'status': 'watching'},
+        HTTP_ACCEPT_ENCODING='gzip',
+        HTTP_HX_REQUEST='true',
+        **portal_headers,
+    )
+    assert response.status_code == 200
+    assert response['Content-Encoding'] == 'gzip'
+    assert b'id="library-panel"' in gzip.decompress(response.content)

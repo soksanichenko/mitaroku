@@ -1,4 +1,7 @@
+import json
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -396,3 +399,46 @@ def test_movie_that_ended_is_released(title):
     with translation.override('ru'):
         assert airing_label('ended', 'movie') == 'Вышел'
         assert airing_label('ended', 'tv') == 'Завершён'
+
+
+def test_the_shell_loads_the_session_script(client, portal_headers, alice):
+    html = client.get('/library/', **portal_headers).content.decode()
+    assert '/static/web/session.js' in html
+
+
+HARNESS = """
+const listeners = {};
+const store = {};
+let reloads = 0, now = 1000000;
+global.document = {addEventListener: (name, fn) => { listeners[name] = fn; }};
+global.window = {location: {reload: () => { reloads += 1; }}};
+global.sessionStorage = {
+  getItem: (k) => (k in store ? store[k] : null),
+  setItem: (k, v) => { store[k] = String(v); },
+};
+Date.now = () => now;
+require(process.argv[1]);
+const fire = (status) => listeners['htmx:responseError']({detail: {xhr: {status}}});
+fire(500); fire(404);
+const other = reloads;
+fire(401); fire(401);
+const first = reloads;
+now += 11000; fire(401);
+console.log(JSON.stringify({other, first, later: reloads}));
+"""
+
+
+@pytest.mark.skipif(shutil.which('node') is None, reason='node is not installed')
+def test_a_401_reloads_the_page_at_most_once_per_ten_seconds():
+    result = subprocess.run(
+        ['node', '-e', HARNESS, str(APP_CSS.parent / 'session.js')],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert json.loads(result.stdout) == {'other': 0, 'first': 1, 'later': 2}
+
+
+def test_the_session_script_survives_a_blocked_storage():
+    script = (APP_CSS.parent / 'session.js').read_text()
+    assert script.count('try {') >= 2 and 'catch' in script
