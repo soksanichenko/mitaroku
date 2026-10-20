@@ -50,6 +50,31 @@ def is_aired(episode: Episode, today: date, title: Title | None = None) -> bool:
     return episode_aired(episode, title or episode.season.title, today)
 
 
+def _create_and_lock(user, title: Title, status: str) -> tuple[LibraryEntry, bool]:
+    """Create the user's entry for ``title`` if missing, and lock it for update.
+
+    A concurrent removal can delete the entry between the create and the lock;
+    the pair is then tried once more, and a second loss raises
+    ``LibraryEntry.DoesNotExist``. Must run inside a transaction.
+
+    Returns:
+        The locked entry and whether this call created it.
+    """
+    for _ in range(2):
+        entry, created = LibraryEntry.objects.get_or_create(
+            user=user, title=title, defaults={'status': status}
+        )
+        locked = (
+            LibraryEntry.objects.for_user(user)
+            .select_for_update()
+            .filter(pk=entry.pk)
+            .first()
+        )
+        if locked is not None:
+            return locked, created
+    raise LibraryEntry.DoesNotExist(f'Library entry of title {title.pk} vanished')
+
+
 def _lock_entry(user, title: Title) -> tuple[LibraryEntry, bool]:
     """Return the user's entry for ``title`` locked for update, and if it is new.
 
@@ -57,11 +82,7 @@ def _lock_entry(user, title: Title) -> tuple[LibraryEntry, bool]:
     "already watched" check safe. A caller that ends up adding nothing must pass
     the result to ``_discard_unused``. Must run inside a transaction.
     """
-    entry, created = LibraryEntry.objects.get_or_create(
-        user=user, title=title, defaults={'status': Status.WATCHING}
-    )
-    locked = LibraryEntry.objects.for_user(user).select_for_update().get(pk=entry.pk)
-    return locked, created
+    return _create_and_lock(user, title, Status.WATCHING)
 
 
 def _discard_unused(user, entry: LibraryEntry, created: bool) -> None:
@@ -166,10 +187,7 @@ def set_status(
             if _lock_existing_entry(user, title):
                 LibraryEntry.objects.for_user(user).filter(title=title).delete()
             return None
-        entry, _ = LibraryEntry.objects.get_or_create(
-            user=user, title=title, defaults={'status': status}
-        )
-        entry = LibraryEntry.objects.for_user(user).select_for_update().get(pk=entry.pk)
+        entry, _ = _create_and_lock(user, title, status)
         entry.status = status
         entry.save(update_fields=['status', 'updated_at'])
         if status == Status.COMPLETED:

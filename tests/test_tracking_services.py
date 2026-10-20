@@ -413,3 +413,47 @@ def test_a_long_undated_season_costs_no_more_queries_than_a_short_one(alice):
             services.mark_up_to(alice, ova[-1], today=TODAY)
         costs.append(len(queries_run))
     assert costs[0] == costs[2] and costs[1] == costs[3]
+
+
+def vanish_after_creating(monkeypatch, user, times: int) -> list[int]:
+    """Delete the entry right after ``get_or_create`` for the first ``times`` calls.
+
+    This is what a concurrent ``set_status(None)`` does between the create and
+    the lock. Returns the primary keys that were removed.
+    """
+    removed: list[int] = []
+    real = LibraryEntry.objects.get_or_create
+
+    def get_or_create(**kwargs):
+        entry, created = real(**kwargs)
+        if len(removed) < times:
+            LibraryEntry.objects.for_user(user).filter(pk=entry.pk).delete()
+            removed.append(entry.pk)
+        return entry, created
+
+    monkeypatch.setattr(LibraryEntry.objects, 'get_or_create', get_or_create)
+    return removed
+
+
+def test_set_status_survives_an_entry_removed_before_the_lock(alice, monkeypatch):
+    title, _, _ = make_show()
+    removed = vanish_after_creating(monkeypatch, alice, times=1)
+    entry = services.set_status(alice, title, 'planned', today=TODAY)
+    assert len(removed) == 1 and entry.pk != removed[0]
+    assert LibraryEntry.objects.for_user(alice).get(title=title).status == 'planned'
+
+
+def test_a_watch_survives_an_entry_removed_before_the_lock(alice, monkeypatch):
+    title, eps, _ = make_show()
+    vanish_after_creating(monkeypatch, alice, times=1)
+    services.set_episode_watched(alice, eps[0], True, today=TODAY)
+    assert LibraryEntry.objects.for_user(alice).get(title=title).status == 'watching'
+    assert WatchEvent.objects.for_user(alice).count() == 1
+
+
+def test_an_entry_that_keeps_vanishing_is_raised_after_one_retry(alice, monkeypatch):
+    title, _, _ = make_show()
+    removed = vanish_after_creating(monkeypatch, alice, times=5)
+    with pytest.raises(LibraryEntry.DoesNotExist):
+        services.set_status(alice, title, 'planned', today=TODAY)
+    assert len(removed) == 2
