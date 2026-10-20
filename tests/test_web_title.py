@@ -217,7 +217,11 @@ def test_a_title_younger_than_fifteen_minutes_is_still_syncing(
         created_at=timezone.now() - timedelta(minutes=14)
     )
     html = open_title(client, portal_headers, title)
-    assert 'every 3s' in html and 'role="alert"' not in html
+    # the prepared (hidden) poll error is not a shown alert
+    visible = re.sub(
+        r'<div class="mt-poll-error" hidden.*?</div>\s*</div>', '', html, flags=re.S
+    )
+    assert 'every 3s' in html and 'role="alert"' not in visible
 
 
 def test_refresh_queues_one_forced_sync_and_returns_the_syncing_block(
@@ -827,3 +831,37 @@ def test_htmx_fragments_survive_gzip(client, portal_headers, alice, synced_show)
     assert response.status_code == 200
     assert response['Content-Encoding'] == 'gzip'
     assert b'id="library-panel"' in gzip.decompress(response.content)
+
+
+def test_the_poll_stops_and_shows_an_error_when_a_poll_fails(
+    client, portal_headers, alice, queued_language
+):
+    title = Title.objects.create(kind=Title.Kind.TV, original_title='Fresh')
+    html = open_title(client, portal_headers, title)
+    body = re.search(r'<div[^>]*id="title-body"[^>]*>', html).group()
+    handler = re.search(r'hx-on::response-error="([^"]*)"', body)
+    assert handler, 'a failing poll must be handled on the polling element'
+    script = handler.group(1)
+    # the polling attributes go away and are re-processed, which ends the timer
+    assert "removeAttribute('hx-trigger')" in script
+    assert "removeAttribute('hx-get')" in script
+    assert 'htmx.process(this)' in script
+    # the loading skeleton is replaced by a prepared error with a way out
+    assert "querySelector('.mt-poll-loading').hidden = true" in script
+    assert "querySelector('.mt-poll-error').hidden = false" in script
+    error = re.search(
+        r'<div class="mt-poll-error" hidden[^>]*>(.*?)</div>\s*</div>', html, re.S
+    )
+    assert error and 'role="alert"' in error.group(1)
+    assert "We couldn't load this title" in error.group(1)
+    assert 'Try again' in error.group(1)
+    assert 'mt-state--loading' in re.search(
+        r'<div class="mt-poll-loading">(.*?)</div>', html, re.S
+    ).group(1)
+
+
+def test_only_the_syncing_state_has_the_error_handler(
+    client, portal_headers, alice, synced_show
+):
+    html = open_title(client, portal_headers, synced_show)
+    assert 'hx-on::response-error' not in html and 'mt-poll-error' not in html
