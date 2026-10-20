@@ -173,8 +173,6 @@ role from the `new-service-repo` and `new-nginx-service` skills.
 
 - Plan 3b: Browse, Collection and the title-page enrichment (genres, country, cast,
   trailers, similar titles, "See also" links) need new provider data.
-- Alternative versions that share a side-story entry are still matched to one title
-  (`find_franchise_title`); the fix is recorded in the plan 3 follow-ups.
 - Whether a Simkl provider is added later together with Simkl login and sync.
 - Telegram: webhook or polling.
 - Subdomain or subpath.
