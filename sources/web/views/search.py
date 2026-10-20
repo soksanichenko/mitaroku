@@ -1,5 +1,6 @@
 """Search and add views."""
 
+import logging
 from dataclasses import dataclass
 from urllib.parse import urlencode
 
@@ -12,8 +13,9 @@ from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_POST
 from django.views.decorators.vary import vary_on_headers
-from providers.search import search
+from providers.search import SearchResults, search
 from providers.types import SearchHit
+from redis.exceptions import RedisError
 from tracking.adding import (
     MAX_PENDING,
     PENDING_TIMEOUT,
@@ -24,6 +26,8 @@ from tracking.adding import (
 from tracking.models import AddRequest, LibraryEntry
 from web.clients import shared_clients
 from web.templatetags.web_extras import rating_source_name
+
+logger = logging.getLogger(__name__)
 
 MIN_QUERY = 2
 MAX_QUERY = 100
@@ -188,12 +192,17 @@ def search_page(request: HttpRequest) -> HttpResponse:
         context['state'] = 'typing'
     elif query:
         clients = shared_clients()
-        results = search(
-            query,
-            request.user.profile.metadata_language,
-            tmdb=clients.tmdb,
-            anilist=clients.anilist,
-        )
+        try:
+            results = search(
+                query,
+                request.user.profile.metadata_language,
+                tmdb=clients.tmdb,
+                anilist=clients.anilist,
+            )
+        except RedisError as error:
+            # The provider layer keeps its rate limits and cache in Redis.
+            logger.warning('Search failed: %s', type(error).__name__)
+            results = SearchResults(hits=[], failed=['tmdb', 'anilist'])
         rows = _rows(request.user, results.hits)
         context['partial'] = bool(results.failed)
         context['failed_names'] = ', '.join(
@@ -225,6 +234,8 @@ def _failure_text(error: str) -> str:
         return gettext('This took too long. Try again.')
     if error == AddRequest.Error.PROVIDER:
         return gettext("The metadata provider didn't respond. Try again.")
+    if error == AddRequest.Error.UNAVAILABLE:
+        return gettext('The service is busy, try again in a moment.')
     return gettext('Something went wrong. Try again.')
 
 

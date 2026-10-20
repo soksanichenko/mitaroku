@@ -119,9 +119,9 @@ class AddRequest(models.Model):
 
     The browser sends only the provider, the id and the wanted status; the job
     builds the catalog title from the provider. ``error`` is ``provider`` (the
-    provider failed), ``timeout`` (the job never finished) or ``unexpected`` (the
-    job crashed). Only one request
-    per ``(user, provider, external_id)`` can be pending at a time.
+    provider failed), ``timeout`` (the job never finished), ``unexpected`` (the
+    job crashed) or ``unavailable`` (the job could not be queued). Only one
+    request per ``(user, provider, external_id)`` can be pending at a time.
     """
 
     class State(models.TextChoices):
@@ -134,6 +134,7 @@ class AddRequest(models.Model):
         PROVIDER = 'provider'
         TIMEOUT = 'timeout'
         UNEXPECTED = 'unexpected'
+        UNAVAILABLE = 'unavailable'
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -153,7 +154,7 @@ class AddRequest(models.Model):
         on_delete=models.SET_NULL,
         related_name='+',
     )
-    error = models.CharField(max_length=10, choices=Error, blank=True, default='')
+    error = models.CharField(max_length=12, choices=Error, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     finished_at = models.DateTimeField(null=True, blank=True)
 

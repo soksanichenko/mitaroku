@@ -2,12 +2,17 @@ import re
 from datetime import timedelta
 
 import pytest
-from catalog.models import Title
+from catalog.models import ExternalId, Title
+from catalog.sync.common import Clients
 from django.template.loader import render_to_string
 from django.utils import timezone
+from fakes import FakeAniList
 from providers.search import SearchResults
 from providers.types import SearchHit
-from tracking.models import AddRequest, LibraryEntry
+from redis.exceptions import ConnectionError as RedisConnectionError
+from tracking.models import AddRequest, LibraryEntry, WatchEvent
+from tracking.queries import progress
+from tracking_helpers import make_show
 
 pytestmark = pytest.mark.django_db
 
@@ -574,3 +579,89 @@ def test_a_finished_add_never_shows_another_users_status(
     LibraryEntry.objects.create(user=bob, title=synced_movie, status='dropped')
     html = client.get(f'/add/{done.pk}/', **portal_headers).content.decode()
     assert 'Added' in html and 'Dropped' not in html
+
+
+def test_adding_a_synced_show_as_completed_from_search_marks_it_watched(
+    client, portal_headers, alice, today
+):
+    show, _, _ = make_show(status='ended', dated=(-30, -23, -16), extra=False)
+    Title.objects.filter(pk=show.pk).update(synced_at=timezone.now())
+    ExternalId.objects.create(title=show, provider='tmdb_tv', external_id='1396')
+    response = client.post(
+        '/search/add/', {**ADD, 'status': 'completed'}, **portal_headers
+    )
+    assert response.status_code == 200
+    assert LibraryEntry.objects.for_user(alice).get().status == 'completed'
+    state = progress(alice, show)
+    assert (state.watched, state.total) == (3, 3)
+    assert WatchEvent.objects.for_user(alice).filter(title=show).count() == 3
+
+
+def break_the_queue(monkeypatch, error=None) -> list[int]:
+    """Make queueing the add job fail like a Redis outage; return the attempts."""
+    attempts: list[int] = []
+
+    def refuse(request_id: int) -> None:
+        attempts.append(request_id)
+        raise error or RedisConnectionError('Redis is down')
+
+    monkeypatch.setattr('tracking.adding.add_title_task', refuse)
+    return attempts
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize('error', [RedisConnectionError('down'), OSError('refused')])
+def test_a_queue_outage_fails_the_request_and_shows_try_again(
+    client, portal_headers, alice, monkeypatch, error
+):
+    attempts = break_the_queue(monkeypatch, error)
+    response = client.post('/search/add/', ADD, **portal_headers)
+    html = response.content.decode()
+    assert response.status_code == 200
+    assert "Couldn't add this title" in html
+    assert 'The service is busy, try again in a moment' in html
+    assert 'hx-trigger="load' not in html
+    request = AddRequest.objects.get(user=alice)
+    assert (request.state, request.error) == ('failed', 'unavailable')
+    assert request.finished_at is not None
+    assert attempts == [request.pk]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_a_failed_queueing_is_not_pending_and_a_retry_makes_a_new_request(
+    client, portal_headers, alice, monkeypatch
+):
+    break_the_queue(monkeypatch)
+    client.post('/search/add/', ADD, **portal_headers)
+    assert not AddRequest.objects.for_user(alice).filter(state='pending').exists()
+    queued_ids: list[int] = []
+    monkeypatch.setattr('tracking.adding.add_title_task', queued_ids.append)
+    html = client.post('/search/add/', ADD, **portal_headers).content.decode()
+    assert 'hx-trigger="load delay:2s"' in html
+    first, second = AddRequest.objects.for_user(alice).order_by('pk')
+    assert (first.state, second.state) == ('failed', 'pending')
+    assert queued_ids == [second.pk]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_the_unavailable_request_shows_the_same_text_when_polled(
+    client, portal_headers, alice
+):
+    failed = pending(alice, state='failed', error='unavailable')
+    html = client.get(f'/add/{failed.pk}/', **portal_headers).content.decode()
+    assert 'The service is busy, try again in a moment' in html
+
+
+def test_a_redis_error_in_the_search_shows_the_unavailable_state(
+    client, portal_headers, monkeypatch
+):
+    def broken(*args, **kwargs):
+        raise RedisConnectionError('Redis is down')
+
+    monkeypatch.setattr('web.views.search.search', broken)
+    monkeypatch.setattr(
+        'web.views.search.shared_clients', lambda: Clients(None, FakeAniList())
+    )
+    response = client.get('/search/?q=breaking', **portal_headers)
+    assert response.status_code == 200
+    assert 'Search is unavailable' in response.content.decode()

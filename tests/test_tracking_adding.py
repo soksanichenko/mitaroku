@@ -5,7 +5,9 @@ from catalog.models import ExternalId, Title
 from django.db import IntegrityError
 from django.utils import timezone
 from tracking import adding
-from tracking.models import AddRequest, LibraryEntry
+from tracking.models import AddRequest, LibraryEntry, WatchEvent
+from tracking.queries import progress
+from tracking_helpers import make_movie, make_show
 
 pytestmark = pytest.mark.django_db
 
@@ -451,3 +453,83 @@ def test_a_late_failure_never_overrides_done(alice, failing_clients, monkeypatch
     adding.add_title_task.call_local(request.pk)
     request.refresh_from_db()
     assert (request.state, request.error) == ('done', '')
+
+
+def link_synced(title: Title, provider: str, external_id: str) -> Title:
+    """Mark ``title`` as synced and link it to the provider id."""
+    Title.objects.filter(pk=title.pk).update(synced_at=timezone.now())
+    ExternalId.objects.create(title=title, provider=provider, external_id=external_id)
+    title.refresh_from_db()
+    return title
+
+
+def test_a_synced_show_added_as_completed_marks_every_aired_episode(alice, today):
+    show, episodes, _ = make_show(status='ended', dated=(-30, -23, -16), extra=False)
+    link_synced(show, 'tmdb_tv', '77')
+    entry = adding.request_add(alice, 'tmdb_tv', '77', 'completed')
+    assert entry.status == 'completed'
+    assert WatchEvent.objects.for_user(alice).filter(title=show).count() == 3
+    state = progress(alice, show)
+    assert (state.watched, state.total) == (3, 3)
+
+
+def test_a_released_movie_added_as_completed_gets_one_viewing(alice, today):
+    movie = link_synced(make_movie(), 'tmdb_movie', '78')
+    adding.request_add(alice, 'tmdb_movie', '78', 'completed')
+    events = WatchEvent.objects.for_user(alice).filter(title=movie)
+    assert events.count() == 1 and events.get().episode_id is None
+
+
+@pytest.mark.parametrize('status', ['planned', 'watching', 'dropped'])
+def test_other_statuses_add_no_viewings(alice, today, status):
+    show, _, _ = make_show(status='ended', dated=(-30, -23, -16), extra=False)
+    link_synced(show, 'tmdb_tv', '77')
+    entry = adding.request_add(alice, 'tmdb_tv', '77', status)
+    assert entry.status == status
+    assert not WatchEvent.objects.for_user(alice).exists()
+
+
+def test_an_existing_entry_is_left_alone_when_adding_as_completed(alice, today):
+    show, _, _ = make_show(status='ended', dated=(-30, -23, -16), extra=False)
+    link_synced(show, 'tmdb_tv', '77')
+    LibraryEntry.objects.create(user=alice, title=show, status='planned')
+    entry = adding.request_add(alice, 'tmdb_tv', '77', 'completed')
+    assert entry.status == 'planned'
+    assert not WatchEvent.objects.for_user(alice).exists()
+
+
+def test_the_job_adds_a_show_as_completed_with_every_episode_watched(
+    alice, fake_clients, today
+):
+    request = AddRequest.objects.create(
+        user=alice, provider='tmdb_tv', external_id='1396', status='completed'
+    )
+    assert adding.add_title_task.call_local(request.pk) == 'done'
+    request.refresh_from_db()
+    state = progress(alice, request.title)
+    assert state.total == 6 and state.watched == 6
+    assert LibraryEntry.objects.for_user(alice).get().status == 'completed'
+
+
+def test_the_job_adds_a_movie_as_completed_with_one_viewing(alice, fake_clients, today):
+    request = AddRequest.objects.create(
+        user=alice, provider='tmdb_movie', external_id='603', status='completed'
+    )
+    adding.add_title_task.call_local(request.pk)
+    request.refresh_from_db()
+    assert WatchEvent.objects.for_user(alice).filter(title=request.title).count() == 1
+
+
+def test_the_job_keeps_an_existing_entry_and_adds_no_viewings(
+    alice, fake_clients, today
+):
+    first = AddRequest.objects.create(
+        user=alice, provider='tmdb_movie', external_id='603', status='planned'
+    )
+    adding.add_title_task.call_local(first.pk)
+    again = AddRequest.objects.create(
+        user=alice, provider='tmdb_movie', external_id='603', status='completed'
+    )
+    adding.add_title_task.call_local(again.pk)
+    assert LibraryEntry.objects.for_user(alice).get().status == 'planned'
+    assert not WatchEvent.objects.for_user(alice).exists()

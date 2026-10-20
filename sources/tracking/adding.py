@@ -17,6 +17,8 @@ from huey import crontab
 from huey.contrib.djhuey import db_periodic_task, db_task
 from providers.http import ProviderError
 from providers.types import SearchHit
+from redis.exceptions import RedisError
+from tracking import services
 from tracking.models import AddRequest, LibraryEntry
 
 logger = logging.getLogger(__name__)
@@ -36,10 +38,18 @@ class TooManyPending(Exception):
 
 
 def _add_to_library(user: User, title: Title, status: str) -> LibraryEntry:
-    """Return the user's entry for ``title``, creating it with ``status``."""
-    entry, _ = LibraryEntry.objects.get_or_create(
-        user=user, title=title, defaults={'status': status}
-    )
+    """Return the user's entry for ``title``, creating it with ``status``.
+
+    A new entry goes through ``services.set_status``, so Completed marks the
+    aired episodes of a series (or the movie) watched. An entry that exists
+    keeps its status.
+    """
+    with transaction.atomic():
+        entry, created = LibraryEntry.objects.get_or_create(
+            user=user, title=title, defaults={'status': status}
+        )
+        if created:
+            entry = services.set_status(user, title, status)
     return entry
 
 
@@ -122,8 +132,32 @@ def _request_add(
         if not retry:
             raise
         return _request_add(user, provider, external_id, status, retry=False)
-    transaction.on_commit(lambda: add_title_task(request.pk))
+    transaction.on_commit(lambda: _enqueue(request))
     return request
+
+
+def _enqueue(request: AddRequest) -> None:
+    """Queue the job of ``request``; a queue that is down fails the request.
+
+    Without a job nothing would ever finish the request, so it fails at once
+    with ``unavailable`` and the user can try again. The instance is updated
+    too: outside a wider transaction this runs before ``request_add`` returns,
+    so the caller sees the failure.
+    """
+    try:
+        add_title_task(request.pk)
+    except (RedisError, OSError) as error:
+        logger.warning(
+            'Queueing add request %s failed: %s', request.pk, type(error).__name__
+        )
+        request.state = AddRequest.State.FAILED
+        request.error = AddRequest.Error.UNAVAILABLE
+        request.finished_at = timezone.now()
+        AddRequest.objects.for_user(request.user).filter(
+            pk=request.pk, state=AddRequest.State.PENDING
+        ).update(
+            state=request.state, error=request.error, finished_at=request.finished_at
+        )
 
 
 def _discard_placeholder(title: Title, provider: str, external_id: str) -> None:

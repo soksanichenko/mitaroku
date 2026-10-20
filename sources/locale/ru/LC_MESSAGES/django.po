@@ -651,6 +651,9 @@ msgstr "Это заняло слишком много времени. Попро
 msgid "The metadata provider didn't respond. Try again."
 msgstr "Источник данных не ответил. Попробуйте ещё раз."
 
+msgid "The service is busy, try again in a moment."
+msgstr "Сервис занят, попробуйте через минуту."
+
 msgid "Something went wrong. Try again."
 msgstr "Что-то пошло не так. Попробуйте ещё раз."
 
