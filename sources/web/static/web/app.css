@@ -2331,3 +2331,138 @@ a:focus-visible .mt-poster-img {
   text-transform: uppercase;
   white-space: nowrap;
 }
+
+/* Settings. */
+.mt-menu-item[aria-current='page'] {
+  font-weight: 700;
+  box-shadow: inset 3px 0 0 var(--color-text);
+}
+
+.mt-set-head {
+  display: grid;
+  gap: 10px;
+  padding-bottom: 14px;
+}
+
+.mt-set-head .mt-page-title {
+  margin: 0;
+  font-size: clamp(28px, 6vw, 40px);
+}
+
+.mt-set-saved {
+  margin: 0;
+  padding: 10px 12px;
+  border: 2px solid var(--color-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mt-set-section {
+  display: grid;
+  gap: 12px 24px;
+  padding: 20px 0;
+  border-top: 2px solid var(--color-divider);
+}
+
+@media (min-width: 720px) {
+  .mt-set-section {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+}
+
+.mt-set-title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.mt-set-body {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  align-content: start;
+}
+
+.mt-set-who {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.mt-set-avatar {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  background: var(--color-text);
+  color: var(--color-bg);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.mt-set-name {
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+
+.mt-set-facts {
+  display: grid;
+  grid-template-columns: minmax(96px, max-content) minmax(0, 1fr);
+  gap: 6px 16px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.mt-set-facts dt {
+  color: var(--mt-muted);
+}
+
+.mt-set-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.mt-set-note {
+  margin: 0;
+  max-width: 60ch;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--mt-muted);
+}
+
+.mt-set-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.mt-set-field {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+
+.mt-set-field > label {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.mt-set-help {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--mt-muted);
+}
+
+.mt-set-error {
+  padding-left: 8px;
+  border-left: 3px solid var(--color-accent-700);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mt-set-field select[aria-invalid='true'] {
+  border-color: var(--color-accent-700);
+  border-width: 2px;
+}

@@ -32,6 +32,7 @@
           <strong>{{ user.get_full_name|default:user.get_username }}</strong>
           {% if user.email %}<span>{{ user.email }}</span>{% endif %}
         </div>
+        <a class="mt-menu-item" role="menuitem" href="{% url 'settings' %}"{% if current_nav == 'settings' %} aria-current="page"{% endif %}>{% trans 'Settings' %}</a>
         <form class="mt-lang" method="post" action="{% url 'set_language' %}" role="group" aria-label="{% trans 'Language' %}">
           {% csrf_token %}
           <input type="hidden" name="next" value="{{ request.get_full_path }}">

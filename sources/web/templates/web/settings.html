@@ -1,0 +1,51 @@
+{% extends 'web/base.html' %}{% load i18n web_extras %}
+{% block title %}{% trans 'Settings' %}{% endblock %}
+{% block content %}
+{% comment %}
+Account (read only) and Language (web.views.settings). A plain form: a normal POST,
+then a redirect back here, so it works without JavaScript and has no loading state
+of its own. Notifications and data come with later plans.
+{% endcomment %}
+<div class="mt-settings">
+  <div class="mt-set-head">
+    <h1 class="mt-page-title">{% trans 'Settings' %}</h1>
+    {% if saved %}<p class="mt-set-saved" role="status">{% trans 'Settings saved' %}</p>{% endif %}
+  </div>
+
+  <section class="mt-set-section" aria-labelledby="set-account">
+    <h2 id="set-account" class="mt-set-title">{% trans 'Account' %}</h2>
+    <div class="mt-set-body">
+      <div class="mt-set-who">
+        <span class="mt-set-avatar" aria-hidden="true">{{ user|initials }}</span>
+        <strong class="mt-set-name">{{ user.get_full_name|default:user.get_username }}</strong>
+      </div>
+      <dl class="mt-set-facts">
+        <dt>{% trans 'Email' %}</dt>
+        <dd>{{ user.email|default:'—' }}</dd>
+        <dt>{% trans 'Sign-in method' %}</dt>
+        <dd>{% if user.discord_id %}{% trans 'Signed in through the portal' %}{% else %}{% trans 'Local account' %}{% endif %}</dd>
+      </dl>
+      {% if user.discord_id %}
+      <p class="mt-set-note">{% trans 'Your name and email come from the portal and are read-only here. Change them in the portal.' %}</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="mt-set-section" aria-labelledby="set-language">
+    <h2 id="set-language" class="mt-set-title">{% trans 'Language' %}</h2>
+    <form class="mt-set-body" method="post" action="{% url 'settings' %}" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}<p class="mt-error" role="alert">{{ form.non_field_errors|join:' ' }}</p>{% endif %}
+      <div class="mt-set-fields">
+        {% trans 'The language of menus and buttons.' as interface_help %}
+        {% include 'web/_settings_select.html' with field=form.interface_language help=interface_help %}
+        {% trans 'The language of titles and descriptions of shows.' as metadata_help %}
+        {% include 'web/_settings_select.html' with field=form.metadata_language help=metadata_help %}
+      </div>
+      <div class="mt-set-actions">
+        <button type="submit" class="btn btn-primary mt-touch">{% trans 'Save' %}</button>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock %}

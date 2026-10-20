@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-19 20:44+0000\n"
+"POT-Creation-Date: 2026-10-19 20:51+0000\n"
 "Language: ru\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
@@ -167,6 +167,9 @@ msgstr "Сериалы, аниме, фильмы"
 
 msgid "Account"
 msgstr "Аккаунт"
+
+msgid "Settings"
+msgstr "Настройки"
 
 msgid "Language"
 msgstr "Язык"
@@ -467,6 +470,33 @@ msgstr "Результаты из TMDB (сериалы и фильмы) и AniLi
 msgid "Searching…"
 msgstr "Ищем…"
 
+msgid "Settings saved"
+msgstr "Настройки сохранены"
+
+msgid "Email"
+msgstr "Эл. почта"
+
+msgid "Sign-in method"
+msgstr "Способ входа"
+
+msgid "Signed in through the portal"
+msgstr "Вход через портал"
+
+msgid "Local account"
+msgstr "Локальная учётная запись"
+
+msgid "Your name and email come from the portal and are read-only here. Change them in the portal."
+msgstr "Имя и адрес эл. почты берутся из портала и здесь доступны только для чтения. Изменить их можно на портале."
+
+msgid "The language of menus and buttons."
+msgstr "Язык меню и кнопок."
+
+msgid "The language of titles and descriptions of shows."
+msgstr "Язык названий и описаний сериалов и фильмов."
+
+msgid "Save"
+msgstr "Сохранить"
+
 msgid "New episodes and premieres for titles in your library."
 msgstr "Новые серии и премьеры тайтлов из вашей библиотеки."
 
@@ -542,6 +572,12 @@ msgstr "Что-то пошло не так. Попробуйте ещё раз."
 #, python-format
 msgid "%(count)s titles are already being added. Try again soon."
 msgstr "Уже добавляется тайтлов: %(count)s. Попробуйте чуть позже."
+
+msgid "Interface language"
+msgstr "Язык интерфейса"
+
+msgid "Metadata language"
+msgstr "Язык метаданных"
 
 msgid "OVA"
 msgstr "OVA"
