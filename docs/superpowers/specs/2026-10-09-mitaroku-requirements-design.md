@@ -171,15 +171,11 @@ role from the `new-service-repo` and `new-nginx-service` skills.
 
 ## 13. Open items for the implementation plan
 
-- The UX of the degraded episode mode (the data is `Season.episode_source`; plan 3).
-- Add flow latency: finding the existing title for an AniList entry loads its franchise,
-  one request per chain level at one request per 2 seconds, so a long chain takes tens of
-  seconds. Plan 3 resolves it in a background job or with a bounded wait, not inside a
-  web request.
-- Plan 3 must delete a title it just created when its first sync fails permanently, as
-  `manage.py sync_title` does; a never-synced placeholder otherwise stays in the catalog.
+- Plan 3b: Browse, Collection and the title-page enrichment (genres, country, cast,
+  trailers, similar titles, "See also" links) need new provider data.
+- Alternative versions that share a side-story entry are still matched to one title
+  (`find_franchise_title`); the fix is recorded in the plan 3 follow-ups.
 - Whether a Simkl provider is added later together with Simkl login and sync.
 - Telegram: webhook or polling.
-- Posters: browser hotlinks the CDN, or a server proxy.
 - Subdomain or subpath.
 - Verify the exact export format of each supported service.

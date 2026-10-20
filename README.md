@@ -83,3 +83,21 @@ finished ones every 14 days). An anime title is a whole franchise; its seasons a
 AniList entries. Episode titles are shown only when TMDB's episodes for an entry pass a
 check against AniList's start date and episode count; other entries show counts and, when
 AniList has them, dates. A sync never deletes episodes.
+
+## Tracking and screens
+
+Signed-in users have a library, a watch history and four screens: Library (continue
+watching, filters, sort, grid and list), Upcoming (what your watching and planned titles
+release next), Search and add, and the title pages (status, score, private note, episodes
+you can check off). Settings has the interface and metadata languages.
+
+- Adding a title is a background job: the search page shows "Adding..." and polls it, so
+  `run_huey` must be running. A franchise that is not in the catalog yet is loaded from
+  AniList, which takes tens of seconds for a long one. A failed add leaves nothing behind.
+- Episodes count towards progress only in the main seasons; OVAs, movies and specials of
+  an anime can be checked off but do not change progress, the next episode or the
+  automatic "completed" status.
+- The worker syncs titles that are in someone's library (watching and planned first) and
+  titles never synced; a title nobody tracks is refreshed when someone opens its page.
+  Translations are fetched lazily in the user's metadata language and cleaned up weekly.
+- Posters are loaded from the provider's CDN by the browser.
