@@ -134,7 +134,7 @@ def episode_up_to(request: HttpRequest, pk: int) -> HttpResponse:
     title = episode.season.title
     if title.synced_at is None:
         return HttpResponse(NOT_READY, status=409)
-    if not services.is_aired(episode, timezone.localdate()):
+    if not services.is_aired(episode, timezone.localdate(), title):
         return HttpResponse(NOT_AIRED, status=409)
     before = _status(request.user, title)
     services.mark_up_to(request.user, episode)
@@ -260,7 +260,7 @@ def title_continue(request: HttpRequest, pk: int) -> HttpResponse:
     )
     if title.synced_at is None:
         return HttpResponse(NOT_READY, status=409)
-    if not services.is_aired(episode, timezone.localdate()):
+    if not services.is_aired(episode, timezone.localdate(), title):
         return HttpResponse(NOT_AIRED, status=409)
     before = _status(request.user, title)
     following = queries.next_episode(request.user, title)

@@ -254,9 +254,9 @@ def test_upcoming_is_translated_to_russian(client, portal_headers, alice, today)
         'Премьера фильма',
         'Смотрю',
         'Буду смотреть',
-        'Пн, 19 октября',
-        'Вт, 20 октября',
-        'Чт, 22 октября',
+        'Пн, 19 окт.',
+        'Вт, 20 окт.',
+        'Чт, 22 окт.',
     ):
         assert text in html, text
     assert 'Mon,' not in html and 'Today' not in html

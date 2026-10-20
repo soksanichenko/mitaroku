@@ -36,6 +36,8 @@
           {% with label=row.entry.status|status_label %}
           <span class="mt-result-status" aria-label="{% blocktrans trimmed %}In your library: {{ label }}{% endblocktrans %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>{{ label }}</span>
           {% endwith %}
+          {% elif row.pending %}
+          {% include 'web/_add_result.html' with state='pending' add_request=row.pending %}
           {% else %}
           {% url 'search_add' as add_url %}
           {% include 'web/components/_status_picker.html' with display_name=row.name entry=None action=add_url fields=row.fields align='right' %}

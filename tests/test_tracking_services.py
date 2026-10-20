@@ -1,7 +1,10 @@
 import pytest
+from catalog.models import Season
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from tracking import queries, services
 from tracking.models import LibraryEntry, WatchEvent
-from tracking_helpers import TODAY, make_movie, make_show
+from tracking_helpers import TODAY, make_movie, make_show, make_undated_show
 
 pytestmark = pytest.mark.django_db
 
@@ -318,3 +321,95 @@ def test_other_users_viewings_do_not_affect_mark_next(alice, bob):
     assert services.mark_next(bob, title, today=TODAY) == eps[0]
     assert services.mark_next(alice, title, today=TODAY) == eps[0]
     assert WatchEvent.objects.for_user(alice).count() == 1
+
+
+# An undated episode counts as aired when its season has started and the title is
+# ended or canceled (queries.has_aired); every other undated episode has not aired.
+
+
+@pytest.mark.parametrize('status', ['ended', 'canceled'])
+def test_an_undated_ova_of_a_finished_title_can_be_marked(alice, status):
+    title, mains, ova = make_undated_show(status=status)
+    services.set_episode_watched(alice, ova[0], True, today=TODAY)
+    assert WatchEvent.objects.for_user(alice).filter(episode=ova[0]).count() == 1
+    assert services.set_season_watched(alice, ova[0].season, True, today=TODAY) == 2
+    # extras never change progress
+    assert queries.progress(alice, title).watched == 0
+
+
+@pytest.mark.parametrize('status', ['airing', 'upcoming', 'unknown'])
+def test_an_undated_ova_of_an_unfinished_title_is_refused(alice, status):
+    title, mains, ova = make_undated_show(status=status)
+    with pytest.raises(services.NotAired):
+        services.set_episode_watched(alice, ova[0], True, today=TODAY)
+    assert services.set_season_watched(alice, ova[0].season, True, today=TODAY) == 0
+    assert services.mark_up_to(alice, ova[2], today=TODAY) == 0
+    assert not WatchEvent.objects.exists() and not LibraryEntry.objects.exists()
+
+
+@pytest.mark.parametrize('start', [None, 1])
+def test_a_finished_title_needs_a_season_that_has_started(alice, start):
+    """No start date, or a start in the future, keeps the episodes locked."""
+    title, mains, ova = make_undated_show(start=start)
+    with pytest.raises(services.NotAired):
+        services.set_episode_watched(alice, ova[0], True, today=TODAY)
+    assert not WatchEvent.objects.exists()
+
+
+def test_a_season_that_starts_today_has_started(alice):
+    title, mains, ova = make_undated_show(start=0)
+    services.set_episode_watched(alice, ova[0], True, today=TODAY)
+    assert WatchEvent.objects.for_user(alice).count() == 1
+
+
+def test_dated_episodes_keep_the_old_rule_whatever_the_status(alice):
+    title, mains, ova = make_undated_show(status='ended')
+    Season.objects.filter(pk=mains[0].season_id).update(start_date=None)
+    services.set_episode_watched(alice, mains[0], True, today=TODAY)
+    assert WatchEvent.objects.for_user(alice).count() == 1
+
+
+def test_undated_main_episodes_of_a_finished_title_are_watched_in_order(alice):
+    title, mains, _ = make_undated_show(main_undated=True)
+    assert services.mark_next(alice, title, today=TODAY) == mains[0]
+    assert services.mark_up_to(alice, mains[2], today=TODAY) == 2
+    # every main episode is watched: the ended title completes by itself
+    assert LibraryEntry.objects.for_user(alice).get().status == 'completed'
+    assert queries.progress(alice, title).watched == 3
+
+
+def test_undated_main_episodes_of_an_airing_title_stay_locked(alice):
+    title, mains, _ = make_undated_show(status='airing', main_undated=True)
+    assert services.mark_next(alice, title, today=TODAY) is None
+    assert services.set_title_watched(alice, title, True, today=TODAY) == 0
+    assert not WatchEvent.objects.exists()
+
+
+def test_completing_a_finished_title_marks_its_undated_main_episodes(alice):
+    title, mains, _ = make_undated_show(main_undated=True)
+    services.set_status(alice, title, 'completed', today=TODAY)
+    assert queries.progress(alice, title).watched == 3
+    airing, airing_mains, _ = make_undated_show(status='airing', main_undated=True)
+    services.set_status(alice, airing, 'completed', today=TODAY)
+    assert queries.progress(alice, airing).watched == 0
+
+
+def test_the_whole_title_includes_the_undated_extras_of_a_finished_title(alice):
+    title, mains, ova = make_undated_show()
+    assert services.set_title_watched(alice, title, True, today=TODAY) == 5
+
+
+def test_a_long_undated_season_costs_no_more_queries_than_a_short_one(alice):
+    """The season and title are read once, not once per episode."""
+    costs = []
+    for count in (4, 40):
+        title, mains, ova = make_undated_show(count=count)
+        season = ova[0].season
+        with CaptureQueriesContext(connection) as queries_run:
+            added = services.set_season_watched(alice, season, True, today=TODAY)
+        assert added == count
+        costs.append(len(queries_run))
+        with CaptureQueriesContext(connection) as queries_run:
+            services.mark_up_to(alice, ova[-1], today=TODAY)
+        costs.append(len(queries_run))
+    assert costs[0] == costs[2] and costs[1] == costs[3]

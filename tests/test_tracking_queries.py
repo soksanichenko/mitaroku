@@ -1,10 +1,10 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 from catalog.models import EpisodeTranslation, Season, Title, TitleTranslation
 from tracking import queries
 from tracking.models import LibraryEntry, WatchEvent
-from tracking_helpers import TODAY, make_movie, make_show, watch
+from tracking_helpers import TODAY, make_movie, make_show, make_undated_show, watch
 
 pytestmark = pytest.mark.django_db
 
@@ -383,3 +383,84 @@ def test_upcoming_ignores_another_users_viewings(alice, bob, django_assert_num_q
         items = queries.upcoming(alice, today=TODAY)
     assert [(i.title, i.episode) for i in items] == [(movie, None), (title, eps[1])]
     assert [i.title for i in queries.upcoming(bob, today=TODAY)] == [title]
+
+
+# The one rule of "aired": see queries.has_aired.
+
+D = date(2000, 1, 1)  # any past date
+FUTURE = TODAY + timedelta(days=1)
+
+
+@pytest.mark.parametrize(
+    ('air_date', 'start', 'status', 'aired'),
+    [
+        (D, None, 'airing', True),
+        (TODAY, None, 'upcoming', True),
+        (FUTURE, D, 'ended', False),  # a dated episode follows its own date
+        (None, D, 'ended', True),
+        (None, D, 'canceled', True),
+        (None, TODAY, 'ended', True),
+        (None, FUTURE, 'ended', False),
+        (None, None, 'ended', False),
+        (None, D, 'airing', False),
+        (None, D, 'upcoming', False),
+        (None, D, 'unknown', False),
+    ],
+)
+def test_has_aired_is_one_rule(air_date, start, status, aired):
+    assert queries.has_aired(air_date, start, status, TODAY) is aired
+
+
+def test_title_page_state_counts_undated_episodes_of_a_finished_title(alice):
+    title, mains, ova = make_undated_show()
+    add(alice, title)
+    watch(alice, ova[0])
+    state = queries.title_page_state(alice, title, today=TODAY)
+    main, extras = state.groups
+    assert (main.total, main.aired_total) == (2, 2)
+    assert (extras.watched, extras.total, extras.aired_total) == (1, 3, 3)
+    assert all(row.aired for row in extras.rows)
+    # extras are checked off but never change the main progress
+    assert (state.progress.watched, state.progress.total) == (0, 2)
+
+
+def test_title_page_state_keeps_undated_episodes_of_an_airing_title_unaired(alice):
+    title, mains, ova = make_undated_show(status='airing')
+    state = queries.title_page_state(alice, title, today=TODAY)
+    assert state.groups[1].aired_total == 0
+    assert not any(row.aired for row in state.groups[1].rows)
+
+
+def test_undated_main_episodes_of_a_finished_title_are_next_and_counted(alice):
+    title, mains, _ = make_undated_show(main_undated=True)
+    add(alice, title)
+    watch(alice, mains[0])
+    state = queries.title_page_state(alice, title, today=TODAY)
+    assert state.groups[0].aired_total == 3
+    assert (state.progress.watched, state.progress.total) == (1, 3)
+    assert state.next_episode == mains[1]
+    assert queries.next_episode(alice, title) == mains[1]
+    assert queries.progress(alice, title).percent == 33
+
+
+def test_continue_watching_treats_a_finished_undated_next_episode_as_aired(alice):
+    ended, ended_eps, _ = make_undated_show(main_undated=True)
+    airing, airing_eps, _ = make_undated_show(status='airing', main_undated=True)
+    dated, dated_eps, _ = make_show('Dated', dated=(-30, 5), extra=False)
+    for title, eps, day in [(dated, dated_eps, 5), (airing, airing_eps, 4)]:
+        add(alice, title)
+        watch(alice, eps[0], at=T0 + timedelta(days=day))
+    add(alice, ended)
+    watch(alice, ended_eps[0], at=T0)
+    rows = queries.continue_watching(alice, today=TODAY)
+    # the finished title's next episode is watchable, so it comes before the rest
+    assert [r.entry.title for r in rows] == [ended, dated, airing]
+
+
+def test_title_page_state_with_a_long_undated_season_uses_constant_queries(
+    alice, django_assert_num_queries
+):
+    title, mains, ova = make_undated_show(count=40)
+    with django_assert_num_queries(5):
+        state = queries.title_page_state(alice, title, today=TODAY)
+    assert state.groups[1].aired_total == 40

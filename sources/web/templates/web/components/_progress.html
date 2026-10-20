@@ -1,9 +1,10 @@
 {% comment %}
 Progress bar with "watched/total". The bar is empty when total is 0.
-Variables: watched, total (integers); label (optional): the accessible name of
+Variables: watched, total (integers); suffix (optional): text after the count;
+label (optional): the accessible name of
 the bar, for example "Show: 3 of 12 episodes watched".
 {% endcomment %}{% load i18n %}{% widthratio watched total 100 as pct %}
 <div class="mt-progress">
   <div class="mt-progress-bar" role="progressbar" aria-label="{{ label|default:_('Episodes watched') }}" aria-valuemin="0" aria-valuemax="{{ total }}" aria-valuenow="{{ watched }}" style="--mt-pct: {{ pct }}%"><div class="mt-progress-fill"></div></div>
-  <span class="mt-progress-text">{{ watched }}/{{ total }}</span>
+  <span class="mt-progress-text">{{ watched }}/{{ total }}</span>{% if suffix %}<span class="mt-progress-suffix">{{ suffix }}</span>{% endif %}
 </div>

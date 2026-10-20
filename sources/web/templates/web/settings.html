@@ -40,7 +40,8 @@ of its own. Notifications and data come with later plans.
         {% trans 'The language of menus and buttons.' as interface_help %}
         {% include 'web/_settings_select.html' with field=form.interface_language help=interface_help %}
         {% trans 'The language of titles and descriptions of shows.' as metadata_help %}
-        {% include 'web/_settings_select.html' with field=form.metadata_language help=metadata_help %}
+        {% trans 'A title is translated when you open it, so titles you added earlier may need a moment.' as metadata_more %}
+        {% include 'web/_settings_select.html' with field=form.metadata_language help=metadata_help more=metadata_more %}
       </div>
       <div class="mt-set-actions">
         <button type="submit" class="btn btn-primary mt-touch">{% trans 'Save' %}</button>

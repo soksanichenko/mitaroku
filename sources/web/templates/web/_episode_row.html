@@ -6,16 +6,16 @@ span#check-ep-<pk>) and, for aired episodes, the overflow menu. The menu opens f
 of #episodes (menu, pressStart, pressEnd, pressMenu).
 {% endcomment %}{% load i18n web_extras %}{% with ep=rv.row.episode %}{% episode_name ep as name %}{% if not name %}{% blocktrans trimmed asvar name with number=ep.number %}Episode {{ number }}{% endblocktrans %}{% endif %}{% firstof rv.code2 rv.code as code %}
 <li class="mt-ep mt-ep--{{ rv.check }}" id="ep-{{ ep.pk }}"{% if rv.row.aired %} @click.capture="pressClick($event)" @touchstart.passive="pressStart({{ ep.pk }})" @touchend="pressEnd()" @touchmove.passive="pressEnd()" @touchcancel="pressEnd()" @contextmenu="pressMenu($event)"{% endif %}>
-  <span class="mt-ep-num"><span>{{ rv.code }}</span>{% if rv.code2 %}<span class="mt-ep-num2">{{ rv.code2 }}</span>{% endif %}</span>
+  <span class="mt-ep-num">{% if rv.code2 %}<span title="{% trans 'Episode number across the whole show' %}">{{ rv.code }}</span><span class="mt-ep-num2" title="{% trans 'Season and episode number' %}">{{ rv.code2 }}</span>{% else %}<span>{{ rv.code }}</span>{% endif %}</span>
   <div class="mt-ep-body">
     <span class="mt-ep-name">{{ name }}</span>
     <span class="mt-ep-date">
-      {% if ep.air_date %}{{ ep.air_date|date }}{% if not rv.row.aired %} · <em>{% if rv.days == 1 %}{% trans 'Airs tomorrow' %}{% else %}{% blocktrans trimmed count days=rv.days %}Airs in {{ days }} day{% plural %}Airs in {{ days }} days{% endblocktrans %}{% endif %}</em>{% endif %}{% else %}<em>{% trans 'Date not announced' %}</em>{% endif %}
+      {% if ep.air_date %}{{ ep.air_date|short_date }}{% if not rv.row.aired %} · <em>{% if rv.days == 1 %}{% trans 'Airs tomorrow' %}{% else %}{% blocktrans trimmed count days=rv.days %}Airs in {{ days }} day{% plural %}Airs in {{ days }} days{% endblocktrans %}{% endif %}</em>{% endif %}{% else %}<em>{% trans 'Date not announced' %}</em>{% endif %}
       {% if rv.row.views > 1 %}<span class="mt-ep-views" role="img" aria-label="{% blocktrans trimmed count n=rv.row.views %}Watched {{ n }} time{% plural %}Watched {{ n }} times{% endblocktrans %}">×{{ rv.row.views }}</span>{% endif %}
     </span>
   </div>
   {% url 'episode_watch' ep.pk as watch_url %}
-  {% include 'web/_episode_check.html' with prefix='ep' scope='episode' object_id=ep.pk state=rv.check name=name code=code grp=ep.season_id post_url=watch_url %}
+  {% include 'web/_episode_check.html' with prefix='ep' scope='episode' object_id=ep.pk state=rv.check undated=rv.undated name=name code=code grp=ep.season_id post_url=watch_url %}
   {% if rv.row.aired %}
   <button type="button" id="more-ep-{{ ep.pk }}" class="mt-ep-more mt-touch" aria-haspopup="menu" aria-expanded="false" :aria-expanded="menu === {{ ep.pk }}"
           aria-label="{% blocktrans trimmed %}More actions: {{ code }} · {{ name }}{% endblocktrans %}" @click="menu = menu === {{ ep.pk }} ? null : {{ ep.pk }}">

@@ -1163,6 +1163,12 @@ a:focus-visible .mt-poster-img,
   font-size: 17px;
 }
 
+.mt-lib-saved {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .mt-lib-score {
   display: flex;
   flex-wrap: wrap;
@@ -1637,6 +1643,13 @@ a:focus-visible .mt-poster-img,
   border: 1px solid var(--color-text);
   font-size: 13px;
   line-height: 1.4;
+}
+
+/* Not armed by the server, or dismissed for good (see hint.js). Neither state lives
+   on the element: an HTMX swap resets its attributes and styles. */
+.mt-hint[data-armed="false"],
+:root[data-hint-mark-up-to="dismissed"] .mt-hint {
+  display: none;
 }
 
 .mt-hint-text {

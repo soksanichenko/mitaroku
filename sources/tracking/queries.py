@@ -6,6 +6,7 @@ would multiply rows. Every read of the tracking models goes through
 ``for_user``.
 """
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date, datetime
 
@@ -31,6 +32,84 @@ from django.db.models import (
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from tracking.models import LibraryEntry, WatchEvent
+
+# An undated episode of a title in one of these states is a finished one whose
+# dates were never filled in; see ``has_aired``.
+FINISHED_STATUSES = (Title.Status.ENDED, Title.Status.CANCELED)
+
+
+def has_aired(
+    air_date: date | None,
+    season_start: date | None,
+    title_status: str,
+    today: date,
+) -> bool:
+    """Return whether an episode can be watched; the one rule every layer uses.
+
+    An episode with an air date has aired when the date is not after ``today``.
+    An undated episode counts as aired only when its season has a start date that
+    is not after ``today`` and the title is ended or canceled: a finished show
+    whose episode dates were never filled in. Every other undated episode has
+    not aired.
+
+    Args:
+        air_date: The air date of the episode, if known.
+        season_start: The ``start_date`` of the episode's season, if known.
+        title_status: The ``Title.Status`` of the title.
+        today: The current date.
+
+    Returns:
+        True when the episode can be marked watched.
+    """
+    if air_date is not None:
+        return air_date <= today
+    return (
+        title_status in FINISHED_STATUSES
+        and season_start is not None
+        and season_start <= today
+    )
+
+
+def episode_aired(episode: Episode, title: Title, today: date) -> bool:
+    """Return ``has_aired`` for an episode whose ``season`` is loaded.
+
+    Args:
+        episode: The episode; ``episode.season`` must be loaded
+            (``select_related``) or the call costs one query.
+        title: The title the episode belongs to.
+        today: The current date.
+    """
+    return has_aired(episode.air_date, episode.season.start_date, title.status, today)
+
+
+def aired_episodes(
+    episodes: Iterable[Episode], title: Title, today: date
+) -> list[Episode]:
+    """Return the episodes of ``title`` that have aired, in the given order.
+
+    The start dates of the seasons are read in one query, and only when an
+    undated episode of a finished title makes them matter, so the cost does not
+    grow with the number of episodes.
+
+    Args:
+        episodes: Episodes of ``title``.
+        title: Their title.
+        today: The current date.
+    """
+    episodes = list(episodes)
+    starts: dict[int, date | None] = {}
+    undated = {e.season_id for e in episodes if e.air_date is None}
+    if undated and title.status in FINISHED_STATUSES:
+        starts = dict(
+            Season.objects.filter(pk__in=undated).values_list('pk', 'start_date')
+        )
+    return [
+        episode
+        for episode in episodes
+        if has_aired(
+            episode.air_date, starts.get(episode.season_id), title.status, today
+        )
+    ]
 
 
 def _percent(watched: int, total: int) -> int:
@@ -270,8 +349,9 @@ def continue_watching(
 ) -> list[LibraryRow]:
     """Return the Watching entries that have a next episode, best first.
 
-    Entries whose next episode has aired come first, most recently watched
-    first. The rest follow by the date of the next episode, undated last.
+    Entries whose next episode has aired (see ``has_aired``) come first, most
+    recently watched first. The rest follow by the date of the next episode,
+    undated last.
 
     Args:
         user: The owner of the library.
@@ -291,8 +371,8 @@ def continue_watching(
     ]
     aired, waiting = [], []
     for row in rows:
-        has_aired = row.next.air_date and row.next.air_date <= today
-        (aired if has_aired else waiting).append(row)
+        next_aired = episode_aired(row.next, row.entry.title, today)
+        (aired if next_aired else waiting).append(row)
     aired.sort(key=lambda r: r.last_watched_at or r.entry.added_at, reverse=True)
     waiting.sort(key=lambda r: (r.next.air_date is None, r.next.air_date or today))
     return aired + waiting
@@ -405,7 +485,9 @@ def title_page_state(
         rows = [
             EpisodeRow(
                 episode=episode,
-                aired=bool(episode.air_date and episode.air_date <= today),
+                aired=has_aired(
+                    episode.air_date, season.start_date, title.status, today
+                ),
                 views=views.get(episode.pk, 0),
             )
             for episode in season.episodes.all()

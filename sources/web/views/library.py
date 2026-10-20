@@ -18,7 +18,7 @@ from django.utils.translation import gettext_lazy as _
 from django.views.decorators.vary import vary_on_headers
 from tracking import queries
 from tracking.models import LibraryEntry
-from web.templatetags.web_extras import STATUS_LABELS
+from web.templatetags.web_extras import STATUS_LABELS, episode_code
 
 PAGE_SIZE = 60
 MAX_QUERY = 100
@@ -61,7 +61,7 @@ class Item:
         name: The title in the user's metadata language (never empty).
         code: The code of the next episode, such as ``S1E3``, or ''.
         next_state: ``aired`` (the next episode can be watched), ``dated`` (it
-            airs on a known day), ``undated`` or ``none`` (nothing left).
+            airs on a known day later), ``undated`` or ``none`` (nothing left).
     """
 
     row: queries.LibraryRow
@@ -79,8 +79,8 @@ class ContinueCard:
         name: The title in the user's metadata language (never empty).
         code: The code of the next episode, such as ``S1E3``.
         episode_name: The name of the next episode ('' when unknown).
-        aired: Whether the next episode can be marked now.
-        today: Whether it aired today.
+        aired: Whether the next episode can be marked now (see ``queries.has_aired``).
+        today: Whether it aired today (it is dated today).
     """
 
     row: queries.LibraryRow
@@ -113,11 +113,6 @@ def _in_status(item: Item, status: str) -> bool:
     return status in (ALL, item.row.entry.status)
 
 
-def _code(episode) -> str:
-    """Return the code of an episode such as ``S1E3``."""
-    return f'S{episode.season.number}E{episode.number}'
-
-
 def _name(row: queries.LibraryRow, language: str) -> str:
     """Return the title of a row in ``language``, or "Untitled"."""
     return localized_title(row.entry.title, language)[0] or gettext('Untitled')
@@ -128,19 +123,20 @@ def _items(rows: list[queries.LibraryRow], language: str, today: date) -> list[I
     items = []
     for row in rows:
         episode = row.next
+        title = row.entry.title
         if episode is None:
             state = 'none'
+        elif queries.episode_aired(episode, title, today):
+            state = 'aired'
         elif episode.air_date is None:
             state = 'undated'
-        elif episode.air_date <= today:
-            state = 'aired'
         else:
             state = 'dated'
         items.append(
             Item(
                 row=row,
                 name=_name(row, language),
-                code=_code(episode) if episode else '',
+                code=episode_code(episode, title.kind) if episode else '',
                 next_state=state,
             )
         )
@@ -224,9 +220,9 @@ def _continue_cards(user, language: str, today: date) -> list[ContinueCard]:
         ContinueCard(
             row=row,
             name=_name(row, language),
-            code=_code(row.next),
+            code=episode_code(row.next, row.entry.title.kind),
             episode_name=localized_episode(row.next, language)[0],
-            aired=bool(row.next.air_date and row.next.air_date <= today),
+            aired=queries.episode_aired(row.next, row.entry.title, today),
             today=row.next.air_date == today,
         )
         for row in rows

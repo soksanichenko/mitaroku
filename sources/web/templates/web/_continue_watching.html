@@ -18,9 +18,9 @@ Context: cards (list of ContinueCard).
         <a class="mt-cw-name" href="{% url 'title' title.pk %}">{{ card.name }}</a>
         {% if card.aired %}
         <span class="mt-cw-ep">{{ card.code }}{% if card.episode_name %} · {{ card.episode_name }}{% endif %}</span>
-        <span class="mt-cw-when">{% if card.today %}{% trans 'Aired today' %}{% else %}{% blocktrans trimmed with date=next.air_date|date:'M j' %}Aired {{ date }}{% endblocktrans %}{% endif %}</span>
+        {% if card.today %}<span class="mt-cw-when">{% trans 'Aired today' %}</span>{% elif next.air_date %}<span class="mt-cw-when">{% blocktrans trimmed with date=next.air_date|short_date %}Aired {{ date }}{% endblocktrans %}</span>{% endif %}
         {% else %}
-        <span class="mt-cw-ep">{% if next.air_date %}{% blocktrans trimmed with code=card.code date=next.air_date|date:'M j' %}Next: {{ code }} · {{ date }}{% endblocktrans %}{% else %}{% blocktrans trimmed with code=card.code %}Next: {{ code }} · date not announced{% endblocktrans %}{% endif %}</span>
+        <span class="mt-cw-ep">{% if next.air_date %}{% blocktrans trimmed with code=card.code date=next.air_date|short_date %}Next: {{ code }} · {{ date }}{% endblocktrans %}{% else %}{% blocktrans trimmed with code=card.code %}Next: {{ code }} · date not announced{% endblocktrans %}{% endif %}</span>
         {% endif %}
         {% blocktrans trimmed asvar progress_label with name=card.name watched=card.row.watched total=card.row.total %}{{ name }}: {{ watched }} of {{ total }} episodes watched{% endblocktrans %}
         {% include 'web/components/_progress.html' with watched=card.row.watched total=card.row.total label=progress_label %}

@@ -14,7 +14,13 @@ from django.views.decorators.http import require_POST
 from django.views.decorators.vary import vary_on_headers
 from providers.search import search
 from providers.types import SearchHit
-from tracking.adding import MAX_PENDING, TooManyPending, expire_stale, request_add
+from tracking.adding import (
+    MAX_PENDING,
+    PENDING_TIMEOUT,
+    TooManyPending,
+    expire_stale,
+    request_add,
+)
 from tracking.models import AddRequest, LibraryEntry
 from web.clients import shared_clients
 from web.templatetags.web_extras import rating_source_name
@@ -38,6 +44,7 @@ class ResultRow:
         kind_label: The translated kind: Show, Anime or Movie.
         title_id: The catalog title when the title is already known, else None.
         entry: The user's library entry for it, if any.
+        pending: The user's add request for it that is still running, if any.
     """
 
     hit: SearchHit
@@ -45,6 +52,7 @@ class ResultRow:
     kind_label: str
     title_id: int | None
     entry: LibraryEntry | None
+    pending: AddRequest | None
 
     @property
     def name(self) -> str:
@@ -81,8 +89,25 @@ def _search_url(**params: str) -> str:
     return f'{reverse("search")}?{urlencode(params)}'
 
 
+def _pending_requests(user, hits: list[SearchHit]) -> dict[tuple[str, str], AddRequest]:
+    """Return the user's running add requests for the hits, in one query.
+
+    A request older than the timeout belongs to a job that died; it is not shown
+    as running (the next add expires it).
+    """
+    return {
+        (request.provider, request.external_id): request
+        for request in AddRequest.objects.for_user(user).filter(
+            state=AddRequest.State.PENDING,
+            created_at__gte=timezone.now() - PENDING_TIMEOUT,
+            provider__in={h.provider for h in hits},
+            external_id__in={h.external_id for h in hits},
+        )
+    }
+
+
 def _rows(user, hits: list[SearchHit]) -> list[ResultRow]:
-    """Attach the catalog title and the user's library entry to every hit."""
+    """Attach the catalog title, the library entry and the running add request."""
     links = ExternalId.objects.filter(
         provider__in={h.provider for h in hits},
         external_id__in={h.external_id for h in hits},
@@ -94,6 +119,7 @@ def _rows(user, hits: list[SearchHit]) -> list[ResultRow]:
             title_id__in=set(title_ids.values())
         )
     }
+    pending = _pending_requests(user, hits)
     rows = []
     for hit in hits:
         title_id = title_ids.get((hit.provider, hit.external_id))
@@ -109,6 +135,7 @@ def _rows(user, hits: list[SearchHit]) -> list[ResultRow]:
                 kind_label=str(KIND_LABELS[hit.kind]),
                 title_id=title_id,
                 entry=entries.get(title_id),
+                pending=pending.get((hit.provider, hit.external_id)),
             )
         )
     return rows
@@ -206,8 +233,13 @@ def _request_fragment(request: HttpRequest, add_request: AddRequest) -> HttpResp
     if add_request.state == AddRequest.State.PENDING:
         return _add_fragment(request, state='pending', add_request=add_request)
     if add_request.state == AddRequest.State.DONE:
+        entry = (
+            LibraryEntry.objects.for_user(request.user)
+            .filter(title_id=add_request.title_id)
+            .first()
+        )
         return _add_fragment(
-            request, state='added', title_id=add_request.title_id, entry=None
+            request, state='added', title_id=add_request.title_id, entry=entry
         )
     return _add_fragment(
         request,

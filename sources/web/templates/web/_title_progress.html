@@ -2,9 +2,10 @@
 The progress bar and the whole-show control of the episode list: div#title-progress.
 Actions replace it out of band. Context: progress, entry, has_views (the bar shows with
 an entry or any viewing), whole (watched, partly, unwatched or unaired), has_rows,
-title; oob (optional): add hx-swap-oob="true".
+title, whole_undated; the count says "main episodes" because extras
+(OVAs, movies, specials) are not counted in it; oob (optional): add hx-swap-oob="true".
 {% endcomment %}{% load i18n %}
 <div id="title-progress" class="mt-title-progress"{% if oob %} hx-swap-oob="true"{% endif %}>
-  {% if progress.total and entry or progress.total and has_views %}{% include 'web/components/_progress.html' with watched=progress.watched total=progress.total %}{% endif %}
-  {% if has_rows %}{% url 'title_watch_all' title.pk as watch_all_url %}{% include 'web/_episode_check.html' with prefix='all' scope='title' object_id=title.pk state=whole post_url=watch_all_url %}{% endif %}
+  {% if progress.total and entry or progress.total and has_views %}{% trans 'main episodes' as main_episodes %}{% include 'web/components/_progress.html' with watched=progress.watched total=progress.total suffix=main_episodes %}{% endif %}
+  {% if has_rows %}{% url 'title_watch_all' title.pk as watch_all_url %}{% include 'web/_episode_check.html' with prefix='all' scope='title' object_id=title.pk state=whole undated=whole_undated post_url=watch_all_url %}{% endif %}
 </div>

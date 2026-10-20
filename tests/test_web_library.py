@@ -724,8 +724,8 @@ def test_movies_show_no_progress_bar_and_the_release_date(
     html = library(client, portal_headers, '?tab=movie&sort=title')
     assert names(html) == ['Seen film', 'Unseen film']
     assert 'role="progressbar"' not in html
-    assert 'Sep 9, 2026' in html
-    assert 'Oct 9, 2026 · 136 min' in html
+    assert 'Sep 9' in html and 'Sep 9, 2026' not in html
+    assert 'Oct 9 · 136 min' in html
     rows = library(client, portal_headers, '?tab=movie&sort=title&view=list')
     seen_row, unseen_row = re.findall(r'<tr class="mt-lrow".*?</tr>', rows, re.S)
     assert 'Watched' in seen_row

@@ -67,6 +67,8 @@ def make_anime() -> Title:
                 season=season,
                 number=index,
                 absolute_number=None if extra else absolute,
+                tmdb_season_number=None if extra else number,
+                tmdb_episode_number=None if extra else index,
                 air_date=TODAY - timedelta(days=50),
             )
     return title

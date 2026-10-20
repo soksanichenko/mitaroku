@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-19 20:51+0000\n"
+"POT-Creation-Date: 2026-10-20 11:22+0000\n"
 "Language: ru\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
@@ -23,6 +23,24 @@ msgstr "Пароль"
 
 msgid "Forgot your password? Ask the administrator of this server to reset it."
 msgstr "Забыли пароль? Попросите администратора сервера сбросить его."
+
+msgid "Page not found"
+msgstr "Страница не найдена"
+
+msgid "This page does not exist, or it was moved."
+msgstr "Такой страницы нет или она переехала."
+
+msgid "Open your library"
+msgstr "Открыть библиотеку"
+
+msgid "Something went wrong"
+msgstr "Что-то пошло не так"
+
+msgid "mitaroku, go to library"
+msgstr "mitaroku, перейти в библиотеку"
+
+msgid "The server hit an error. Nothing was lost. Try again in a moment."
+msgstr "На сервере произошла ошибка. Ничего не потеряно. Попробуйте ещё раз через минуту."
 
 msgid "Adding…"
 msgstr "Добавляем…"
@@ -92,6 +110,12 @@ msgstr "%(name)s: просмотрено серий — %(watched)s из %(total
 msgid "Mark %(code)s of %(name)s as watched"
 msgstr "Отметить просмотренной: %(code)s, %(name)s"
 
+msgid "Air date not announced"
+msgstr "Дата выхода не объявлена"
+
+msgid "Not aired yet"
+msgstr "Ещё не вышло"
+
 #, python-format
 msgid "Mark as unwatched: %(code)s · %(name)s"
 msgstr "Снять отметку о просмотре: %(code)s · %(name)s"
@@ -114,8 +138,11 @@ msgstr "Снять отметку просмотра со всего сериа�
 msgid "Mark whole show as watched"
 msgstr "Отметить весь сериал просмотренным"
 
-msgid "Not aired yet"
-msgstr "Ещё не вышло"
+msgid "Episode number across the whole show"
+msgstr "Сквозной номер серии"
+
+msgid "Season and episode number"
+msgstr "Сезон и номер серии"
 
 msgid "Airs tomorrow"
 msgstr "Эфир завтра"
@@ -155,9 +182,6 @@ msgstr "Части франшизы"
 
 msgid "No episodes announced yet"
 msgstr "Серии пока не объявлены"
-
-msgid "mitaroku, go to library"
-msgstr "mitaroku, перейти в библиотеку"
 
 msgid "Search shows, anime and movies"
 msgstr "Поиск сериалов, аниме и фильмов"
@@ -209,6 +233,9 @@ msgstr "Ваша библиотека"
 
 msgid "Remove this title from your library? Your watched episodes are kept."
 msgstr "Убрать тайтл из библиотеки? Отметки о просмотре сохранятся."
+
+msgid "Saved"
+msgstr "Сохранено"
 
 msgid "My rating"
 msgstr "Моя оценка"
@@ -367,11 +394,8 @@ msgstr "Не удалось загрузить тайтл"
 msgid "The metadata providers haven't answered yet. Nothing was lost. Try again in a moment."
 msgstr "Источники метаданных пока не ответили. Ничего не потеряно. Попробуйте ещё раз чуть позже."
 
-msgid "D, M j"
-msgstr "D, j E"
-
-msgid "D, M j, Y"
-msgstr "D, j E Y"
+msgid "main episodes"
+msgstr "основных серий"
 
 msgid "Movie premiere"
 msgstr "Премьера фильма"
@@ -494,6 +518,9 @@ msgstr "Язык меню и кнопок."
 msgid "The language of titles and descriptions of shows."
 msgstr "Язык названий и описаний сериалов и фильмов."
 
+msgid "A title is translated when you open it, so titles you added earlier may need a moment."
+msgstr "Тайтл переводится, когда вы его открываете, поэтому у добавленных раньше перевод может появиться не сразу."
+
 msgid "Save"
 msgstr "Сохранить"
 
@@ -505,9 +532,6 @@ msgstr "Ничего не ожидается"
 
 msgid "Titles you’re watching or planning to watch show their next episode or premiere here."
 msgstr "Здесь появятся ближайшие серии и премьеры тайтлов, которые вы смотрите или планируете посмотреть."
-
-msgid "Open your library"
-msgstr "Открыть библиотеку"
 
 msgid "Watching"
 msgstr "Смотрю"
@@ -538,6 +562,67 @@ msgstr "Завершён"
 
 msgid "Canceled"
 msgstr "Отменён"
+
+msgctxt "month in a date"
+msgid "Jan"
+msgstr "янв."
+
+msgctxt "month in a date"
+msgid "Feb"
+msgstr "февр."
+
+msgctxt "month in a date"
+msgid "Mar"
+msgstr "марта"
+
+msgctxt "month in a date"
+msgid "Apr"
+msgstr "апр."
+
+msgctxt "month in a date"
+msgid "May"
+msgstr "мая"
+
+msgctxt "month in a date"
+msgid "Jun"
+msgstr "июня"
+
+msgctxt "month in a date"
+msgid "Jul"
+msgstr "июля"
+
+msgctxt "month in a date"
+msgid "Aug"
+msgstr "авг."
+
+msgctxt "month in a date"
+msgid "Sep"
+msgstr "сент."
+
+msgctxt "month in a date"
+msgid "Oct"
+msgstr "окт."
+
+msgctxt "month in a date"
+msgid "Nov"
+msgstr "нояб."
+
+msgctxt "month in a date"
+msgid "Dec"
+msgstr "дек."
+
+#, python-format
+msgctxt "date without the year"
+msgid "%(month)s %(day)s"
+msgstr "%(day)s %(month)s"
+
+#, python-format
+msgctxt "date with the year"
+msgid "%(month)s %(day)s, %(year)s"
+msgstr "%(day)s %(month)s %(year)s г."
+
+msgid "Released"
+msgstr "Вышел"
 
 msgid "All"
 msgstr "Все"
@@ -624,20 +709,11 @@ msgstr "Позже"
 msgid "No date yet"
 msgstr "Даты пока нет"
 
-msgid "Released"
-msgstr "Вышел"
+#~ msgid "D, M j"
+#~ msgstr "D, j E"
 
-msgid "Page not found"
-msgstr "Страница не найдена"
-
-msgid "This page does not exist, or it was moved."
-msgstr "Такой страницы нет или она переехала."
-
-msgid "Something went wrong"
-msgstr "Что-то пошло не так"
-
-msgid "The server hit an error. Nothing was lost. Try again in a moment."
-msgstr "На сервере произошла ошибка. Ничего не потеряно. Попробуйте ещё раз через минуту."
+#~ msgid "D, M j, Y"
+#~ msgstr "D, j E Y"
 
 #~ msgid "Upcoming episodes and premieres will appear here."
 #~ msgstr "Здесь появятся ближайшие серии и премьеры."

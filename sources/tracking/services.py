@@ -16,6 +16,8 @@ from django.db.models import Q
 from django.utils import timezone
 from tracking.models import LibraryEntry, WatchEvent
 from tracking.queries import (
+    aired_episodes,
+    episode_aired,
     main_episodes,
     next_episode,
     progress,
@@ -36,14 +38,16 @@ class NotInLibrary(LookupError):
     """Raised when a score or note is set for a title not in the library."""
 
 
-def is_aired(episode: Episode, today: date) -> bool:
-    """Return whether ``episode`` has an air date that is not after ``today``."""
-    return episode.air_date is not None and episode.air_date <= today
+def is_aired(episode: Episode, today: date, title: Title | None = None) -> bool:
+    """Return whether ``episode`` can be watched (see ``queries.has_aired``).
 
-
-def _aired(episodes: Iterable[Episode], today: date) -> list[Episode]:
-    """Return the episodes that have aired, in the given order."""
-    return [episode for episode in episodes if is_aired(episode, today)]
+    Args:
+        episode: The episode; its season is read, so load it with
+            ``select_related('season')`` where that matters.
+        today: The current date.
+        title: The episode's title when the caller has it (saves a query).
+    """
+    return episode_aired(episode, title or episode.season.title, today)
 
 
 def _lock_entry(user, title: Title) -> tuple[LibraryEntry, bool]:
@@ -179,7 +183,9 @@ def set_status(
                 if released and not seen:
                     WatchEvent.objects.create(user=user, title=title, watched_at=now)
             else:
-                _add_viewings(user, title, _aired(main_episodes(title), today), now)
+                _add_viewings(
+                    user, title, aired_episodes(main_episodes(title), title, today), now
+                )
         return entry
 
 
@@ -319,7 +325,7 @@ def mark_episodes(
     )
     if foreign:
         raise ValueError(f'Episodes of another title given for title {title.pk}')
-    aired = _aired(episodes, today)
+    aired = aired_episodes(episodes, title, today)
     if not aired:
         return 0
     with transaction.atomic():
@@ -535,7 +541,7 @@ def mark_next(
     with transaction.atomic():
         entry, created = _lock_entry(user, title)
         episode = next_episode(user, title)
-        if episode is None or not is_aired(episode, today):
+        if episode is None or not is_aired(episode, today, title):
             _discard_unused(user, entry, created)
             return None
         _add_viewings(user, title, [episode], now)

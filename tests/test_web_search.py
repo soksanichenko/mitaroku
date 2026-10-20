@@ -12,8 +12,9 @@ from tracking.models import AddRequest, LibraryEntry
 pytestmark = pytest.mark.django_db
 
 # 5 queries are the session, the user, the admin group check and the profile; the
-# lookup of library entries adds 2 however many hits there are.
-NUM_SEARCH_QUERIES = 7
+# lookups of library entries and of the running add requests add 3 however many
+# hits there are.
+NUM_SEARCH_QUERIES = 8
 NUM_POLL_QUERIES = 7  # 5 for the sign-in, then the expiry update and the read
 ADD = {'provider': 'tmdb_tv', 'external_id': '1396', 'status': 'planned'}
 
@@ -482,3 +483,94 @@ def test_an_untitled_hit_is_translated(client, portal_headers, patched_search, a
     patched_search.result = SearchResults(hits=[bad])
     html = client.get('/search/?q=anything', **portal_headers).content.decode()
     assert 'Без названия' in html
+
+
+# A reload in the middle of an add shows the running add, not the plain button.
+
+
+def result_row(html: str, name: str) -> str:
+    """Return the ``<li>`` of the result named ``name``."""
+    for row in re.findall(r'<li class="mt-result">.*?</li>', html, re.S):
+        if f'>{name}<' in row:
+            return row
+    raise AssertionError(f'no result row named {name}')
+
+
+def test_a_pending_request_shows_adding_after_a_reload(
+    client, portal_headers, patched_search, alice
+):
+    request = pending(alice, 1396)
+    patched_search.result = SearchResults(
+        hits=[hit('tv', 'Breaking Bad', 1396), hit('tv', 'Better Call Saul', 60059)]
+    )
+    html = client.get('/search/?q=bb', **portal_headers).content.decode()
+    row = result_row(html, 'Breaking Bad')
+    assert 'mt-add--pending' in row and 'Adding…' in row
+    assert f'hx-get="/add/{request.pk}/"' in row
+    assert 'hx-trigger="load delay:2s"' in row
+    assert 'mt-picker' not in row and 'hx-post="/search/add/"' not in row
+    # the other hit is untouched
+    other = result_row(html, 'Better Call Saul')
+    assert 'mt-picker' in other and 'mt-add--pending' not in other
+
+
+def test_the_same_page_polls_to_the_finished_status(
+    client, portal_headers, patched_search, alice, synced_movie
+):
+    request = pending(alice, 603, state='done', title=synced_movie)
+    AddRequest.objects.filter(pk=request.pk).update(provider='tmdb_movie')
+    LibraryEntry.objects.create(user=alice, title=synced_movie, status='planned')
+    patched_search.result = SearchResults(hits=[hit('movie', 'The Matrix', 603)])
+    html = client.get('/search/?q=matrix', **portal_headers).content.decode()
+    row = result_row(html, 'The Matrix')
+    assert 'mt-add--pending' not in row and 'Plan to watch' in row
+
+
+def test_another_users_pending_request_does_not_affect_the_page(
+    client, portal_headers, patched_search, alice, bob
+):
+    pending(bob, 1396)
+    patched_search.result = SearchResults(hits=[hit('tv', 'Breaking Bad', 1396)])
+    html = client.get('/search/?q=bb', **portal_headers).content.decode()
+    row = result_row(html, 'Breaking Bad')
+    assert 'mt-picker' in row and 'mt-add--pending' not in row
+    assert 'Adding' not in html
+
+
+def test_finished_and_stale_requests_are_not_shown_as_adding(
+    client, portal_headers, patched_search, alice
+):
+    pending(alice, 1396, state='failed', error='provider')
+    stale = pending(alice, 60059)
+    AddRequest.objects.filter(pk=stale.pk).update(
+        created_at=timezone.now() - timedelta(hours=2)
+    )
+    patched_search.result = SearchResults(
+        hits=[hit('tv', 'Breaking Bad', 1396), hit('tv', 'Better Call Saul', 60059)]
+    )
+    html = client.get('/search/?q=bb', **portal_headers).content.decode()
+    assert 'mt-add--pending' not in html
+    assert html.count('mt-picker-btn--add') == 2
+
+
+def test_a_finished_add_shows_the_chosen_status_like_the_instant_path(
+    client, portal_headers, alice, synced_movie
+):
+    done = pending(alice, 603, state='done', title=synced_movie)
+    LibraryEntry.objects.create(user=alice, title=synced_movie, status='watching')
+    html = client.get(f'/add/{done.pk}/', **portal_headers).content.decode()
+    assert 'mt-add--added' in html and 'Watching' in html
+    assert f'href="/titles/{synced_movie.pk}/"' in html
+    # the entry was removed meanwhile: the generic word is all that is left
+    LibraryEntry.objects.all().delete()
+    html = client.get(f'/add/{done.pk}/', **portal_headers).content.decode()
+    assert 'Added' in html and 'Watching' not in html
+
+
+def test_a_finished_add_never_shows_another_users_status(
+    client, portal_headers, alice, bob, synced_movie
+):
+    done = pending(alice, 603, state='done', title=synced_movie)
+    LibraryEntry.objects.create(user=bob, title=synced_movie, status='dropped')
+    html = client.get(f'/add/{done.pk}/', **portal_headers).content.decode()
+    assert 'Added' in html and 'Dropped' not in html

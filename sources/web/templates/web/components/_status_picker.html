@@ -10,6 +10,7 @@ Variables:
   fields  optional dict of extra hidden inputs sent with the choice
   align   optional "right" to open the menu towards the left edge
           (the menu opens upward by itself when there is no room below it)
+  trigger_id  optional id of the button that opens the menu (for the focus after a swap)
   confirm_remove  optional text of the confirmation asked before "Remove from library"
   target  optional hx-target for the response (default: this picker itself);
           the response replaces the target (hx-swap="outerHTML")
@@ -20,7 +21,7 @@ Variables:
   {% for field, value in fields.items %}<input type="hidden" name="{{ field }}" value="{{ value }}">{% endfor %}
   {% if entry %}
   {% with label=entry.status|status_label %}
-  <button type="button" x-ref="trigger" class="mt-picker-btn mt-touch" aria-haspopup="menu" aria-expanded="false" :aria-expanded="open"
+  <button type="button" x-ref="trigger"{% if trigger_id %} id="{{ trigger_id }}"{% endif %} class="mt-picker-btn mt-touch" aria-haspopup="menu" aria-expanded="false" :aria-expanded="open"
           aria-label="{% blocktrans trimmed %}Status of {{ name }}: {{ label }}. Change status{% endblocktrans %}" title="{% trans 'Change status' %}" @click="toggle()">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
     <span class="mt-picker-label">{{ label }}</span>
@@ -28,7 +29,7 @@ Variables:
   </button>
   {% endwith %}
   {% else %}
-  <button type="button" x-ref="trigger" class="mt-picker-btn mt-picker-btn--add mt-touch" aria-haspopup="menu" aria-expanded="false" :aria-expanded="open"
+  <button type="button" x-ref="trigger"{% if trigger_id %} id="{{ trigger_id }}"{% endif %} class="mt-picker-btn mt-picker-btn--add mt-touch" aria-haspopup="menu" aria-expanded="false" :aria-expanded="open"
           aria-label="{% blocktrans trimmed %}Add {{ name }} to library{% endblocktrans %}" title="{% trans 'Add to library' %}" @click="toggle()">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg>
     <span class="mt-picker-label">{% trans 'Add' %}</span>

@@ -21,8 +21,8 @@
     {% endif %}
     {% include 'web/_theme_toggle.html' %}
     {% if user.is_authenticated %}
-    <div class="mt-user" x-data="{ open: false }" @keydown.escape="open = false" @click.outside="open = false">
-      <button type="button" class="mt-user-btn" aria-haspopup="menu" :aria-expanded="open"
+    <div class="mt-user" x-data="{ open: false }" @keydown.escape="if (open) { open = false; $refs.btn.focus() }" @click.outside="open = false" @focusin.window="if (open && !$el.contains($event.target)) open = false">
+      <button type="button" x-ref="btn" class="mt-user-btn" aria-haspopup="menu" :aria-expanded="open"
               aria-label="{% trans 'Account' %}" title="{% trans 'Account' %}" @click="open = !open">
         <span class="mt-avatar" aria-hidden="true">{{ user|initials }}</span>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>

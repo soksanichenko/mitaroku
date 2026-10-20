@@ -3,6 +3,7 @@ from datetime import timedelta
 
 import pytest
 from catalog.models import Episode, EpisodeTranslation, Season, Title
+from django.conf import settings
 from django.db import connection
 from django.test import Client
 from django.test.utils import CaptureQueriesContext
@@ -296,24 +297,55 @@ def test_up_to_never_adds_the_hint_mark_but_a_single_mark_does(
     assert 'mark-up-to-hint' not in undone.content.decode()
 
 
-def test_the_hint_is_on_the_page_hidden_and_guards_local_storage(
+def test_the_hint_is_on_the_page_and_hidden_by_css_not_by_alpine_state(
     client, portal_headers, alice, synced_show
 ):
+    """The tip is shown or hidden by data-armed and by a flag on <html>.
+
+    An out-of-band swap resets the attributes of the element after Alpine started,
+    so no state (x-show, a data object, inline style) may live on the element.
+    """
     html = open_title(client, portal_headers, synced_show)
     hint = re.search(r'<div[^>]*id="mark-up-to-hint".*?</div>', html, re.S).group()
     assert 'data-armed="false"' in hint
-    assert 'x-show="show"' in hint
-    assert 'mitaroku.hint.markUpTo' in hint
-    assert hint.count('try {') == 2  # read and write are both guarded
+    for state in ('x-show', 'x-cloak', 'dismissed', 'armed:', 'style='):
+        assert state not in hint
     assert 'Tip: use the menu to mark everything up to an episode' in hint
     assert 'Dismiss' in hint
+    assert 'mtDismissMarkUpToHint()' in hint
+    css = (settings.BASE_DIR / 'web/static/web/app.css').read_text()
+    assert '.mt-hint[data-armed="false"]' in css
+    assert ':root[data-hint-mark-up-to="dismissed"] .mt-hint' in css
+    assert '/static/web/hint.js' in html
+
+
+def test_the_hint_script_keeps_the_flag_on_the_root_and_guards_storage():
+    script = (settings.BASE_DIR / 'web/static/web/hint.js').read_text()
+    assert "'mitaroku.hint.markUpTo'" in script
+    assert script.count('try {') == 2  # read and write are both guarded
+    assert "dataset.hintMarkUpTo = 'dismissed'" in script
+    assert 'window.mtDismissMarkUpToHint' in script
+
+
+def test_an_armed_hint_is_only_sent_after_a_single_mark(
+    client, portal_headers, alice, synced_show
+):
+    first, second = mains(synced_show)[:2]
+    track(alice, synced_show, status='watching')
+    armed = watch_episode(client, portal_headers, first).content.decode()
+    assert 'data-armed="true"' in tag(armed, 'mark-up-to-hint')
+    # the whole-show action sends the section with an unarmed tip
+    section = act(
+        client, portal_headers, f'/titles/{synced_show.pk}/watch-all/', watched='1'
+    )
+    assert 'data-armed="false"' in tag(section.content.decode(), 'mark-up-to-hint')
 
 
 def test_using_the_up_to_action_dismisses_the_hint(
     client, portal_headers, alice, synced_show
 ):
     html = open_title(client, portal_headers, synced_show)
-    assert '@mt-up-to.window="dismiss()"' in html
+    assert '@mt-up-to.window="mtDismissMarkUpToHint()"' in html
     assert "$dispatch('mt-up-to')" in html
 
 
@@ -539,6 +571,7 @@ def test_continue_validates_the_episode(client, portal_headers, alice, synced_sh
 def test_the_continue_button_names_the_episode(
     client, portal_headers, alice, synced_show
 ):
+    track(alice, synced_show, status='watching')
     first = mains(synced_show)[0]
     html = open_title(client, portal_headers, synced_show)
     button = tag(html, 'continue-btn')
@@ -738,6 +771,7 @@ def test_rows_have_an_overflow_menu(client, portal_headers, alice, synced_show):
 
 
 def test_the_continue_bar_states(client, portal_headers, alice, synced_show):
+    track(alice, synced_show, status='watching')
     html = open_title(client, portal_headers, synced_show)
     bar = re.search(r'<div[^>]*id="continue-bar".*?</div>', html, re.S).group()
     first = mains(synced_show)[0]
@@ -754,6 +788,7 @@ def test_the_continue_bar_states(client, portal_headers, alice, synced_show):
     assert 'Next: S1E4 · airs Oct 26' in bar and 'hx-post' not in bar
 
     title, first_season, second = make_two_seasons()
+    track(alice, title, status='watching')
     watch(alice, *mains(title))
     html = open_title(client, portal_headers, title)
     assert 'You&#x27;re all caught up' in html or "You're all caught up" in html
@@ -763,6 +798,7 @@ def test_the_continue_bar_states(client, portal_headers, alice, synced_show):
 def test_an_undated_next_episode_has_no_date_in_the_bar(
     client, portal_headers, alice, synced_show
 ):
+    track(alice, synced_show, status='watching')
     watch(alice, *mains(synced_show)[:3])
     Episode.objects.filter(pk=future_episode(synced_show).pk).update(air_date=None)
     html = open_title(client, portal_headers, synced_show)
@@ -788,6 +824,7 @@ def test_responses_and_labels_are_translated(
 ):
     alice.profile.interface_language = 'ru'
     alice.profile.save()
+    track(alice, synced_show, status='watching')
     ep = first_episode(synced_show)
     html = open_title(client, portal_headers, synced_show)
     assert 'Отметить просмотренной: S1E1' in html

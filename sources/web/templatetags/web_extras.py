@@ -1,6 +1,8 @@
 """Template tags and filters for the shell and the catalog components."""
 
-from catalog.models import Episode, Title
+from datetime import date
+
+from catalog.models import Episode, Season, Title
 from catalog.translations import (
     FALLBACK_LANGUAGE,
     localized_episode,
@@ -9,7 +11,8 @@ from catalog.translations import (
 from django import template
 from django.contrib.auth.models import AbstractUser
 from django.template.context import Context
-from django.utils.translation import gettext
+from django.utils import dateformat, timezone
+from django.utils.translation import gettext, pgettext, pgettext_lazy
 from django.utils.translation import gettext_lazy as _
 from tracking.models import LibraryEntry
 
@@ -39,6 +42,79 @@ AIRING_LABELS = {
     Title.Status.ENDED: _('Ended'),
     Title.Status.CANCELED: _('Canceled'),
 }
+
+
+# The month as it reads inside a date, abbreviated in the way of the language
+# (Russian uses the genitive: "5 мая", "20 янв."). Django's own month names are
+# capitalised in Russian and do not fit a date.
+MONTHS = (
+    pgettext_lazy('month in a date', 'Jan'),
+    pgettext_lazy('month in a date', 'Feb'),
+    pgettext_lazy('month in a date', 'Mar'),
+    pgettext_lazy('month in a date', 'Apr'),
+    pgettext_lazy('month in a date', 'May'),
+    pgettext_lazy('month in a date', 'Jun'),
+    pgettext_lazy('month in a date', 'Jul'),
+    pgettext_lazy('month in a date', 'Aug'),
+    pgettext_lazy('month in a date', 'Sep'),
+    pgettext_lazy('month in a date', 'Oct'),
+    pgettext_lazy('month in a date', 'Nov'),
+    pgettext_lazy('month in a date', 'Dec'),
+)
+
+
+@register.filter
+def short_date(value: date | None, weekday: str = '') -> str:
+    """Return a date as month and day, with the year unless it is this year.
+
+    The one format for dates in lists, cards and rows: "Jan 20" and "Jan 20, 2008"
+    in English, "20 янв." and "20 янв. 2008 г." in Russian. The long form
+    (``DATE_FORMAT``) is for the facts of a title page.
+
+    Args:
+        value: The date, or None.
+        weekday: Pass ``weekday`` to put the abbreviated weekday in front.
+
+    Returns:
+        The text, or an empty string for None.
+    """
+    if value is None:
+        return ''
+    parts = {'month': str(MONTHS[value.month - 1]), 'day': value.day}
+    if value.year == timezone.localdate().year:
+        text = pgettext('date without the year', '%(month)s %(day)s') % parts
+    else:
+        parts['year'] = value.year
+        text = pgettext('date with the year', '%(month)s %(day)s, %(year)s') % parts
+    if weekday:
+        return f'{dateformat.format(value, "D")}, {text}'
+    return text
+
+
+def episode_code(episode: Episode, kind: str) -> str:
+    """Return the code of an episode: ``S1E3``, or ``E3`` when no season is known.
+
+    An anime title is a franchise whose seasons are its entries, so its entry
+    numbers shift when an OVA or a movie sits among them. The code of an anime
+    episode is therefore the TMDB season and episode when it has both, else just
+    the number inside its entry. A series uses its season number.
+
+    Args:
+        episode: The episode; ``episode.season`` is read for a series.
+        kind: The ``Title.Kind`` of its title.
+    """
+    if kind == Title.Kind.ANIME:
+        if (
+            episode.tmdb_season_number is not None
+            and episode.tmdb_episode_number is not None
+        ):
+            return f'S{episode.tmdb_season_number}E{episode.tmdb_episode_number}'
+        return f'E{episode.number}'
+    season: Season = episode.season
+    return f'S{season.number}E{episode.number}'
+
+
+register.filter('episode_code', episode_code)
 
 
 @register.filter

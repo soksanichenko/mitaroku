@@ -14,6 +14,7 @@ from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_POST
 from tracking import queries, services
 from tracking.models import LibraryEntry
+from web.templatetags.web_extras import episode_code
 
 # A title that has not synced this long after it was created gets a retry button.
 SYNC_TIMEOUT = timedelta(minutes=15)
@@ -43,8 +44,10 @@ class RowView:
     Attributes:
         row: The episode with its aired flag and viewing count.
         code: The main number, such as ``S1E3``, ``4`` (absolute) or ``OVA 1``.
-        code2: The season code shown small beside an absolute number, or ''.
+        code2: The code (``S2E1``) shown small beside an absolute number, or ''.
         check: ``watched``, ``unwatched`` or ``unaired``.
+        undated: Whether the episode is locked because it has no air date (an
+            undated episode of a finished title is open, see ``queries.has_aired``).
         days: Days until a dated episode airs (0 once it has aired or when undated).
     """
 
@@ -52,6 +55,7 @@ class RowView:
     code: str
     code2: str
     check: str
+    undated: bool
     days: int
 
 
@@ -65,6 +69,7 @@ class GroupView:
         label: Heading and chip text.
         tag: A kind tag for single-episode anime entries, or ''.
         check: ``watched``, ``partly``, ``unwatched`` or ``unaired``.
+        undated: Whether the group is locked only because no episode has a date.
         note: A one-line remark about missing episode data, or ''.
         open: Whether the accordion starts open.
     """
@@ -74,6 +79,7 @@ class GroupView:
     label: str
     tag: str
     check: str
+    undated: bool
     note: str
     open: bool
 
@@ -86,7 +92,7 @@ def _numbering(title: Title, season: Season, episode: Episode) -> tuple[str, str
         return gettext('OVA %(number)s') % {'number': episode.number}, ''
     if season.kind == Season.Kind.MOVIE:
         return gettext('Movie'), ''
-    code = f'S{season.number}E{episode.number}'
+    code = episode_code(episode, title.kind)
     continued = (
         title.kind == Title.Kind.ANIME
         and not season.is_extra
@@ -115,6 +121,11 @@ def _group_check(group: queries.GroupState) -> str:
     if group.watched >= group.aired_total:
         return 'watched'
     return 'partly' if group.watched else 'unwatched'
+
+
+def _all_undated(rows: list[queries.EpisodeRow]) -> bool:
+    """Tell whether nothing in ``rows`` has aired and nothing has a date."""
+    return bool(rows) and all(r.episode.air_date is None and not r.aired for r in rows)
 
 
 def _note(season: Season, rows: list[RowView]) -> str:
@@ -152,6 +163,7 @@ def _group_views(
                     else 'unwatched'
                     if row.aired
                     else 'unaired',
+                    undated=airs is None and not row.aired,
                     days=(airs - today).days if airs and not row.aired else 0,
                 )
             )
@@ -164,6 +176,7 @@ def _group_views(
                 label=_label(title, season),
                 tag=str(SEASON_KIND_LABELS[season.kind]) if single and kind_tag else '',
                 check=_group_check(group),
+                undated=_all_undated(group.rows),
                 note=_note(season, rows),
                 open=season.pk == opening,
             )
@@ -181,6 +194,11 @@ def _sync_state(title: Title) -> str:
     return STUCK
 
 
+def _whole_undated(groups: list[GroupView]) -> bool:
+    """Tell whether the whole show is locked only because no episode has a date."""
+    return _all_undated([r for g in groups for r in g.group.rows])
+
+
 def _whole_check(groups: list[GroupView]) -> str:
     """Return the state of the whole-show control over every aired episode."""
     rows = [r for g in groups for r in g.group.rows if r.aired]
@@ -196,7 +214,8 @@ def page_context(request: HttpRequest, title: Title) -> dict:
     """Build the context of the page body for the signed-in user.
 
     Besides the display data it carries what the watch actions need to render
-    their fragments: ``whole`` (state of the whole-show control), ``has_rows``
+    their fragments: ``whole`` (state of the whole-show control) and
+    ``whole_undated`` (it is locked for want of dates), ``has_rows``
     (any episode row exists) and ``next_row`` (the row of the next main episode,
     or None) for series, ``movie_views`` and ``movie_released`` for movies.
 
@@ -232,6 +251,7 @@ def page_context(request: HttpRequest, title: Title) -> dict:
             has_episodes=True,
             has_rows=any(g.rows for g in groups),
             whole=_whole_check(groups),
+            whole_undated=_whole_undated(groups),
             next_row=next(
                 (r for g in groups for r in g.rows if r.row.episode.pk == next_pk),
                 None,
@@ -290,8 +310,8 @@ def from_library(request: HttpRequest) -> bool:
 
 
 def _panel(request: HttpRequest, title: Title, entry: LibraryEntry | None):
-    """Render the library panel for ``entry``."""
-    context = {'title': title, 'entry': entry}
+    """Render the library panel for ``entry`` after a change ("Saved")."""
+    context = {'title': title, 'entry': entry, 'saved': True}
     return render(request, 'web/_library_panel.html', context)
 
 
@@ -327,6 +347,7 @@ def title_status(request: HttpRequest, pk: int) -> HttpResponse:
     context = page_context(request, title)
     context.update(
         entry=entry,
+        saved=entry is not None,
         oob_episodes=context.get('has_episodes', False),
         oob_movie=title.kind == Title.Kind.MOVIE,
     )
