@@ -764,7 +764,7 @@ def test_rows_have_an_overflow_menu(client, portal_headers, alice, synced_show):
     assert 'aria-haspopup="menu"' in done and 'role="menu"' in done
     todo = row(plain)
     assert 'Mark all up to here as watched' in todo and 'Watched again' not in todo
-    assert '@touchstart' in todo  # long press opens the menu
+    assert 'x-bind="press(' in todo  # long press opens the menu
     soon = row(future)
     assert 'up-to' not in soon and 'Watched again' not in soon
     assert 'role="menu"' not in soon
@@ -941,7 +941,7 @@ def test_menu_actions_hand_the_focus_to_the_row_check(
     html = open_title(client, portal_headers, synced_show)
     row = re.search(rf'<li[^>]*id="ep-{ep.pk}".*?</li>', html, re.S).group()
     assert row.count(f"focusAfter = 'mark-ep-{ep.pk}'") == 2  # up to here, again
-    root = tag(html, 'episodes') + html[html.index('id="episodes"') :][:2500]
+    root = tag(html, 'episodes') + html[html.index('id="episodes"') :][:4500]
     assert '@htmx:after-settle=' in root
     assert 'focusAfter' in root
     assert '@htmx:response-error=' in root

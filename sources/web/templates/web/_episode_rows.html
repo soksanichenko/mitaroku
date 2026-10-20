@@ -1,0 +1,6 @@
+{% comment %}
+The body of a season group: the note about missing episode data (if any) and the
+rows. Context: g (GroupView). Rendered inside div#grp-<season pk>-rows by
+_episode_group.html, and alone by the season_rows view for a lazy group.
+{% endcomment %}{% if g.note %}<p class="mt-ep-note">{{ g.note }}</p>{% endif %}
+{% if g.rows %}<ul class="mt-eps">{% for rv in g.rows %}{% include 'web/_episode_row.html' %}{% endfor %}</ul>{% endif %}

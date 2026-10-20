@@ -700,6 +700,12 @@ msgstr "Список серий пока неизвестен"
 msgid "No episodes yet"
 msgstr "Серий пока нет"
 
+msgid "Loading episodes…"
+msgstr "Загрузка серий…"
+
+msgid "Couldn’t load the episodes"
+msgstr "Не удалось загрузить серии"
+
 msgid "Tomorrow"
 msgstr "Завтра"
 

@@ -65,7 +65,10 @@ def _respond(
         The HTML fragments; the library panel is added out of band only when
         the status of the entry changed.
     """
-    context = page_context(request, title)
+    # The group an action answers about is the one the user is in: it keeps its rows.
+    context = page_context(
+        request, title, expanded=season.pk if mode == 'group' else None
+    )
     entry = context['entry']
     context.update(
         mode=mode, hint=hint, panel=(entry.status if entry else None) != before

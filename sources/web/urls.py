@@ -20,6 +20,7 @@ urlpatterns = [
     path('titles/<int:pk>/continue/', actions.title_continue, name='title_continue'),
     path('episodes/<int:pk>/watch/', actions.episode_watch, name='episode_watch'),
     path('episodes/<int:pk>/up-to/', actions.episode_up_to, name='episode_up_to'),
+    path('seasons/<int:pk>/rows/', titles.season_rows, name='season_rows'),
     path('seasons/<int:pk>/watch/', actions.season_watch, name='season_watch'),
     path('settings/', settings.settings_page, name='settings'),
     path('healthz/', shell.healthz, name='healthz'),

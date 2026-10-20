@@ -6,12 +6,13 @@ from datetime import date, timedelta
 from catalog import tasks
 from catalog.models import Episode, Season, Title
 from catalog.translations import FALLBACK_LANGUAGE
-from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
+from django.http import Http404, HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
+from django.utils.cache import patch_cache_control
 from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 from tracking import queries, services
 from tracking.models import LibraryEntry
 from web.templatetags.web_extras import episode_code
@@ -23,6 +24,10 @@ REMOVE = 'remove'
 # The library page posts ``ui=library`` to the actions it shares with the title
 # page: it has none of the title page's elements, so it needs no answer.
 LIBRARY_UI = 'library'
+
+# A collapsed group with more rows than this renders only its header; its rows
+# are fetched when the user first opens it (``season_rows``).
+LAZY_ROW_LIMIT = 10
 
 SYNCING = 'syncing'
 STUCK = 'stuck'
@@ -72,6 +77,7 @@ class GroupView:
         undated: Whether the group is locked only because no episode has a date.
         note: A one-line remark about missing episode data, or ''.
         open: Whether the accordion starts open.
+        lazy: Whether the rows are left out of the page and fetched on demand.
     """
 
     group: queries.GroupState
@@ -82,6 +88,7 @@ class GroupView:
     undated: bool
     note: str
     open: bool
+    lazy: bool
 
 
 def _numbering(title: Title, season: Season, episode: Episode) -> tuple[str, str]:
@@ -140,9 +147,24 @@ def _note(season: Season, rows: list[RowView]) -> str:
 
 
 def _group_views(
-    title: Title, state: queries.TitlePageState, today: date
+    title: Title,
+    state: queries.TitlePageState,
+    today: date,
+    expanded: int | None = None,
 ) -> list[GroupView]:
-    """Prepare the episode list: one view per season, with the first to open."""
+    """Prepare the episode list: one view per season, with the first to open.
+
+    Args:
+        title: The title.
+        state: Its page state for the user.
+        today: The date that decides what has aired.
+        expanded: Pk of a season whose rows must be rendered although it starts
+            collapsed (the group an action answers about).
+
+    Returns:
+        One view per season; a collapsed one with more than ``LAZY_ROW_LIMIT`` rows
+        is ``lazy`` unless it is ``expanded``.
+    """
     opening = state.next_episode.season_id if state.next_episode else None
     if not any(g.season.pk == opening for g in state.groups):
         opening = state.groups[0].season.pk if state.groups else None
@@ -179,6 +201,8 @@ def _group_views(
                 undated=_all_undated(group.rows),
                 note=_note(season, rows),
                 open=season.pk == opening,
+                lazy=season.pk not in (opening, expanded)
+                and len(rows) > LAZY_ROW_LIMIT,
             )
         )
     return views
@@ -210,7 +234,9 @@ def _whole_check(groups: list[GroupView]) -> str:
     return 'partly' if watched else 'unwatched'
 
 
-def page_context(request: HttpRequest, title: Title) -> dict:
+def page_context(
+    request: HttpRequest, title: Title, expanded: int | None = None
+) -> dict:
     """Build the context of the page body for the signed-in user.
 
     Besides the display data it carries what the watch actions need to render
@@ -222,6 +248,8 @@ def page_context(request: HttpRequest, title: Title) -> dict:
     Args:
         request: The request of the signed-in user.
         title: The title shown.
+        expanded: Pk of a season whose rows are rendered even when it is collapsed
+            (see ``_group_views``).
 
     Returns:
         The template context; only ``title``, ``sync_state`` and ``entry`` until
@@ -245,7 +273,7 @@ def page_context(request: HttpRequest, title: Title) -> dict:
             movie_released=bool(title.release_date and title.release_date <= today),
         )
     else:
-        groups = _group_views(title, state, today)
+        groups = _group_views(title, state, today, expanded)
         next_pk = state.next_episode.pk if state.next_episode else None
         context.update(
             has_episodes=True,
@@ -262,6 +290,37 @@ def page_context(request: HttpRequest, title: Title) -> dict:
             chips=groups if title.kind == Title.Kind.ANIME and len(groups) > 1 else [],
         )
     return context
+
+
+@require_GET
+def season_rows(request: HttpRequest, pk: int) -> HttpResponse:
+    """Return the rows of one season group for the signed-in user.
+
+    The page leaves the rows of long collapsed groups out; the browser fetches
+    them here the first time the group opens. The markup is the one the page
+    would have rendered, so it carries the user's watch state and must never be
+    cached or shared.
+
+    Args:
+        request: The request.
+        pk: Primary key of the season.
+
+    Returns:
+        The note (if any) and the ``ul.mt-eps`` of the group; 404 for an unknown
+        season, 409 while the title has not synced.
+    """
+    season = get_object_or_404(Season.objects.select_related('title'), pk=pk)
+    context = page_context(request, season.title, expanded=pk)
+    if context['sync_state'] != READY:
+        return HttpResponse('The title is not ready yet', status=409)
+    group = next(
+        (g for g in context.get('groups', []) if g.group.season.pk == pk), None
+    )
+    if group is None:
+        raise Http404('The season has no episode list')
+    response = render(request, 'web/_episode_rows.html', {'g': group})
+    patch_cache_control(response, private=True, no_store=True)
+    return response
 
 
 def _queue_background_jobs(request: HttpRequest, title: Title) -> None:

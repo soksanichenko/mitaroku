@@ -222,3 +222,47 @@ def make_ova_first_anime(status: str = 'airing') -> Title:
                 air_date=TODAY + timedelta(days=7 if last else -60 + absolute),
             )
     return title
+
+
+def make_long_show(
+    seasons: int = 20, per_season: int = 60, name: str = 'Long'
+) -> tuple[Title, list[Season]]:
+    """Create a synced TV title whose episodes all aired before ``TODAY``.
+
+    Args:
+        seasons: How many main seasons.
+        per_season: Episodes per season.
+        name: The original title.
+
+    Returns:
+        The title and its seasons in order.
+    """
+    now = datetime.now(timezone.utc)
+    title = Title.objects.create(
+        kind=Title.Kind.TV,
+        original_title=name,
+        status='ended',
+        synced_at=now,
+        next_sync_at=now + timedelta(hours=1),
+    )
+    made = Season.objects.bulk_create(
+        Season(
+            title=title,
+            number=number,
+            kind=Season.Kind.TV,
+            episode_count=per_season,
+            episode_source=Season.EpisodeSource.TMDB,
+        )
+        for number in range(1, seasons + 1)
+    )
+    Episode.objects.bulk_create(
+        Episode(
+            season=season,
+            number=n,
+            absolute_number=(season.number - 1) * per_season + n,
+            air_date=TODAY - timedelta(days=1000 - n),
+        )
+        for season in made
+        for n in range(1, per_season + 1)
+    )
+    return title, made

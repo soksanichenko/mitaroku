@@ -1420,6 +1420,30 @@ a:focus-visible .mt-poster-img,
   color: var(--mt-muted);
 }
 
+/* A lazy group's rows container: the loading line and the error show by data-state. */
+.mt-lazy-loading,
+.mt-lazy-error {
+  display: none;
+  margin: 8px 0;
+  font-size: 14px;
+  color: var(--mt-muted);
+}
+
+[data-state='loading'] > .mt-lazy-loading {
+  display: block;
+}
+
+[data-state='error'] > .mt-lazy-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.mt-lazy-error p {
+  margin: 0;
+}
+
 .mt-eps {
   margin: 0;
   padding: 0;
@@ -1573,7 +1597,10 @@ a:focus-visible .mt-poster-img,
 .mt-ep-more svg {
   width: 20px;
   height: 20px;
-  fill: currentColor;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3.2;
+  stroke-linecap: round;
 }
 
 .mt-ep-views {
