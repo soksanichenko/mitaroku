@@ -2,5 +2,8 @@
 The body of a season group: the note about missing episode data (if any) and the
 rows. Context: g (GroupView). Rendered inside div#grp-<season pk>-rows by
 _episode_group.html, and alone by the season_rows view for a lazy group.
+The ul carries what every row control shares (hx-target the group, outerHTML swap,
+hx-sync that lets a newer click in the group abort the older request): the controls
+inherit it, which saves about 270 bytes a row.
 {% endcomment %}{% if g.note %}<p class="mt-ep-note">{{ g.note }}</p>{% endif %}
-{% if g.rows %}<ul class="mt-eps">{% for rv in g.rows %}{% include 'web/_episode_row.html' %}{% endfor %}</ul>{% endif %}
+{% if g.rows %}<ul class="mt-eps" hx-target="#grp-{{ g.group.season.pk }}" hx-swap="outerHTML" hx-sync="closest section.mt-grp:replace">{% for rv in g.rows %}{% include 'web/_episode_row.html' %}{% endfor %}</ul>{% endif %}

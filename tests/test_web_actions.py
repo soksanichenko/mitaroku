@@ -655,8 +655,11 @@ def test_controls_are_44px_and_labelled(client, portal_headers, alice, synced_sh
     assert 'aria-pressed="true"' in button
     assert 'aria-label="Mark as unwatched: S1E1 · Episode 1"' in button
     assert f'hx-post="/episodes/{watched.pk}/watch/"' in button
-    assert f'hx-target="#grp-{watched.season_id}"' in button
-    assert 'hx-swap="outerHTML"' in button
+    # target, swap and sync are inherited from the ul of the rows (see _episode_rows.html)
+    assert 'hx-target' not in button and 'hx-swap' not in button
+    ul = re.search(r'<ul class="mt-eps"[^>]*>', html).group()
+    assert f'hx-target="#grp-{watched.season_id}"' in ul
+    assert 'hx-swap="outerHTML"' in ul
     button = tag(html, f'mark-ep-{plain.pk}')
     assert 'aria-pressed="false"' in button
     assert 'aria-label="Mark as watched: S1E2 · Episode 2"' in button
@@ -764,10 +767,39 @@ def test_rows_have_an_overflow_menu(client, portal_headers, alice, synced_show):
     assert 'aria-haspopup="menu"' in done and 'role="menu"' in done
     todo = row(plain)
     assert 'Mark all up to here as watched' in todo and 'Watched again' not in todo
-    assert 'x-bind="press(' in todo  # long press opens the menu
+    assert 'x-bind="press(' in todo  # long press opens the menu (see the next test)
     soon = row(future)
     assert 'up-to' not in soon and 'Watched again' not in soon
     assert 'role="menu"' not in soon
+
+
+def test_the_long_press_listeners_come_from_press(
+    client, portal_headers, alice, synced_show
+):
+    html = open_title(client, portal_headers, synced_show)
+    # an aired row binds them; an unaired row has none
+    aired = first_episode(synced_show)
+    future = future_episode(synced_show)
+    row = re.search(rf'<li[^>]*id="ep-{aired.pk}"[^>]*>', html).group()
+    assert f'x-bind="press({aired.pk})"' in row
+    soon = re.search(rf'<li[^>]*id="ep-{future.pk}"[^>]*>', html).group()
+    assert 'press(' not in soon
+    # the listeners are not spelled out on the rows any more ...
+    assert '@touch' not in html[html.index('<ul class="mt-eps"') :]
+    # ... they are returned by press() of the scope of #episodes
+    root = html[html.index('id="episodes"') :]
+    root = root[: root.index('@htmx:after-settle')]
+    press = re.search(r'press\(id\) \{ return \{(.*?)\} \}', root).group(1)
+    assert press.count(':') == 6
+    for listener, handler in (
+        ("'@click.capture'", "'pressClick($event)'"),
+        ("'@touchstart.passive'", "'pressStart(' + id + ')'"),
+        ("'@touchend'", "'pressEnd()'"),
+        ("'@touchmove.passive'", "'pressEnd()'"),
+        ("'@touchcancel'", "'pressEnd()'"),
+        ("'@contextmenu'", "'pressMenu($event)'"),
+    ):
+        assert f'{listener}: {handler}' in press
 
 
 def test_the_continue_bar_states(client, portal_headers, alice, synced_show):
@@ -922,15 +954,14 @@ def test_the_group_and_row_checks_replace_their_older_request(
     title, first, second = make_two_seasons()
     watch(alice, mains(title)[0])
     html = open_title(client, portal_headers, title)
-    for button_id in (
-        f'mark-ep-{mains(title)[1].pk}',
-        f'mark-grp-{first.pk}',
-    ):
-        button = tag(html, button_id)
-        assert 'hx-sync="closest section.mt-grp:replace"' in button, button_id
+    sync = 'hx-sync="closest section.mt-grp:replace"'
+    assert sync in tag(html, f'mark-grp-{first.pk}')
+    # the row controls inherit it from the ul of their group
+    uls = re.findall(r'<ul class="mt-eps"[^>]*>', html)
+    assert uls and all(sync in ul for ul in uls)
+    assert 'hx-sync' not in tag(html, f'mark-ep-{mains(title)[1].pk}')
     # the whole-show control is not inside a group: no group sync there
     assert 'hx-sync' not in tag(html, 'mark-all')
-    assert html.count('hx-sync="closest section.mt-grp:replace"') >= 8
 
 
 def test_menu_actions_hand_the_focus_to_the_row_check(

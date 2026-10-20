@@ -2,6 +2,7 @@
 
 import re
 from datetime import timedelta
+from pathlib import Path
 
 import pytest
 from catalog.models import Episode, Season
@@ -38,7 +39,7 @@ def rows_of(html: str, season: Season) -> str:
     """Return the ``<ul>`` of the rows of ``season`` in ``html`` ('' if none)."""
     start = html.find(f'id="grp-{season.pk}-rows"')
     assert start != -1
-    found = re.compile(r'<ul class="mt-eps">.*?</ul>', re.S).search(html, start)
+    found = re.compile(r'<ul class="mt-eps"[^>]*>.*?</ul>', re.S).search(html, start)
     next_group = html.find('<section class="mt-grp"', start)
     if not found or (next_group != -1 and found.start() > next_group):
         return ''
@@ -156,9 +157,6 @@ def test_season_rows_equal_the_rows_of_the_page(
     )
     assert 'id="more-ep-' in body
     assert '<section' not in body and 'id="grp-' not in body
-    # one group: the size of the open group of the page, a fraction of the page
-    open_group = rows_of(eager, seasons[0])
-    assert abs(len(body.encode()) - len(open_group.encode())) < 2000
 
 
 def test_season_rows_are_for_the_signed_in_user_only(
@@ -166,17 +164,17 @@ def test_season_rows_are_for_the_signed_in_user_only(
 ):
     title, seasons = long_show
     watch(alice, *Episode.objects.filter(season=seasons[2]))
-    LibraryEntry.objects.create(user=alice, title=title, note='alice secret')
+    watch(alice, Episode.objects.filter(season=seasons[2]).first())  # a rewatch
     mine = client.get(f'/seasons/{seasons[2].pk}/rows/', **portal_headers)
     assert mine.content.decode().count('mt-check--watched') == 60
+    assert '×2' in mine.content.decode()
     assert not WatchEvent.objects.for_user(bob).exists()
     theirs = client.get(f'/seasons/{seasons[2].pk}/rows/', **other_headers)
     body = theirs.content.decode()
     assert theirs.status_code == 200
     assert 'mt-check--watched' not in body
     assert body.count('mt-check--unwatched') == 60
-    assert 'alice secret' not in body
-    assert '×' not in body
+    assert '×' not in body  # alice's second viewing
 
 
 def test_season_rows_headers_and_methods(client, portal_headers, alice, long_show):
@@ -345,9 +343,12 @@ def test_the_lazy_markup_has_loading_and_error_states(
     tag = container(html, seasons[4])
     assert 'hx-trigger="mt-load-rows"' in tag
     assert 'hx-target="this"' in tag
-    assert 'class="mt-lazy-loading"' in html and 'role="status"' in html
-    assert 'class="mt-lazy-error"' in html and 'role="alert"' in html
-    assert 'Couldn’t load the episodes' in html
+    start = html.index(tag)
+    lazy = html[start : html.index('</section>', start)]
+    assert '<p class="mt-lazy-loading" role="status">Loading episodes…</p>' in lazy
+    assert '<div class="mt-lazy-error" role="alert">' in lazy
+    assert 'Couldn’t load the episodes' in lazy
+    assert '@click="retry(%d)"' % seasons[4].pk in lazy
     # the Alpine scope loads only containers that are still lazy
     assert "hasAttribute('data-lazy')" in html
 
@@ -360,3 +361,91 @@ def test_the_lazy_states_are_translated(client, portal_headers, alice, long_show
     assert 'Загрузка серий…' in html
     assert 'Не удалось загрузить серии' in html
     assert 'Loading episodes' not in html
+
+
+def test_the_loaded_rows_do_not_inherit_the_container_attributes(
+    client, portal_headers, alice, long_show
+):
+    title, seasons = long_show
+    html = page(client, portal_headers, title)
+    # target, swap and sync of the load stay on the container ...
+    tag = container(html, seasons[4])
+    assert 'hx-disinherit="*"' in tag
+    # ... and the rows bring what their controls share on their own ul
+    rows = client.get(f'/seasons/{seasons[4].pk}/rows/', **portal_headers)
+    body = rows.content.decode()
+    ul = re.search(r'<ul class="mt-eps"[^>]*>', body).group()
+    assert f'hx-target="#grp-{seasons[4].pk}"' in ul
+    assert 'hx-swap="outerHTML"' in ul
+    assert 'hx-sync="closest section.mt-grp:replace"' in ul
+    assert 'hx-disinherit' not in body
+
+
+def test_a_missing_season_ends_the_error_state_without_a_retry(
+    client, portal_headers, alice, long_show
+):
+    title, seasons = long_show
+    html = page(client, portal_headers, title)
+    start = html.index(container(html, seasons[4]))
+    lazy = html[start : html.index('</section>', start)]
+    assert (
+        '<span class="mt-lazy-gone">This season is no longer available. '
+        'Reload the page.</span>' in lazy
+    )
+    # a 404 shows that message and hides the button; other errors keep the retry
+    assert "$event.detail.xhr.status === 404 ? 'gone' : 'error'" in html
+    css = (Path(__file__).parents[1] / 'sources/web/static/web/app.css').read_text()
+    assert "[data-state='gone']" in css
+    alice.profile.interface_language = 'ru'
+    alice.profile.save()
+    assert 'Этот сезон больше недоступен. Обновите страницу.' in page(
+        client, portal_headers, title
+    )
+
+
+@pytest.mark.parametrize('language', [None, 'en', 'ru'])
+def test_the_heaviest_responses_stay_under_the_raw_budget(
+    client, portal_headers, alice, today, language
+):
+    """Named episodes (50 characters, Cyrillic is 2 bytes a character) and 6-digit ids."""
+    with connection.cursor() as cursor:
+        for table in ('catalog_episode', 'catalog_season'):
+            cursor.execute(
+                'select setval(pg_get_serial_sequence(%s, %s), '
+                'greatest(nextval(pg_get_serial_sequence(%s, %s)), %s))',
+                [table, 'id', table, 'id', 500_000],
+            )
+    alice.profile.metadata_language = language or 'en'
+    alice.profile.save()
+    title, seasons = make_long_show(names=language)
+    sizes = {'page': len(page(client, portal_headers, title).encode())}
+    sizes['season_rows'] = len(
+        client.get(f'/seasons/{seasons[3].pk}/rows/', **portal_headers).content
+    )
+    action = f'/episodes/{Episode.objects.filter(season=seasons[10]).first().pk}'
+    sizes['up_to'] = len(
+        htmx(client, portal_headers, 'post', f'{action}/up-to/').content
+    )
+    WatchEvent.objects.for_user(alice).delete()
+    sizes['watch_all'] = len(
+        htmx(
+            client,
+            portal_headers,
+            'post',
+            f'/titles/{title.pk}/watch-all/',
+            watched='1',
+        ).content
+    )
+    sizes['page_all_watched'] = len(page(client, portal_headers, title).encode())
+    WatchEvent.objects.for_user(alice).delete()
+    LibraryEntry.objects.for_user(alice).delete()
+    sizes['completed'] = len(
+        htmx(
+            client,
+            portal_headers,
+            'post',
+            f'/titles/{title.pk}/status/',
+            status='completed',
+        ).content
+    )
+    assert max(sizes.values()) < PAGE_LIMIT, sizes

@@ -27,7 +27,7 @@ menu action has been swapped in (focusAfter).
          @htmx:before-request="lazyState($event, 'loading')"
          @htmx:after-request="if ($event.target.hasAttribute('data-lazy')) $event.target.removeAttribute('aria-busy')"
          @htmx:after-swap="if ($event.target.hasAttribute('data-lazy')) { for (const a of ['data-lazy', 'data-state', 'aria-busy']) $event.target.removeAttribute(a); if ($event.target.id === 'grp-' + jumpTo + '-rows') { jump(jumpTo); jumpTo = null } }"
-         @htmx:response-error="focusAfter = null; lazyState($event, 'error')"
+         @htmx:response-error="focusAfter = null; lazyState($event, $event.detail.xhr.status === 404 ? 'gone' : 'error')"
          @htmx:send-error="lazyState($event, 'error')"
          @htmx:timeout="lazyState($event, 'error')"
          @click.window="if (!$event.target.closest('.mt-ep-menu, .mt-ep-more')) menu = null"

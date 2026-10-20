@@ -1433,7 +1433,8 @@ a:focus-visible .mt-poster-img,
   display: block;
 }
 
-[data-state='error'] > .mt-lazy-error {
+[data-state='error'] > .mt-lazy-error,
+[data-state='gone'] > .mt-lazy-error {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1442,6 +1443,17 @@ a:focus-visible .mt-poster-img,
 
 .mt-lazy-error p {
   margin: 0;
+}
+
+/* A 404 (the season is gone) has no retry: it shows its own message. */
+.mt-lazy-gone,
+[data-state='gone'] .mt-lazy-msg,
+[data-state='gone'] .mt-lazy-error button {
+  display: none;
+}
+
+[data-state='gone'] .mt-lazy-gone {
+  display: inline;
 }
 
 .mt-eps {
@@ -1541,14 +1553,13 @@ a:focus-visible .mt-poster-img,
   color: var(--color-bg);
 }
 
-.mt-check svg {
+/* The tick and the dots are drawn as masks: no <svg> in every row of a long list. */
+.mt-check--watched::after {
+  content: '';
   width: 14px;
   height: 14px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 3.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M20 6 9 17l-5-5' fill='none' stroke='%23000' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 .mt-check--watched {
@@ -1594,13 +1605,12 @@ a:focus-visible .mt-poster-img,
   color: var(--color-text);
 }
 
-.mt-ep-more svg {
+.mt-ep-more::before {
+  content: '';
   width: 20px;
   height: 20px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 3.2;
-  stroke-linecap: round;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12h.01M12 12h.01M19 12h.01' fill='none' stroke='%23000' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 .mt-ep-views {

@@ -706,6 +706,9 @@ msgstr "Загрузка серий…"
 msgid "Couldn’t load the episodes"
 msgstr "Не удалось загрузить серии"
 
+msgid "This season is no longer available. Reload the page."
+msgstr "Этот сезон больше недоступен. Обновите страницу."
+
 msgid "Tomorrow"
 msgstr "Завтра"
 

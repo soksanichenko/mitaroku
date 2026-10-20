@@ -3,7 +3,7 @@
 from datetime import date, datetime, timedelta, timezone
 
 from accounts.models import User
-from catalog.models import Episode, Season, Title
+from catalog.models import Episode, EpisodeTranslation, Season, Title
 from tracking.models import WatchEvent
 
 TODAY = date(2026, 10, 19)
@@ -224,8 +224,17 @@ def make_ova_first_anime(status: str = 'airing') -> Title:
     return title
 
 
+EPISODE_NAMES = {
+    'en': 'The Long Road Home, Part {n} of the Great Saga Chapter',
+    'ru': 'Долгая дорога домой, часть {n} большой саги глава',
+}
+
+
 def make_long_show(
-    seasons: int = 20, per_season: int = 60, name: str = 'Long'
+    seasons: int = 20,
+    per_season: int = 60,
+    name: str = 'Long',
+    names: str | None = None,
 ) -> tuple[Title, list[Season]]:
     """Create a synced TV title whose episodes all aired before ``TODAY``.
 
@@ -233,6 +242,8 @@ def make_long_show(
         seasons: How many main seasons.
         per_season: Episodes per season.
         name: The original title.
+        names: A language of ``EPISODE_NAMES`` (``en`` or ``ru``): every episode
+            gets a name of about 50 characters in it; None leaves them unnamed.
 
     Returns:
         The title and its seasons in order.
@@ -265,4 +276,13 @@ def make_long_show(
         for season in made
         for n in range(1, per_season + 1)
     )
+    if names:
+        EpisodeTranslation.objects.bulk_create(
+            EpisodeTranslation(
+                episode=episode,
+                language=names,
+                name=EPISODE_NAMES[names].format(n=episode.number)[:50],
+            )
+            for episode in Episode.objects.filter(season__title=title)
+        )
     return title, made
