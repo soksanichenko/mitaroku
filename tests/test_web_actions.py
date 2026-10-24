@@ -377,7 +377,7 @@ def test_season_and_whole_title_actions(client, portal_headers, alice, synced_sh
 
 
 def test_a_season_action_without_aired_episodes_changes_nothing(
-    client, portal_headers, alice
+    client, portal_headers, alice, today
 ):
     title = Title.objects.create(
         kind=Title.Kind.TV,
