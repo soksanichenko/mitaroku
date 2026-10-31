@@ -101,3 +101,7 @@ you can check off). Settings has the interface and metadata languages.
   titles never synced; a title nobody tracks is refreshed when someone opens its page.
   Translations are fetched lazily in the user's metadata language and cleaned up weekly.
 - Posters are loaded from the provider's CDN by the browser.
+
+## License
+
+[MIT](https://opensource.org/licenses/MIT)
