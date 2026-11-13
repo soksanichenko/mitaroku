@@ -1,4 +1,4 @@
 -r ../sources/requirements.txt
 pytest==9.2.0
 pytest-django==4.14.0
-pytest-env==1.8.4
+pytest-env==1.8.5
