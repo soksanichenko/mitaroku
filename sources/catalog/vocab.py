@@ -95,10 +95,12 @@ ANILIST_GENRES: dict[str, str] = {
     'Mecha': 'mecha',
 }
 
-BROWSE_COUNTRIES: tuple[str, ...] = (
-    'US GB JP KR CN FR DE IT ES RU CA AU IN BR MX '
-    'SE DK NO FI IS PL TR TH HK TW UA NL BE IE NZ'
-).split()
+BROWSE_COUNTRIES: tuple[str, ...] = tuple(
+    (
+        'US GB JP KR CN FR DE IT ES RU CA AU IN BR MX '
+        'SE DK NO FI IS PL TR TH HK TW UA NL BE IE NZ'
+    ).split()
+)
 
 # The origin countries AniList can filter by.
 ANILIST_COUNTRIES: frozenset[str] = frozenset({'JP', 'KR', 'CN', 'TW'})

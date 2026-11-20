@@ -2,6 +2,7 @@ from datetime import date
 
 from catalog import vocab
 from catalog.vocab import (
+    BROWSE_COUNTRIES,
     GENRES,
     anilist_genre_name,
     browse_years,
@@ -44,6 +45,12 @@ def test_country_names_follow_the_language():
     assert country_name('JP', 'en') == 'Japan'
     assert country_name('JP', 'ru') == 'Япония'
     assert country_name('ZZ', 'en') == 'ZZ'
+
+
+def test_browse_countries_is_a_tuple_of_thirty():
+    assert isinstance(BROWSE_COUNTRIES, tuple)
+    assert len(BROWSE_COUNTRIES) == 30
+    assert len(set(BROWSE_COUNTRIES)) == 30
 
 
 def test_browse_years():
