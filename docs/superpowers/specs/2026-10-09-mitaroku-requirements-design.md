@@ -91,7 +91,9 @@ Library (continue watching, tabs, status filter, sort, grid/list), Upcoming,
 Search and add, title pages (show, anime, movie), Browse (target of every "See
 also" link, filters live in the URL), Collection (TMDB movie franchises),
 Notifications, Settings, Import, Export, Login (local fallback). Every screen has
-loading, empty and error states. Touch targets are at least 44 px.
+loading, empty and error states. Touch targets are at least 44 px. Browse has no
+bottom-bar tab: it is reached from "See also", from the genre and country tags on
+the title page and from one link on the idle Search page.
 
 Admin uses the standard Django admin; no separate design.
 
@@ -171,8 +173,8 @@ role from the `new-service-repo` and `new-nginx-service` skills.
 
 ## 13. Open items for the implementation plan
 
-- Plan 3b: Browse, Collection and the title-page enrichment (genres, country, cast,
-  trailers, similar titles, "See also" links) need new provider data.
+- "Mark all as watched" on the Collection page needs a bulk add; adding one title at
+  a time cannot do it within the cap of 5 requests in progress.
 - Whether a Simkl provider is added later together with Simkl login and sync.
 - Telegram: webhook or polling.
 - Subdomain or subpath.

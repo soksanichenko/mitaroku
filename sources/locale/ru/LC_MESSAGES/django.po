@@ -332,6 +332,9 @@ msgstr "Снять отметку о просмотре"
 msgid "Type a title above to search shows, anime and movies."
 msgstr "Введите название выше, чтобы искать сериалы, аниме и фильмы."
 
+msgid "Or browse by genre, country and year"
+msgstr "Или посмотрите по жанру, стране и году"
+
 msgid "Type at least 2 characters"
 msgstr "Введите не менее 2 символов"
 
@@ -933,6 +936,9 @@ msgstr "Коллекции"
 
 msgid "Similar"
 msgstr "Похожие"
+
+msgid "and"
+msgstr "и"
 
 #~ msgid "D, M j"
 #~ msgstr "D, j E"

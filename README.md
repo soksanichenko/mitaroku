@@ -102,6 +102,33 @@ you can check off). Settings has the interface and metadata languages.
   Translations are fetched lazily in the user's metadata language and cleaned up weekly.
 - Posters are loaded from the provider's CDN by the browser.
 
+## Browse and title facts
+
+Browse (`/browse/`) lists movies, TV series and anime by type, genre, country and year.
+It is not a bottom-bar tab: it opens from "See also", from the genre and country tags
+on a title page and from the link under the idle Search page. The filters live in the
+query string, so a filtered list can be bookmarked:
+
+- `type`: `movie`, `tv` or `anime`; `genre`: a genre slug; `country`: a two-letter
+  origin country, `year`: 1950 to next year; `sort`: `popularity` (default), `date`,
+  `title` or `rating`; `page`: 1 to 200. A value that is not valid is ignored.
+- Movies and TV series come from TMDB, anime from AniList, interleaved. Browse needs a
+  TMDB token; without one the movies and series are missing and the page says so, and
+  anime still work. AniList can only filter anime by JP, KR, CN and TW and by its own
+  genres, so a country or genre outside those leaves the anime out. Japanese
+  animation found by TMDB is dropped, because anime come from AniList.
+- Pages and collections are cached by the provider layer: a Browse page for 3 hours, a
+  TMDB movie collection for 7 days and the AniList details of a title for 24 hours.
+  When a provider is down the last copy is served.
+- The title page shows the genres, countries, cast, trailers, the movie collection it
+  belongs to (`/collections/<tmdb id>/`) and similar titles. These facts arrive with
+  the normal sync, so they cost no extra TMDB request and one AniList request per anime.
+- A card of a title nobody has added yet links to `/open/<provider>/<id>/`. It queues
+  a background job that creates the title in the catalog (no library entry) and syncs
+  it, so `run_huey` must be running. The page polls every 2 seconds and redirects to the
+  title page; the job holds a claim on the id for 10 minutes, and when the claim is
+  gone without a title the page shows "Try again".
+
 ## License
 
 [MIT](https://opensource.org/licenses/MIT)
