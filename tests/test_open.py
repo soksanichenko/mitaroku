@@ -3,6 +3,7 @@ from html import unescape
 import pytest
 from catalog import tasks
 from catalog.models import ExternalId, Title
+from django.utils import timezone
 from tracking.models import LibraryEntry
 
 pytestmark = pytest.mark.django_db
@@ -46,7 +47,26 @@ def get(client, portal_headers, path, **extra):
     return client.get(path, **portal_headers, **extra)
 
 
-def test_open_redirects_to_an_existing_title(client, portal_headers, alice, jobs):
+def linked_title(provider='tmdb_movie', external_id='603', synced=True) -> Title:
+    """Create a title linked to a provider id, synced or not."""
+    title = Title.objects.create(
+        kind='movie',
+        original_title='x',
+        synced_at=timezone.now() if synced else None,
+    )
+    ExternalId.objects.create(title=title, provider=provider, external_id=external_id)
+    return title
+
+
+def hold_claim(provider='tmdb_movie', external_id='603') -> None:
+    """Hold the open claim, as a running open job does."""
+    assert tasks.claim(tasks.open_key(provider, external_id), tasks.OPEN_CLAIM_TTL)
+
+
+def test_open_redirects_to_an_unsynced_title_nobody_is_opening(
+    client, portal_headers, alice, jobs
+):
+    # A title of a running add flow, or an older one that is not synced yet.
     title = Title.objects.create(kind='movie', original_title='Never synced')
     ExternalId.objects.create(title=title, provider='tmdb_movie', external_id='603')
     response = get(client, portal_headers, '/open/tmdb_movie/603/')
@@ -178,13 +198,78 @@ def test_open_task_for_an_anime_entry_of_a_known_franchise_reuses_the_title(
     assert ExternalId.objects.filter(provider='anilist', external_id='71').exists()
 
 
-def test_poll_redirects_when_the_title_appears(client, portal_headers, alice, jobs):
+def test_poll_replaces_the_page_when_the_title_is_synced(
+    client, portal_headers, alice, jobs
+):
     first = get(client, portal_headers, '/open/tmdb_movie/603/', **HTMX)
     assert 'every 2s' in first.content.decode()
-    title = Title.objects.create(kind='movie', original_title='x')
-    ExternalId.objects.create(title=title, provider='tmdb_movie', external_id='603')
+    title = linked_title()
     poll = get(client, portal_headers, '/open/tmdb_movie/603/', **POLL)
-    assert poll['HX-Redirect'] == f'/titles/{title.pk}/'
+    html = poll.content.decode()
+    assert poll.status_code == 200 and 'no-store' in poll['Cache-Control']
+    # HX-Redirect would push a history entry: Back would need two presses.
+    assert 'HX-Redirect' not in poll
+    assert f"window.location.replace('/titles/{title.pk}/')" in html
+    assert 'id="opening"' in html and 'every 2s' not in html
+
+
+def test_poll_keeps_loading_for_an_unsynced_title_while_the_claim_holds(
+    client, portal_headers, alice, jobs
+):
+    get(client, portal_headers, '/open/tmdb_movie/603/')
+    linked_title(synced=False)
+    poll = get(client, portal_headers, '/open/tmdb_movie/603/', **POLL)
+    html = poll.content.decode()
+    assert 'HX-Redirect' not in poll and 'window.location' not in html
+    assert 'every 2s' in html
+    # The first visit does not redirect to the placeholder either, nor queue again.
+    first = get(client, portal_headers, '/open/tmdb_movie/603/')
+    assert first.status_code == 200 and 'every 2s' in first.content.decode()
+    assert jobs == [('tmdb_movie', '603')]
+
+
+def test_a_synced_title_redirects_even_while_the_claim_holds(
+    client, portal_headers, alice, jobs
+):
+    title = linked_title()
+    get(client, portal_headers, '/open/tmdb_movie/603/')  # no job: the title exists
+    hold_claim()
+    response = get(client, portal_headers, '/open/tmdb_movie/603/')
+    assert (
+        response.status_code == 302 and response['Location'] == f'/titles/{title.pk}/'
+    )
+
+
+def test_poll_redirects_once_the_claim_is_released(
+    client, portal_headers, alice, jobs, redis_client
+):
+    hold_claim()
+    title = linked_title(synced=False)
+    assert (
+        'every 2s'
+        in get(client, portal_headers, '/open/tmdb_movie/603/', **POLL).content.decode()
+    )
+    # The job ended and left the title behind unsynced: nothing is worth waiting for.
+    redis_client.delete(f'{tasks.CLAIM_PREFIX}{tasks.open_key("tmdb_movie", "603")}')
+    poll = get(client, portal_headers, '/open/tmdb_movie/603/', **POLL)
+    assert f"window.location.replace('/titles/{title.pk}/')" in poll.content.decode()
+
+
+def test_the_loading_page_refreshes_without_javascript(
+    client, portal_headers, alice, jobs, redis_client
+):
+    loading = get(client, portal_headers, '/open/tmdb_movie/603/').content.decode()
+    assert '<noscript><meta http-equiv="refresh" content="2"></noscript>' in loading
+    redis_client.delete(f'{tasks.CLAIM_PREFIX}{tasks.open_key("tmdb_movie", "603")}')
+    failed = get(client, portal_headers, '/open/tmdb_movie/603/', **POLL)
+    assert 'http-equiv="refresh"' not in failed.content.decode()
+
+
+def test_open_does_not_accept_id_zero(client, portal_headers, alice, jobs):
+    for path in ('/open/tmdb_movie/0/', '/open/anilist/000/', '/open/tmdb_tv/00/'):
+        assert get(client, portal_headers, path).status_code == 404, path
+        assert get(client, portal_headers, path, **POLL).status_code == 404, path
+    assert jobs == []
 
 
 def test_poll_keeps_loading_while_the_claim_holds(client, portal_headers, alice, jobs):

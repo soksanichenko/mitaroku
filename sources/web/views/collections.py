@@ -26,9 +26,9 @@ def collection_page(request: HttpRequest, tmdb_id: int) -> HttpResponse:
         empty state for a collection without movies.
 
     Raises:
-        Http404: The id is not a TMDB id, or TMDB does not know the collection.
+        Http404: The id is not a TMDB id (0 is not), or TMDB does not know the collection.
     """
-    if not EXTERNAL_ID.fullmatch(str(tmdb_id)):
+    if not EXTERNAL_ID.fullmatch(str(tmdb_id)) or tmdb_id == 0:
         raise Http404('Unknown collection')
     tmdb = shared_clients().tmdb
     context: dict = {'state': 'error'}

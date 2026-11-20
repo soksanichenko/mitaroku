@@ -263,3 +263,13 @@ def test_collection_query_count_is_constant(client, portal_headers, alice, monke
         LibraryEntry.objects.create(user=alice, title=title, status='completed')
     get(client, portal_headers)  # the first request creates the profile
     assert queries(8) == queries(2)
+
+
+def test_collection_id_zero_is_not_found_without_asking_tmdb(
+    client, portal_headers, monkeypatch
+):
+    tmdb = FakeTmdb()
+    use_tmdb(monkeypatch, tmdb)
+    for path in ('/collections/0/', '/collections/000/'):
+        assert client.get(path, **portal_headers).status_code == 404
+    assert tmdb.calls == []
