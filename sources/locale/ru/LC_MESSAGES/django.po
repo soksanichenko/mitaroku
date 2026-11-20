@@ -721,6 +721,93 @@ msgstr "Позже"
 msgid "No date yet"
 msgstr "Даты пока нет"
 
+msgid "Action"
+msgstr "Боевик"
+
+msgid "Adventure"
+msgstr "Приключения"
+
+msgid "Animation"
+msgstr "Анимация"
+
+msgid "Comedy"
+msgstr "Комедия"
+
+msgid "Crime"
+msgstr "Криминал"
+
+msgid "Documentary"
+msgstr "Документальный"
+
+msgid "Drama"
+msgstr "Драма"
+
+msgid "Family"
+msgstr "Семейный"
+
+msgid "Fantasy"
+msgstr "Фэнтези"
+
+msgid "History"
+msgstr "История"
+
+msgid "Horror"
+msgstr "Ужасы"
+
+msgid "Kids"
+msgstr "Детский"
+
+msgid "Magical girl"
+msgstr "Махо-сёдзё"
+
+msgid "Mecha"
+msgstr "Меха"
+
+msgid "Music"
+msgstr "Музыка"
+
+msgid "Mystery"
+msgstr "Детектив"
+
+msgid "News"
+msgstr "Новости"
+
+msgid "Psychological"
+msgstr "Психологический"
+
+msgid "Reality"
+msgstr "Реалити-шоу"
+
+msgid "Romance"
+msgstr "Романтика"
+
+msgid "Science fiction"
+msgstr "Научная фантастика"
+
+msgid "Slice of life"
+msgstr "Повседневность"
+
+msgid "Soap"
+msgstr "Мыльная опера"
+
+msgid "Sports"
+msgstr "Спорт"
+
+msgid "Supernatural"
+msgstr "Сверхъестественное"
+
+msgid "Talk show"
+msgstr "Ток-шоу"
+
+msgid "Thriller"
+msgstr "Триллер"
+
+msgid "War"
+msgstr "Военный"
+
+msgid "Western"
+msgstr "Вестерн"
+
 #~ msgid "D, M j"
 #~ msgstr "D, j E"
 
