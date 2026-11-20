@@ -199,7 +199,8 @@ def media_from_json(data: dict) -> AniListMedia:
             format=edge['node'].get('format'),
             media_type=edge['node'].get('type'),
         )
-        for edge in (data.get('relations') or {}).get('edges', [])
+        for edge in (data.get('relations') or {}).get('edges') or []
+        if edge and edge.get('node')
     ]
     return AniListMedia(
         anilist_id=data['id'],
@@ -262,16 +263,17 @@ def _has_prequel(item: dict) -> bool:
     """Whether the entry continues another anime."""
     edges = (item.get('relations') or {}).get('edges') or []
     return any(
-        edge['relationType'] == 'PREQUEL'
+        edge.get('relationType') == 'PREQUEL'
         and (edge.get('node') or {}).get('type') == 'ANIME'
         for edge in edges
+        if edge
     )
 
 
 def _credit(edge: dict) -> AniListCredit:
     """Convert one character edge; the actor is the first voice actor."""
     node = edge.get('node') or {}
-    actors = edge.get('voiceActors') or []
+    actors = [actor for actor in edge.get('voiceActors') or [] if actor]
     return AniListCredit(
         character=(node.get('name') or {}).get('full') or '',
         actor=((actors[0].get('name') or {}).get('full') or '') if actors else '',
@@ -397,6 +399,7 @@ class AniListClient:
             cast=tuple(
                 _credit(edge)
                 for edge in (media.get('characters') or {}).get('edges') or []
+                if edge
             ),
             recommendations=tuple(
                 _hit(item)
@@ -449,7 +452,7 @@ class AniListClient:
             hits=[
                 _hit(item)
                 for item in _media_items(data)
-                if not item.get('isAdult') and not _has_prequel(item)
+                if item and not item.get('isAdult') and not _has_prequel(item)
             ],
             total=page_info.get('total') or 0,
             has_more=bool(page_info.get('hasNextPage')),

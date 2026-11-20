@@ -205,7 +205,7 @@ def _multi_hits(results: list[dict]) -> list[SearchHit]:
 def _enrichment(data: dict) -> dict:
     """Read the fields movies and TV shows share from an appended response."""
     return {
-        'genre_ids': tuple(genre['id'] for genre in data.get('genres', [])),
+        'genre_ids': tuple(genre['id'] for genre in data.get('genres') or []),
         'cast': tuple(
             TmdbCredit(
                 name=person.get('name') or '',
@@ -213,31 +213,31 @@ def _enrichment(data: dict) -> dict:
                 photo_url=_image(person.get('profile_path'), 'w185'),
             )
             for person in sorted(
-                (data.get('credits') or {}).get('cast', []),
-                key=lambda person: person.get('order', 0),
+                (data.get('credits') or {}).get('cast') or [],
+                key=lambda person: person.get('order') or 0,
             )[:CAST_LIMIT]
         ),
         'videos': tuple(
             TmdbVideo(
                 site=video['site'],
-                key=video['key'],
+                key=video.get('key') or '',
                 name=video.get('name') or '',
                 kind=video.get('type') or '',
                 official=bool(video.get('official')),
                 language=video.get('iso_639_1') or '',
             )
-            for video in (data.get('videos') or {}).get('results', [])
+            for video in (data.get('videos') or {}).get('results') or []
             if video.get('site') == 'YouTube'
         ),
         'recommendations': tuple(
-            _multi_hits((data.get('recommendations') or {}).get('results', []))
+            _multi_hits((data.get('recommendations') or {}).get('results') or [])
         ),
     }
 
 
 def _production_countries(data: dict) -> tuple[str, ...]:
     """Read the ISO codes of the production countries."""
-    return tuple(c['iso_3166_1'] for c in data.get('production_countries', []))
+    return tuple(c['iso_3166_1'] for c in data.get('production_countries') or [])
 
 
 class TmdbClient:
@@ -342,7 +342,7 @@ class TmdbClient:
                     name=item.get('name') or '',
                     episode_count=item.get('episode_count') or 0,
                 )
-                for item in data.get('seasons', [])
+                for item in data.get('seasons') or []
             ],
             countries=tuple(data.get('origin_country') or ())
             or _production_countries(data),

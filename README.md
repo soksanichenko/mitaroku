@@ -109,14 +109,19 @@ It is not a bottom-bar tab: it opens from "See also", from the genre and country
 on a title page and from the link under the idle Search page. The filters live in the
 query string, so a filtered list can be bookmarked:
 
-- `type`: `movie`, `tv` or `anime`; `genre`: a genre slug; `country`: a two-letter
-  origin country, `year`: 1950 to next year; `sort`: `popularity` (default), `date`,
-  `title` or `rating`; `page`: 1 to 200. A value that is not valid is ignored.
+- `type`: `movie`, `tv` or `anime`; `genre`: a genre slug; `country`: one of 30
+  curated two-letter origin country codes; `year`: 1950 to next year; `sort`:
+  `popularity` (default), `date`, `title` or `rating`; `page`: 1 to 200 (a larger
+  number is clamped to 200). A value that is not valid is ignored.
 - Movies and TV series come from TMDB, anime from AniList, interleaved. Browse needs a
   TMDB token; without one the movies and series are missing and the page says so, and
   anime still work. AniList can only filter anime by JP, KR, CN and TW and by its own
-  genres, so a country or genre outside those leaves the anime out. Japanese
-  animation found by TMDB is dropped, because anime come from AniList.
+  genres, so a country or genre outside those leaves the anime out; likewise a genre
+  without a TMDB equivalent (Sports, Mecha, ...) leaves the movies and series out.
+  Japanese animation found by TMDB is dropped, because anime come from AniList.
+- The providers' totals are estimates (AniList caps at 5000, TMDB at 500 pages), so
+  Browse shows a count of titles only for a list that has ended and "Showing N" while
+  there is more to load.
 - Pages and collections are cached by the provider layer: a Browse page for 3 hours, a
   TMDB movie collection for 7 days and the AniList details of a title for 24 hours.
   When a provider is down the last copy is served.
@@ -125,9 +130,10 @@ query string, so a filtered list can be bookmarked:
   the normal sync, so they cost no extra TMDB request and one AniList request per anime.
 - A card of a title nobody has added yet links to `/open/<provider>/<id>/`. It queues
   a background job that creates the title in the catalog (no library entry) and syncs
-  it, so `run_huey` must be running. The page polls every 2 seconds and redirects to the
-  title page; the job holds a claim on the id for 10 minutes, and when the claim is
-  gone without a title the page shows "Try again".
+  it, so `run_huey` must be running. The page polls every 2 seconds and replaces itself
+  with the title page once the title is synced (a visitor without JavaScript gets a
+  page that reloads every 2 seconds). The job holds a claim on the id for 10 minutes,
+  and when the claim is gone without a title the page shows "Try again".
 
 ## License
 

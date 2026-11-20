@@ -2,7 +2,12 @@ from datetime import UTC, date, datetime
 
 import httpx
 import pytest
-from providers.anilist import AniListClient, AniListCredit, AniListDetails
+from providers.anilist import (
+    AniListClient,
+    AniListCredit,
+    AniListDetails,
+    media_from_json,
+)
 from providers.http import ProviderError
 
 FRIEREN = {
@@ -293,6 +298,27 @@ def test_details_of_a_sparse_entry(provider_http):
     )
 
 
+def test_details_skip_null_elements(provider_http):
+    sparse = {
+        'characters': {
+            'edges': [
+                None,
+                {
+                    'node': {'name': {'full': 'Fern'}},
+                    'voiceActors': [None, {'name': {'full': 'Kana Ichinose'}}],
+                },
+                {'node': None, 'voiceActors': [None]},
+            ]
+        },
+        'recommendations': {'nodes': [None, recommendation(1)]},
+    }
+    client = graphql_client(provider_http, {'data': {'Media': sparse}})
+    assert client.details(1).cast == (
+        AniListCredit('Fern', 'Kana Ichinose', ''),
+        AniListCredit('', '', ''),
+    )
+
+
 def test_unknown_entry_has_no_details(provider_http):
     client = graphql_client(provider_http, {'data': {'Media': None}})
     assert client.details(404) is None
@@ -385,6 +411,38 @@ def test_discover_drops_sequels_and_adult(provider_http):
     assert hit.year == 2022
     assert hit.poster_url == 'https://img.example/1.jpg'
     assert hit.rating == 7.7
+
+
+def test_discover_survives_null_relations_and_items(provider_http):
+    sequel = discover_item(2)
+    sequel['relations']['edges'] = [
+        None,
+        {'relationType': None, 'node': None},
+        {'node': {'type': 'ANIME'}},
+        {'relationType': 'PREQUEL', 'node': {'type': 'ANIME'}},
+    ]
+    client = graphql_client(
+        provider_http,
+        discover_body(None, discover_item(1, relations={'edges': [None]}), sequel),
+    )
+    page = client.discover(genre=None, country=None, year=None, sort='date', page=1)
+    assert [h.external_id for h in page.hits] == ['1']
+
+
+def test_media_survives_null_relation_edges():
+    media = media_from_json(
+        {
+            'id': 1,
+            'relations': {
+                'edges': [
+                    None,
+                    {'relationType': 'SEQUEL', 'node': None},
+                    {'relationType': 'SEQUEL', 'node': {'id': 2, 'type': 'ANIME'}},
+                ]
+            },
+        }
+    )
+    assert [edge.anilist_id for edge in media.edges] == [2]
 
 
 def test_discover_unrated_entry_has_no_rating(provider_http):

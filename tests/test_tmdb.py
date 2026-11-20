@@ -356,6 +356,47 @@ def test_tv_countries_fall_back_to_production_countries(provider_http):
     assert client.tv(209867).countries == ('US',)
 
 
+def client_answering(provider_http, body) -> TmdbClient:
+    """Return a client whose every request is answered with ``body``."""
+    return TmdbClient(
+        provider_http(lambda request: httpx.Response(200, json=body), name='tmdb')
+    )
+
+
+def test_a_payload_with_null_and_incomplete_fields_still_parses(provider_http):
+    keyless = {'site': 'YouTube', 'name': 'No key', 'type': 'Trailer'}
+    nulled = {'site': 'YouTube', 'key': None, 'name': 'Null key'}
+    kept = {'site': 'YouTube', 'key': 'yt2', 'name': 'Teaser', 'type': 'Teaser'}
+    body = {
+        **MOVIE,
+        'genres': None,
+        'production_countries': None,
+        'credits': {
+            'cast': [{'name': 'No order'}, {'name': 'Null order', 'order': None}]
+        },
+        'videos': {'results': [keyless, nulled, kept]},
+    }
+    movie = client_answering(provider_http, body).movie(603)
+    assert movie.genre_ids == () and movie.countries == ()
+    assert [c.name for c in movie.cast] == ['No order', 'Null order']
+    assert [v.key for v in movie.videos] == ['', '', 'yt2']
+
+
+def test_a_show_payload_with_null_lists_still_parses(provider_http):
+    body = {
+        **SHOW,
+        'genres': None,
+        'production_countries': None,
+        'origin_country': None,
+        'credits': {'cast': None},
+        'videos': {'results': None},
+        'recommendations': None,
+    }
+    show = client_answering(provider_http, body).tv(209867)
+    assert show.genre_ids == () and show.countries == ()
+    assert show.cast == () and show.videos == () and show.recommendations == ()
+
+
 def test_recommendations_are_search_hits(tmdb):
     show, movie = tmdb.movie(603).recommendations
     assert (show.provider, show.external_id, show.kind) == (

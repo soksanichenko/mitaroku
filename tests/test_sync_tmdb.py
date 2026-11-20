@@ -4,7 +4,7 @@ from decimal import Decimal
 
 import pytest
 from catalog.models import Episode, EpisodeTranslation, ExternalId, Title, TitleDetails
-from catalog.sync import get_or_create_title, sync_title
+from catalog.sync import get_or_create_title, movies, sync_title
 from catalog.sync.common import MAX_TRAILERS, Clients, similar_dicts, trailer_dicts
 from fakes import FakeAniList, FakeTmdb, tmdb_movie, tmdb_season, tmdb_show
 from providers.http import ProviderError
@@ -382,16 +382,23 @@ def test_resync_replaces_details():
     assert TitleDetails.objects.filter(title=title).count() == 1
 
 
-def test_a_failed_movie_write_leaves_the_details_untouched(monkeypatch):
+def test_the_details_are_rolled_back_when_the_sync_fails_after_writing_them(
+    monkeypatch,
+):
     title = movie_title()
     sync_title(
         title, clients(FakeTmdb(movies={603: tmdb_movie(603, cast=credits(3))})), NOW
     )
 
-    def fail(*args, **kwargs):
-        raise RuntimeError('translation write failed')
+    real_write = movies.write_details
 
-    monkeypatch.setattr('catalog.sync.movies.save_title_translation', fail)
+    def write_then_fail(*args, **kwargs):
+        # The new details are written; the sync fails right after them.
+        real_write(*args, **kwargs)
+        assert len(TitleDetails.objects.get(title=title).cast) == 1
+        raise RuntimeError('crashed after the details were written')
+
+    monkeypatch.setattr('catalog.sync.movies.write_details', write_then_fail)
     changed = tmdb_movie(603, cast=credits(1))
     with pytest.raises(RuntimeError):
         sync_title(title, clients(FakeTmdb(movies={603: changed})), NOW)

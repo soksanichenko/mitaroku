@@ -11,6 +11,7 @@ from providers.tmdb import (
     TmdbSeasonSummary,
     TmdbShow,
 )
+from providers.types import HitPage
 
 
 def edge(relation, anilist_id, fmt='TV', media_type='ANIME'):
@@ -136,13 +137,32 @@ def tmdb_movie(
 
 
 class FakeTmdb:
-    """``TmdbClient`` over dictionaries. ``shows`` maps id to ``(TmdbShow, seasons)``."""
+    """``TmdbClient`` over dictionaries. ``shows`` maps id to ``(TmdbShow, seasons)``.
 
-    def __init__(self, movies=None, shows=None, collections=None):
+    ``discover_pages`` maps ``movie`` or ``tv`` to the ``HitPage`` of ``discover``;
+    ``discover_error`` is raised by it when set.
+    """
+
+    def __init__(
+        self,
+        movies=None,
+        shows=None,
+        collections=None,
+        discover_pages=None,
+        discover_error=None,
+    ):
         self.movies = movies or {}
         self.shows = shows or {}
         self.collections = collections or {}
+        self.discover_pages = discover_pages or {}
+        self.discover_error = discover_error
         self.calls = []
+
+    def discover(self, kind, **kwargs):
+        self.calls.append(('discover', kind, kwargs))
+        if self.discover_error:
+            raise self.discover_error
+        return self.discover_pages.get(kind, HitPage([], 0, False))
 
     def collection(self, tmdb_id, language='en'):
         self.calls.append(('collection', tmdb_id, language))
@@ -170,15 +190,33 @@ class FakeTmdb:
 class FakeAniList:
     """``AniListClient`` over dictionaries.
 
-    ``schedules`` maps id to ``AniListSchedule``, ``details`` id to ``AniListDetails``.
+    ``schedules`` maps id to ``AniListSchedule``, ``details`` id to ``AniListDetails``;
+    ``discover_page`` is the ``HitPage`` of ``discover``, which raises
+    ``discover_error`` when set.
     """
 
-    def __init__(self, *entries, schedules=None, details=None):
+    def __init__(
+        self,
+        *entries,
+        schedules=None,
+        details=None,
+        discover_page=None,
+        discover_error=None,
+    ):
         self.by_id = {entry.anilist_id: entry for entry in entries}
         self.schedules = schedules or {}
         self.details_by_id = details or {}
         self.schedule_calls = []
         self.details_calls = []
+        self.discover_page = discover_page or HitPage([], 0, False)
+        self.discover_error = discover_error
+        self.discover_calls = []
+
+    def discover(self, **kwargs):
+        self.discover_calls.append(kwargs)
+        if self.discover_error:
+            raise self.discover_error
+        return self.discover_page
 
     def media_many(self, ids):
         return [self.by_id[i] for i in ids if i in self.by_id]

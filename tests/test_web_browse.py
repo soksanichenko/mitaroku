@@ -6,9 +6,10 @@ from catalog.models import ExternalId, Title
 from catalog.sync.common import Clients
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
-from fakes import FakeAniList
+from fakes import FakeAniList, FakeTmdb
 from providers.browse import BrowseQuery, BrowseResults
-from providers.types import SearchHit
+from providers.http import ProviderError
+from providers.types import HitPage, SearchHit
 from redis.exceptions import ConnectionError as RedisConnectionError
 from tracking.models import AddRequest, LibraryEntry
 from web.views.hits import decorate
@@ -633,3 +634,64 @@ def test_the_rating_hint_is_only_for_the_empty_state(
 ):
     patched_browse.result = results([hit('A')])
     assert HINT not in get(client, portal_headers, '/browse/?type=tv&sort=rating')
+
+
+def use_providers(monkeypatch, tmdb, anilist) -> None:
+    """Run the real ``browse`` of the view against fake provider clients."""
+    monkeypatch.setattr(
+        'web.views.browse.shared_clients', lambda: Clients(tmdb, anilist)
+    )
+
+
+def test_browse_runs_the_providers_through_the_view(
+    client, portal_headers, monkeypatch
+):
+    tmdb = FakeTmdb(
+        discover_pages={
+            'movie': HitPage(
+                [hit('Arrival', 1), hit('Akira', 2, anime_like=True)], 2, False
+            ),
+            'tv': HitPage([hit('Dark', 3, kind='tv')], 1, False),
+        }
+    )
+    anilist = FakeAniList(
+        discover_page=HitPage([hit('Planetes', 4, kind='anime')], 1, False)
+    )
+    use_providers(monkeypatch, tmdb, anilist)
+    page = get(client, portal_headers, '/browse/?genre=sci-fi&country=JP&sort=date')
+    names = re.findall(r'<span class="mt-lcard-name">(.*?)</span>', page)
+    assert names == ['Arrival', 'Dark', 'Planetes']  # the anime-like movie is dropped
+    assert 'Results may be incomplete' not in page and '3 titles' in page
+    # AniList is asked with its genre name, TMDB with the slug it maps itself.
+    assert [call['genre'] for call in anilist.discover_calls] == ['Sci-Fi']
+    assert [call[2]['genre'] for call in tmdb.calls] == ['sci-fi', 'sci-fi']
+    assert anilist.discover_calls[0]['country'] == 'JP'
+    assert anilist.discover_calls[0]['sort'] == 'date'
+
+
+def test_browse_names_the_failed_provider_in_the_notice(
+    client, portal_headers, monkeypatch
+):
+    tmdb = FakeTmdb(discover_pages={'movie': HitPage([hit('Arrival', 1)], 1, False)})
+    anilist = FakeAniList(discover_error=ProviderError('down'))
+    use_providers(monkeypatch, tmdb, anilist)
+    page = get(client, portal_headers, '/browse/')
+    assert 'Arrival' in page
+    assert 'Results may be incomplete: AniList did not respond.' in page
+
+
+def test_browse_of_a_genre_only_anilist_knows_asks_no_tmdb(
+    client, portal_headers, monkeypatch
+):
+    tmdb = FakeTmdb()
+    anilist = FakeAniList(
+        discover_page=HitPage([hit('Haikyu', 4, kind='anime')], 1, False)
+    )
+    use_providers(monkeypatch, tmdb, anilist)
+    page = get(client, portal_headers, '/browse/?genre=sports')
+    assert 'Haikyu' in page and tmdb.calls == []
+    assert 'Results may be incomplete' not in page
+    assert [call['genre'] for call in anilist.discover_calls] == ['Sports']
+    page = get(client, portal_headers, '/browse/?genre=sports&type=movie')
+    assert 'No titles match these filters' in page and tmdb.calls == []
+    assert 'Your filters are kept' not in page

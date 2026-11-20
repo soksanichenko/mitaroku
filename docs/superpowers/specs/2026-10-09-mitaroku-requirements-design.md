@@ -176,6 +176,11 @@ role from the `new-service-repo` and `new-nginx-service` skills.
 - "Mark all as watched" on the Collection page needs a bulk add; adding one title at
   a time cannot do it within the cap of 5 requests in progress.
 - Whether a Simkl provider is added later together with Simkl login and sync.
+- Browse shows a count of titles only for a list that has ended: the providers'
+  totals are estimates (AniList caps at 5000, TMDB at 500 pages), so a list that
+  can load more shows "Showing N".
+- Opening a title nobody has added yet (`/open/<provider>/<id>/`) has no per-user cap,
+  unlike the add flow, which caps pending requests at 5. Known follow-up.
 - Telegram: webhook or polling.
 - Subdomain or subpath.
 - Verify the exact export format of each supported service.
