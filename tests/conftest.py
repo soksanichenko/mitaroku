@@ -105,7 +105,7 @@ def provider_http(redis_client, redis_prefix):
 
 @pytest.fixture
 def fake_clients(monkeypatch) -> Clients:
-    """Return fake provider clients and make the add flow use them.
+    """Return fake provider clients and make the add and open flows use them.
 
     They hold the TMDB movie 603, the TMDB show 1396 with two seasons and the
     anime franchise 70 -> 71.
@@ -124,14 +124,16 @@ def fake_clients(monkeypatch) -> Clients:
     )
     clients = Clients(tmdb=tmdb, anilist=anilist)
     monkeypatch.setattr('tracking.adding.default_clients', lambda: clients)
+    monkeypatch.setattr('catalog.tasks.default_clients', lambda: clients)
     return clients
 
 
 @pytest.fixture
 def failing_clients(monkeypatch) -> Clients:
-    """Return provider clients that always fail and make the add flow use them."""
+    """Return clients that always fail and make the add and open flows use them."""
     clients = Clients(tmdb=FailingProvider(), anilist=FailingProvider())
     monkeypatch.setattr('tracking.adding.default_clients', lambda: clients)
+    monkeypatch.setattr('catalog.tasks.default_clients', lambda: clients)
     return clients
 
 

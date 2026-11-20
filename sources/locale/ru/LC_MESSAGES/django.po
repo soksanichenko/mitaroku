@@ -808,6 +808,18 @@ msgstr "Военный"
 msgid "Western"
 msgstr "Вестерн"
 
+msgid "Opening…"
+msgstr "Открываем…"
+
+msgid "Opening this title…"
+msgstr "Открываем тайтл…"
+
+msgid "We couldn't open this title"
+msgstr "Не удалось открыть тайтл"
+
+msgid "The metadata provider didn't answer. Nothing was lost."
+msgstr "Источник метаданных не ответил. Ничего не потеряно."
+
 #~ msgid "D, M j"
 #~ msgstr "D, j E"
 

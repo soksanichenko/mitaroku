@@ -160,8 +160,23 @@ def _enqueue(request: AddRequest) -> None:
         )
 
 
-def _discard_placeholder(title: Title, provider: str, external_id: str) -> None:
-    """Delete a title that this job created and no provider ever described.
+def placeholder_hit(provider: str, external_id: str) -> SearchHit:
+    """Return the search hit that stands in for a title nobody has searched for."""
+    return SearchHit(
+        provider=provider,
+        external_id=external_id,
+        kind=PROVIDER_KIND[provider],
+        # The sync fills in the real text; this only keeps the placeholder named.
+        title='',
+        original_title=f'{provider}:{external_id}',
+        year=None,
+        poster_url='',
+        overview='',
+    )
+
+
+def discard_placeholder(title: Title, provider: str, external_id: str) -> None:
+    """Delete a title that a job created and no provider ever described.
 
     A title that was synced meanwhile, that someone already tracks or that
     another pending request for the same id is about to sync is kept. The title
@@ -209,17 +224,7 @@ def add_title_task(request_id: int) -> str:
     )
     if request is None:
         return 'skipped'
-    hit = SearchHit(
-        provider=request.provider,
-        external_id=request.external_id,
-        kind=PROVIDER_KIND[request.provider],
-        # The sync fills in the real text; this only keeps the placeholder named.
-        title='',
-        original_title=f'{request.provider}:{request.external_id}',
-        year=None,
-        poster_url='',
-        overview='',
-    )
+    hit = placeholder_hit(request.provider, request.external_id)
     # One pair of clients per job: each opens a connection that is not closed.
     clients = default_clients()
     created = False
@@ -260,7 +265,7 @@ def _fail(
         pk=request.pk, state=AddRequest.State.PENDING
     ).update(state=AddRequest.State.FAILED, error=error, finished_at=timezone.now())
     if placeholder is not None:
-        _discard_placeholder(placeholder, request.provider, request.external_id)
+        discard_placeholder(placeholder, request.provider, request.external_id)
 
 
 @db_periodic_task(crontab(hour='4', minute='10'))

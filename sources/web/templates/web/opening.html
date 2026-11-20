@@ -1,0 +1,20 @@
+{% extends 'web/base.html' %}{% load i18n %}
+{% comment %}
+Shown while a title nobody has added yet is created. It is the unit the page
+polls (outerHTML), so the loading and the error state both live in #opening.
+Context: state (loading or error), poll_url.
+{% endcomment %}
+{% block title %}{% trans 'Opening…' %}{% endblock %}
+{% block content %}
+<div id="opening" class="mt-opening"{% if state == 'loading' %} hx-get="{{ poll_url }}" hx-trigger="every 2s" hx-select="#opening" hx-target="#opening" hx-swap="outerHTML"{% endif %}>
+  {% if state == 'loading' %}
+  {% trans 'Opening this title…' as opening_label %}
+  {% include 'web/components/_state_loading.html' with variant='rows' label=opening_label %}
+  {% else %}
+  <div x-data>
+    {% trans "We couldn't open this title" as failed_heading %}{% trans "The metadata provider didn't answer. Nothing was lost." as failed_text %}
+    {% include 'web/components/_state_error.html' with heading=failed_heading text=failed_text retry_click='window.location.reload()' %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
