@@ -158,6 +158,35 @@ class Episode(models.Model):
         return f'{self.season} #{self.number}'
 
 
+class TitleDetails(models.Model):
+    """Provider details of a title that the title page shows.
+
+    The lists hold plain JSON so a sync can replace them wholesale. ``cast``
+    items are ``{'name', 'role', 'photo_url'}``, ``trailers`` (YouTube only)
+    ``{'key', 'name', 'kind', 'language', 'official'}``, ``similar``
+    ``{'provider', 'external_id', 'kind', 'title', 'original_title', 'year',
+    'poster_url', 'rating'}``; ``collection`` is ``{'id', 'name', 'poster_url'}``
+    or ``None``.
+    """
+
+    title = models.OneToOneField(
+        Title, on_delete=models.CASCADE, related_name='details'
+    )
+    genres = models.JSONField(default=list, blank=True)
+    countries = models.JSONField(default=list, blank=True)
+    cast = models.JSONField(default=list, blank=True)
+    trailers = models.JSONField(default=list, blank=True)
+    similar = models.JSONField(default=list, blank=True)
+    collection = models.JSONField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = 'title details'
+
+    def __str__(self) -> str:
+        return f'{self.title} (details)'
+
+
 class TitleTranslation(models.Model):
     """Lazily filled name and overview of a title in one language.
 

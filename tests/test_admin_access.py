@@ -47,3 +47,14 @@ def test_portal_admin_can_browse_the_catalog(client, portal_headers, path):
 def test_portal_admin_cannot_edit_the_catalog(client, portal_headers):
     portal_headers['HTTP_X_DISCORD_ACCESS_LEVEL'] = 'admin'
     assert client.get('/admin/catalog/title/add/', **portal_headers).status_code == 403
+
+
+def test_portal_admin_can_view_but_not_change_title_details(client, portal_headers):
+    portal_headers['HTTP_X_DISCORD_ACCESS_LEVEL'] = 'admin'
+    assert (
+        client.get('/admin/catalog/titledetails/', **portal_headers).status_code == 200
+    )
+    assert (
+        client.get('/admin/catalog/titledetails/add/', **portal_headers).status_code
+        == 403
+    )
