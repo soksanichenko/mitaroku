@@ -877,6 +877,32 @@ msgstr "Нет ответа от: %(failed_names)s. Ваши фильтры со
 msgid "Showing %(shown)s of %(total)s"
 msgstr "Показано %(shown)s из %(total)s"
 
+msgid "Collection"
+msgstr "Коллекция"
+
+#, python-format
+msgid "%(count)s film"
+msgid_plural "%(count)s films"
+msgstr[0] "%(count)s фильм"
+msgstr[1] "%(count)s фильма"
+msgstr[2] "%(count)s фильмов"
+
+#, python-format
+msgid "%(completed)s of %(total)s completed"
+msgstr "%(completed)s из %(total)s просмотрено"
+
+msgid "Collection progress"
+msgstr "Прогресс по коллекции"
+
+msgid "Couldn't load this collection"
+msgstr "Не удалось загрузить коллекцию"
+
+msgid "This collection is empty"
+msgstr "Эта коллекция пуста"
+
+msgid "Titles appear here when TMDB adds them to the collection."
+msgstr "Тайтлы появятся здесь, когда TMDB добавит их в коллекцию."
+
 #~ msgid "D, M j"
 #~ msgstr "D, j E"
 

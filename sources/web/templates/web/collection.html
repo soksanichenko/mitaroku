@@ -1,0 +1,61 @@
+{% extends 'web/base.html' %}{% load i18n web_extras %}
+{% block title %}{{ collection.name|default:_('Collection') }}{% endblock %}
+{% block content %}
+{% comment %}
+A TMDB collection: its name, overview, the number of films and the progress through
+them, then one row per film in release order. The rows are those of Search: the add
+control is the picker, the library status or the progress of a running add.
+Context: state (results, empty or error), collection, rows, total, completed.
+{% endcomment %}
+<div class="mt-collection" x-data>
+  <div class="mt-cl-head">
+    <span class="mt-br-kicker">{% trans 'Collection' %}</span>
+    {% if state != 'error' %}
+    <h1 class="mt-page-title mt-cl-title">{{ collection.name }}</h1>
+    {% if collection.overview %}<p class="mt-cl-overview">{{ collection.overview }}</p>{% endif %}
+    {% if state == 'results' %}
+    <span class="mt-lib-total">{% blocktrans trimmed count count=total %}{{ count }} film{% plural %}{{ count }} films{% endblocktrans %}</span>
+    <div class="mt-cl-progress">
+      <span class="mt-cl-progress-text">{% blocktrans trimmed %}{{ completed }} of {{ total }} completed{% endblocktrans %}</span>
+      {% widthratio completed total 100 as pct %}{% trans 'Collection progress' as progress_label %}
+      <div class="mt-progress-bar" role="progressbar" aria-label="{{ progress_label }}" aria-valuemin="0" aria-valuemax="{{ total }}" aria-valuenow="{{ completed }}" style="--mt-pct: {{ pct }}%"><div class="mt-progress-fill"></div></div>
+    </div>
+    {% endif %}
+    {% endif %}
+  </div>
+  {% if state == 'error' %}
+  {% trans "Couldn't load this collection" as error_heading %}
+  {% include 'web/components/_state_error.html' with heading=error_heading retry_click='window.location.reload()' %}
+  {% elif state == 'empty' %}
+  {% trans 'This collection is empty' as empty_heading %}{% trans 'Titles appear here when TMDB adds them to the collection.' as empty_text %}
+  {% include 'web/components/_state_empty.html' with heading=empty_heading text=empty_text %}
+  {% else %}
+  <ol class="mt-result-list mt-cl-list">
+    {% for row in rows %}{% with hit=row.hit %}
+    <li class="mt-result mt-cl-row">
+      <span class="mt-cl-num">{{ forloop.counter }}</span>
+      <div class="mt-result-img">
+        <a href="{{ row.href }}" aria-hidden="true" tabindex="-1">{% include 'web/components/_poster.html' with title=row.poster variant='thumb' %}</a>
+      </div>
+      <div class="mt-result-body">
+        <div class="mt-result-name"><a href="{{ row.href }}">{{ row.name }}</a></div>
+        {% if hit.year %}<span class="mt-result-sub">{{ hit.year }}</span>{% endif %}
+      </div>
+      <div class="mt-result-act">
+        {% if row.entry %}
+        {% with label=row.entry.status|status_label %}
+        <span class="mt-result-status" aria-label="{% blocktrans trimmed %}In your library: {{ label }}{% endblocktrans %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>{{ label }}</span>
+        {% endwith %}
+        {% elif row.pending %}
+        {% include 'web/_add_result.html' with state='pending' add_request=row.pending %}
+        {% else %}
+        {% url 'search_add' as add_url %}
+        {% include 'web/components/_status_picker.html' with display_name=row.name entry=None action=add_url fields=row.fields align='right' %}
+        {% endif %}
+      </div>
+    </li>
+    {% endwith %}{% endfor %}
+  </ol>
+  {% endif %}
+</div>
+{% endblock %}

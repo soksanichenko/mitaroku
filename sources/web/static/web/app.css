@@ -2851,3 +2851,66 @@ a:focus-visible .mt-poster-img,
   color: var(--mt-muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* Collection: the rows of Search with the number of the film in front. */
+.mt-cl-head {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  padding-bottom: 16px;
+}
+
+.mt-cl-title {
+  margin: 0;
+  font-size: clamp(28px, 6vw, 40px);
+  text-wrap: balance;
+}
+
+.mt-cl-overview {
+  max-width: 60ch;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.mt-cl-progress {
+  display: grid;
+  gap: 6px;
+  width: min(100%, 420px);
+  margin-top: 4px;
+}
+
+.mt-cl-progress-text {
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.mt-cl-list {
+  border-top: 2px solid var(--color-divider);
+}
+
+.mt-cl-row {
+  grid-template-columns: 24px 56px minmax(0, 1fr);
+  grid-template-areas: 'num img body' 'num img act';
+}
+
+.mt-cl-row:last-child {
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.mt-cl-num {
+  grid-area: num;
+  align-self: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--mt-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 600px) {
+  .mt-cl-row {
+    grid-template-columns: 24px 56px minmax(0, 1fr) 150px;
+    grid-template-areas: 'num img body act';
+  }
+}

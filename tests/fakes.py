@@ -138,10 +138,15 @@ def tmdb_movie(
 class FakeTmdb:
     """``TmdbClient`` over dictionaries. ``shows`` maps id to ``(TmdbShow, seasons)``."""
 
-    def __init__(self, movies=None, shows=None):
+    def __init__(self, movies=None, shows=None, collections=None):
         self.movies = movies or {}
         self.shows = shows or {}
+        self.collections = collections or {}
         self.calls = []
+
+    def collection(self, tmdb_id, language='en'):
+        self.calls.append(('collection', tmdb_id, language))
+        return self.collections.get(tmdb_id)
 
     def movie(self, tmdb_id, language='en'):
         self.calls.append(('movie', tmdb_id, language))
