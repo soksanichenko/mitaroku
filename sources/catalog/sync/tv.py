@@ -12,9 +12,13 @@ from catalog.sync.common import (
     require_tmdb,
     save_title_translation,
     schedule_next_sync,
+    similar_dicts,
     to_rating,
+    trailer_dicts,
+    write_details,
     write_episodes,
 )
+from catalog.vocab import genres_from_tmdb
 from django.db import transaction
 from providers.http import ProviderError
 
@@ -67,6 +71,17 @@ def sync_tv(title: Title, clients: Clients, now: datetime) -> None:
         if show.imdb_id:
             link_external_id(title, 'imdb', show.imdb_id)
         save_title_translation(title, 'en', show.name, show.overview)
+        write_details(
+            title,
+            genres=genres_from_tmdb(show.genre_ids),
+            countries=list(show.countries),
+            cast=[
+                {'name': c.name, 'role': c.character, 'photo_url': c.photo_url}
+                for c in show.cast
+            ],
+            trailers=trailer_dicts(show.videos),
+            similar=similar_dicts(show.recommendations),
+        )
         for summary in show.seasons:
             tmdb_season = seasons.get(summary.number)
             if tmdb_season is None:

@@ -66,7 +66,18 @@ def tmdb_season(number, count, first, name=''):
     )
 
 
-def tmdb_show(tmdb_id, seasons, status='Ended', name='Show', imdb_id=''):
+def tmdb_show(
+    tmdb_id,
+    seasons,
+    status='Ended',
+    name='Show',
+    imdb_id='',
+    genre_ids=(),
+    countries=(),
+    cast=(),
+    videos=(),
+    recommendations=(),
+):
     return TmdbShow(
         tmdb_id=tmdb_id,
         name=name,
@@ -81,10 +92,26 @@ def tmdb_show(tmdb_id, seasons, status='Ended', name='Show', imdb_id=''):
         votes=120,
         imdb_id=imdb_id,
         seasons=[TmdbSeasonSummary(s.number, s.name, len(s.episodes)) for s in seasons],
+        genre_ids=tuple(genre_ids),
+        countries=tuple(countries),
+        cast=tuple(cast),
+        videos=tuple(videos),
+        recommendations=tuple(recommendations),
     )
 
 
-def tmdb_movie(tmdb_id, release=date(1999, 3, 31), status='Released', rating=8.2):
+def tmdb_movie(
+    tmdb_id,
+    release=date(1999, 3, 31),
+    status='Released',
+    rating=8.2,
+    genre_ids=(),
+    countries=(),
+    cast=(),
+    videos=(),
+    recommendations=(),
+    collection=None,
+):
     return TmdbMovie(
         tmdb_id=tmdb_id,
         title='The Matrix',
@@ -99,6 +126,12 @@ def tmdb_movie(tmdb_id, release=date(1999, 3, 31), status='Released', rating=8.2
         rating=rating,
         votes=25000 if rating is not None else 0,
         imdb_id='tt0133093',
+        genre_ids=tuple(genre_ids),
+        countries=tuple(countries),
+        cast=tuple(cast),
+        videos=tuple(videos),
+        recommendations=tuple(recommendations),
+        collection=collection,
     )
 
 
@@ -140,6 +173,7 @@ class FakeAniList:
         self.schedules = schedules or {}
         self.details_by_id = details or {}
         self.schedule_calls = []
+        self.details_calls = []
 
     def media_many(self, ids):
         return [self.by_id[i] for i in ids if i in self.by_id]
@@ -149,6 +183,7 @@ class FakeAniList:
         return self.schedules.get(anilist_id, AniListSchedule(upcoming={}, all={}))
 
     def details(self, anilist_id):
+        self.details_calls.append(anilist_id)
         return self.details_by_id.get(anilist_id)
 
 

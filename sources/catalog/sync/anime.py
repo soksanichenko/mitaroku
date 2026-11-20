@@ -9,17 +9,21 @@ from catalog.episodes import EntrySpec, allocate_show
 from catalog.franchise import Franchise, load_franchise
 from catalog.models import EpisodeTranslation, Season, Title
 from catalog.sync.common import (
+    TRAILER_KEY,
     Clients,
     EpisodeRow,
     link_external_id,
     renumber_absolute,
     save_title_translation,
     schedule_next_sync,
+    similar_dicts,
     to_rating,
+    write_details,
     write_episodes,
 )
+from catalog.vocab import genres_from_anilist
 from django.db import transaction
-from providers.anilist import AniListMedia
+from providers.anilist import AniListDetails, AniListMedia
 from providers.http import ProviderError
 from providers.models import AnimeMapping
 from providers.tmdb import TmdbEpisode
@@ -155,6 +159,50 @@ def episode_plan(
     return (Season.EpisodeSource.ANILIST if rows else Season.EpisodeSource.NONE), rows
 
 
+def anime_details_fields(
+    details: AniListDetails | None, franchise: Franchise
+) -> dict[str, object]:
+    """Build the ``TitleDetails`` fields from AniList; empty lists without details.
+
+    Recommendations that are entries of the franchise itself are left out.
+    """
+    if details is None:
+        return {
+            'genres': [],
+            'countries': [],
+            'cast': [],
+            'trailers': [],
+            'similar': [],
+        }
+    site, video_id = details.trailer or ('', '')
+    own = {('anilist', str(media.anilist_id)) for media in franchise.own}
+    return {
+        'genres': genres_from_anilist(details.genres),
+        'countries': [details.country] if details.country else [],
+        'cast': [
+            {
+                'name': credit.actor,
+                'role': credit.character,
+                'photo_url': credit.photo_url,
+            }
+            for credit in details.cast
+            if credit.actor
+        ],
+        'trailers': [
+            {
+                'key': video_id,
+                'name': '',
+                'kind': 'Trailer',
+                'language': '',
+                'official': True,
+            }
+        ]
+        if site == 'youtube' and TRAILER_KEY.fullmatch(video_id)
+        else [],
+        'similar': similar_dicts(details.recommendations, exclude=own),
+    }
+
+
 def sync_anime(title: Title, clients: Clients, now: datetime) -> None:
     """Refresh an anime franchise.
 
@@ -184,10 +232,21 @@ def sync_anime(title: Title, clients: Clients, now: datetime) -> None:
         )
         for media in entries
     }
+    # Fetched before the transaction so that no write waits on the network. When
+    # AniList fails here the previous details stay as they were.
+    details_fields = None
+    try:
+        details = clients.anilist.details(franchise.main[0].anilist_id)
+    except ProviderError as error:
+        logger.warning('Keeping the old details of title %s: %s', title.pk, error)
+    else:
+        details_fields = anime_details_fields(details, franchise)
     with transaction.atomic():
         write_seasons(title, franchise, mappings, plans)
         renumber_absolute(title)
         update_title(title, franchise, mappings, now)
+        if details_fields is not None:
+            write_details(title, **details_fields)
 
 
 def write_seasons(

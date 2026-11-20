@@ -10,8 +10,12 @@ from catalog.sync.common import (
     require_tmdb,
     save_title_translation,
     schedule_next_sync,
+    similar_dicts,
     to_rating,
+    trailer_dicts,
+    write_details,
 )
+from catalog.vocab import genres_from_tmdb
 from django.db import transaction
 from providers.http import ProviderError
 
@@ -68,3 +72,22 @@ def sync_movie(title: Title, clients: Clients, now: datetime) -> None:
         if movie.imdb_id:
             link_external_id(title, 'imdb', movie.imdb_id)
         save_title_translation(title, 'en', movie.title, movie.overview)
+        collection = movie.collection
+        write_details(
+            title,
+            genres=genres_from_tmdb(movie.genre_ids),
+            countries=list(movie.countries),
+            cast=[
+                {'name': c.name, 'role': c.character, 'photo_url': c.photo_url}
+                for c in movie.cast
+            ],
+            trailers=trailer_dicts(movie.videos),
+            similar=similar_dicts(movie.recommendations),
+            collection={
+                'id': collection.tmdb_id,
+                'name': collection.name,
+                'poster_url': collection.poster_url,
+            }
+            if collection
+            else None,
+        )

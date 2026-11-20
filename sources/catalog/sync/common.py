@@ -1,9 +1,12 @@
 """Pieces shared by the movie, TV and anime sync."""
 
 import logging
+import re
+from collections.abc import Collection, Iterable
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
+from itertools import islice
 
 from catalog.models import (
     Episode,
@@ -11,12 +14,14 @@ from catalog.models import (
     ExternalId,
     Season,
     Title,
+    TitleDetails,
     TitleTranslation,
 )
 from providers.anilist import AniListClient
 from providers.clients import get_anilist, get_tmdb
 from providers.http import ProviderError
-from providers.tmdb import TmdbClient
+from providers.tmdb import TmdbClient, TmdbVideo
+from providers.types import SearchHit
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +34,12 @@ RESYNC_AFTER = {
     Title.Status.CANCELED: timedelta(days=14),
     Title.Status.UNKNOWN: timedelta(days=1),
 }
+# A YouTube video id; anything else never reaches an embed URL.
+TRAILER_KEY = re.compile(r'[A-Za-z0-9_-]{6,20}')
+MAX_TRAILERS = 8
+MAX_SIMILAR = 12
+# Official videos first, then by how much of a trailer they are.
+TRAILER_KINDS = ('Trailer', 'Teaser', 'Clip')
 
 
 @dataclass
@@ -112,6 +123,81 @@ def save_title_translation(
             language=language,
             defaults={'name': name, 'overview': overview},
         )
+
+
+def trailer_dicts(videos: Iterable[TmdbVideo]) -> list[dict]:
+    """Pick the videos worth showing, as ``TitleDetails.trailers`` entries.
+
+    Args:
+        videos: The videos TMDB lists for a title.
+
+    Returns:
+        At most ``MAX_TRAILERS`` YouTube videos with a valid key: official ones
+        first, then trailers before teasers before clips, then other kinds.
+    """
+    usable = [
+        video
+        for video in videos
+        if video.site == 'YouTube' and TRAILER_KEY.fullmatch(video.key)
+    ]
+
+    def rank(video: TmdbVideo) -> tuple[bool, int]:
+        kind = video.kind
+        return (
+            not video.official,
+            TRAILER_KINDS.index(kind) if kind in TRAILER_KINDS else len(TRAILER_KINDS),
+        )
+
+    return [
+        {
+            'key': video.key,
+            'name': video.name,
+            'kind': video.kind,
+            'language': video.language,
+            'official': video.official,
+        }
+        for video in sorted(usable, key=rank)[:MAX_TRAILERS]
+    ]
+
+
+def similar_dicts(
+    hits: Iterable[SearchHit], exclude: Collection[tuple[str, str]] = ()
+) -> list[dict]:
+    """Turn recommendations into ``TitleDetails.similar`` entries.
+
+    Args:
+        hits: The recommended titles.
+        exclude: ``(provider, external_id)`` pairs to leave out, such as the
+            title's own ids.
+
+    Returns:
+        At most ``MAX_SIMILAR`` entries, without excluded and ``anime_like``
+        hits (the AniList side covers those).
+    """
+    wanted = (
+        hit
+        for hit in hits
+        if not hit.anime_like and (hit.provider, hit.external_id) not in exclude
+    )
+    return [
+        {
+            'provider': hit.provider,
+            'external_id': hit.external_id,
+            'kind': hit.kind,
+            'title': hit.title,
+            'original_title': hit.original_title,
+            'year': hit.year,
+            'poster_url': hit.poster_url,
+            'rating': hit.rating,
+        }
+        for hit in islice(wanted, MAX_SIMILAR)
+    ]
+
+
+def write_details(title: Title, **fields: object) -> TitleDetails:
+    """Create or update the details row of a title with exactly these fields."""
+    details, _ = TitleDetails.objects.update_or_create(title=title, defaults=fields)
+    return details
 
 
 def write_episodes(

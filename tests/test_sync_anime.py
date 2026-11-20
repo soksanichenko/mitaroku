@@ -2,12 +2,18 @@ import logging
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
-from catalog.models import Episode, EpisodeTranslation, ExternalId, Title
+from catalog.models import (
+    Episode,
+    EpisodeTranslation,
+    ExternalId,
+    Title,
+    TitleDetails,
+)
 from catalog.sync import get_or_create_title, sync_title
 from catalog.sync.common import Clients
 from django.db import connection
 from fakes import FakeAniList, FakeTmdb, edge, media, tmdb_season, tmdb_show
-from providers.anilist import AniListSchedule
+from providers.anilist import AniListCredit, AniListDetails, AniListSchedule
 from providers.http import ProviderError
 from providers.models import AnimeMapping
 from providers.types import SearchHit
@@ -646,3 +652,90 @@ def test_alternative_versions_sharing_a_side_story_are_separate_titles():
     first, _ = add_hit(1, clients_)
     second, created = add_hit(5, clients_)
     assert created is True and second.pk != first.pk
+
+
+def anilist_hit(anilist_id):
+    return SearchHit(
+        'anilist',
+        str(anilist_id),
+        'anime',
+        f'Rec {anilist_id}',
+        f'Orig {anilist_id}',
+        2020,
+        f'https://img.example/{anilist_id}.jpg',
+        '',
+        rating=8.0,
+    )
+
+
+def anime_details(trailer=('youtube', 'abcdef12'), cast=None):
+    if cast is None:
+        cast = (
+            AniListCredit('Hero', 'Actor One', 'https://img.example/h.jpg'),
+            AniListCredit('Mute', '', 'https://img.example/m.jpg'),
+        )
+    return AniListDetails(
+        genres=('Action', 'Ecchi', 'Sci-Fi'),
+        country='JP',
+        trailer=trailer,
+        cast=cast,
+        recommendations=(anilist_hit(20), anilist_hit(999), anilist_hit(80)),
+    )
+
+
+def details_clients(details, anilist_class=FakeAniList):
+    return Clients(
+        tmdb=None,
+        anilist=anilist_class(*franchise_entries(), details={10: details}),
+    )
+
+
+def test_anime_sync_writes_details_from_the_first_main_entry():
+    title = anime_title()
+    anilist = FakeAniList(*franchise_entries(), details={10: anime_details()})
+    sync_title(title, Clients(tmdb=None, anilist=anilist), NOW)
+    assert anilist.details_calls == [10]
+    details = title.details
+    assert details.genres == ['action', 'sci-fi']
+    assert details.countries == ['JP']
+    assert details.cast == [
+        {'name': 'Actor One', 'role': 'Hero', 'photo_url': 'https://img.example/h.jpg'}
+    ]
+    assert [t['key'] for t in details.trailers] == ['abcdef12']
+    # 20 and 80 belong to the franchise itself.
+    assert [s['external_id'] for s in details.similar] == ['999']
+    assert details.collection is None
+
+
+def test_anime_without_a_youtube_trailer_has_none():
+    title = anime_title()
+    for trailer in (('dailymotion', 'x7abcdef'), ('youtube', 'a b'), None):
+        sync_title(title, details_clients(anime_details(trailer)), NOW)
+        assert TitleDetails.objects.get(title=title).trailers == []
+
+
+def test_anime_without_details_writes_empty_lists():
+    title = anime_title()
+    sync_title(title, details_clients(anime_details()), NOW)
+    sync_title(
+        title, Clients(tmdb=None, anilist=FakeAniList(*franchise_entries())), NOW
+    )
+    details = TitleDetails.objects.get(title=title)
+    assert (details.genres, details.countries, details.cast) == ([], [], [])
+    assert (details.trailers, details.similar) == ([], [])
+
+
+def test_anime_details_failure_keeps_the_old_row(caplog):
+    class DetailsDown(FakeAniList):
+        def details(self, anilist_id):
+            raise ProviderError('details down')
+
+    title = anime_title()
+    sync_title(title, details_clients(anime_details()), NOW)
+    later = NOW + timedelta(days=1)
+    with caplog.at_level(logging.WARNING):
+        sync_title(title, details_clients(anime_details(), DetailsDown), later)
+    title.refresh_from_db()
+    assert title.synced_at == later
+    assert 'details down' in caplog.text
+    assert TitleDetails.objects.get(title=title).genres == ['action', 'sci-fi']
