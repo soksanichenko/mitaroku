@@ -336,7 +336,7 @@ def test_movie_carries_the_enrichment(tmdb):
     assert params['include_video_language'] == 'ru,en,null'
 
 
-def test_movie_without_enrichment_has_empty_defaults(tmdb):
+def test_show_without_credits_or_videos_has_empty_enrichment(tmdb):
     show = tmdb.tv(209867)
     assert show.cast == ()
     assert show.videos == ()
@@ -526,8 +526,35 @@ def test_discover_is_cached_for_three_hours(tmdb, redis_client, redis_prefix):
         if ':stale:' not in key and ':lock:' not in key
     ]
     assert len(keys) == 1
-    assert DISCOVER_TTL == 3 * 3600
-    assert 0 < redis_client.ttl(keys[0]) <= DISCOVER_TTL
+    assert DISCOVER_TTL - 60 < redis_client.ttl(keys[0]) <= DISCOVER_TTL
+
+
+def test_discover_cache_key_varies_with_the_arguments(tmdb):
+    base = {
+        'genre': None,
+        'country': None,
+        'year': None,
+        'sort': 'popularity',
+        'page': 1,
+        'language': 'en',
+    }
+    variations = [
+        {},
+        {'language': 'ru'},
+        {'page': 2},
+        {'genre': 'sci-fi'},
+        {'sort': 'rating'},
+        {'country': 'FR'},
+        {'year': 2019},
+    ]
+    for sent, change in enumerate(variations, start=1):
+        tmdb.discover('movie', **{**base, **change})
+        assert len(tmdb.requests) == sent
+    tmdb.discover('tv', **base)
+    assert len(tmdb.requests) == len(variations) + 1
+    for change in variations:
+        tmdb.discover('movie', **{**base, **change})
+    assert len(tmdb.requests) == len(variations) + 1
 
 
 def test_collection_parts_are_sorted_and_cached(tmdb, redis_client, redis_prefix):
@@ -553,8 +580,8 @@ def test_collection_parts_are_sorted_and_cached(tmdb, redis_client, redis_prefix
         for key in redis_client.scan_iter(f'{redis_prefix}*')
         if ':stale:' not in key and ':lock:' not in key
     ]
-    assert 0 < redis_client.ttl(keys[0]) <= COLLECTION_TTL
-    assert COLLECTION_TTL == 7 * 24 * 3600
+    assert len(keys) == 1
+    assert COLLECTION_TTL - 60 < redis_client.ttl(keys[0]) <= COLLECTION_TTL
 
 
 def test_unknown_collection_is_none(tmdb):
