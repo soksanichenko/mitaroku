@@ -1,15 +1,67 @@
-"""TMDB client: search, movies, TV shows and seasons."""
+"""TMDB client: search, discover, movies, TV shows, seasons and collections."""
 
 from dataclasses import dataclass, field
 from datetime import date
 
+from catalog.vocab import tmdb_genre_filter
 from providers.http import ProviderHttp
-from providers.types import SearchHit
+from providers.types import HitPage, SearchHit
 
 BASE = 'https://api.themoviedb.org/3'
 IMAGE_BASE = 'https://image.tmdb.org/t/p/'
 LANGUAGE_TAGS = {'en': 'en-US', 'ru': 'ru-RU'}
 ANIMATION_GENRE = 16
+CAST_LIMIT = 10
+DISCOVER_TTL = 3 * 3600
+COLLECTION_TTL = 7 * 24 * 3600
+APPEND_TO_RESPONSE = 'external_ids,credits,videos,recommendations'
+# TMDB sort_by value per site sort, for movies and for TV.
+DISCOVER_SORTS = {
+    'movie': {
+        'popularity': 'popularity.desc',
+        'date': 'primary_release_date.desc',
+        'title': 'title.asc',
+        'rating': 'vote_average.desc',
+    },
+    'tv': {
+        'popularity': 'popularity.desc',
+        'date': 'first_air_date.desc',
+        'title': 'name.asc',
+        'rating': 'vote_average.desc',
+    },
+}
+# Keeps the rating sort from being led by titles with a handful of votes.
+RATING_SORT_MIN_VOTES = 100
+
+
+@dataclass(frozen=True)
+class TmdbCredit:
+    """A cast member with the role they play."""
+
+    name: str
+    character: str
+    photo_url: str
+
+
+@dataclass(frozen=True)
+class TmdbVideo:
+    """A video attached to a title (only YouTube ones are kept)."""
+
+    site: str
+    key: str
+    name: str
+    kind: str
+    official: bool
+    language: str
+
+
+@dataclass(frozen=True)
+class TmdbCollectionRef:
+    """The collection a movie belongs to, as listed on the movie."""
+
+    tmdb_id: int
+    name: str
+    poster_url: str
 
 
 @dataclass(frozen=True)
@@ -29,6 +81,12 @@ class TmdbMovie:
     rating: float | None
     votes: int
     imdb_id: str
+    genre_ids: tuple[int, ...] = ()
+    countries: tuple[str, ...] = ()
+    cast: tuple[TmdbCredit, ...] = ()
+    videos: tuple[TmdbVideo, ...] = ()
+    recommendations: tuple[SearchHit, ...] = ()
+    collection: TmdbCollectionRef | None = None
 
 
 @dataclass(frozen=True)
@@ -57,6 +115,11 @@ class TmdbShow:
     votes: int
     imdb_id: str
     seasons: list[TmdbSeasonSummary] = field(default_factory=list)
+    genre_ids: tuple[int, ...] = ()
+    countries: tuple[str, ...] = ()
+    cast: tuple[TmdbCredit, ...] = ()
+    videos: tuple[TmdbVideo, ...] = ()
+    recommendations: tuple[SearchHit, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -79,6 +142,17 @@ class TmdbSeason:
     episodes: list[TmdbEpisode]
 
 
+@dataclass(frozen=True)
+class TmdbCollection:
+    """A TMDB movie collection (a franchise) with its movies."""
+
+    tmdb_id: int
+    name: str
+    overview: str
+    poster_url: str
+    parts: list[SearchHit]
+
+
 def language_tag(language: str) -> str:
     """Map a site language (``en``, ``ru``) to the TMDB language tag."""
     return LANGUAGE_TAGS.get(language, language)
@@ -97,6 +171,73 @@ def _image(path: str | None, size: str) -> str:
 def _rating(data: dict) -> float | None:
     """Return the average vote, or None when nobody has voted."""
     return data['vote_average'] if data.get('vote_count') else None
+
+
+def _hit(item: dict, media_type: str) -> SearchHit:
+    """Build a search hit from a TMDB movie or TV list item."""
+    is_movie = media_type == 'movie'
+    released = _date(item.get('release_date' if is_movie else 'first_air_date'))
+    return SearchHit(
+        provider='tmdb_movie' if is_movie else 'tmdb_tv',
+        external_id=str(item['id']),
+        kind='movie' if is_movie else 'tv',
+        title=item.get('title' if is_movie else 'name') or '',
+        original_title=item.get('original_title' if is_movie else 'original_name')
+        or '',
+        year=released.year if released else None,
+        poster_url=_image(item.get('poster_path'), 'w185'),
+        overview=item.get('overview') or '',
+        anime_like=ANIMATION_GENRE in item.get('genre_ids', [])
+        and item.get('original_language') == 'ja',
+        rating=_rating(item),
+    )
+
+
+def _multi_hits(results: list[dict]) -> list[SearchHit]:
+    """Build hits from a list mixing media types, dropping people."""
+    return [
+        _hit(item, item['media_type'])
+        for item in results
+        if item.get('media_type') in ('movie', 'tv')
+    ]
+
+
+def _enrichment(data: dict) -> dict:
+    """Read the fields movies and TV shows share from an appended response."""
+    return {
+        'genre_ids': tuple(genre['id'] for genre in data.get('genres', [])),
+        'cast': tuple(
+            TmdbCredit(
+                name=person.get('name') or '',
+                character=person.get('character') or '',
+                photo_url=_image(person.get('profile_path'), 'w185'),
+            )
+            for person in sorted(
+                (data.get('credits') or {}).get('cast', []),
+                key=lambda person: person.get('order', 0),
+            )[:CAST_LIMIT]
+        ),
+        'videos': tuple(
+            TmdbVideo(
+                site=video['site'],
+                key=video['key'],
+                name=video.get('name') or '',
+                kind=video.get('type') or '',
+                official=bool(video.get('official')),
+                language=video.get('iso_639_1') or '',
+            )
+            for video in (data.get('videos') or {}).get('results', [])
+            if video.get('site') == 'YouTube'
+        ),
+        'recommendations': tuple(
+            _multi_hits((data.get('recommendations') or {}).get('results', []))
+        ),
+    }
+
+
+def _production_countries(data: dict) -> tuple[str, ...]:
+    """Read the ISO codes of the production countries."""
+    return tuple(c['iso_3166_1'] for c in data.get('production_countries', []))
 
 
 class TmdbClient:
@@ -130,31 +271,7 @@ class TmdbClient:
             },
             ttl=3600,
         )
-        hits = []
-        for item in (data or {}).get('results', []):
-            media_type = item.get('media_type')
-            if media_type not in ('movie', 'tv'):
-                continue
-            is_movie = media_type == 'movie'
-            released = _date(item.get('release_date' if is_movie else 'first_air_date'))
-            hits.append(
-                SearchHit(
-                    provider='tmdb_movie' if is_movie else 'tmdb_tv',
-                    external_id=str(item['id']),
-                    kind='movie' if is_movie else 'tv',
-                    title=item.get('title' if is_movie else 'name') or '',
-                    original_title=item.get(
-                        'original_title' if is_movie else 'original_name'
-                    )
-                    or '',
-                    year=released.year if released else None,
-                    poster_url=_image(item.get('poster_path'), 'w185'),
-                    overview=item.get('overview') or '',
-                    anime_like=ANIMATION_GENRE in item.get('genre_ids', [])
-                    and item.get('original_language') == 'ja',
-                )
-            )
-        return hits
+        return _multi_hits((data or {}).get('results', []))
 
     def movie(self, tmdb_id: int, language: str = 'en') -> TmdbMovie | None:
         """Return a movie, or None when TMDB does not know the id."""
@@ -162,11 +279,13 @@ class TmdbClient:
             f'{BASE}/movie/{tmdb_id}',
             params={
                 'language': language_tag(language),
-                'append_to_response': 'external_ids',
+                'append_to_response': APPEND_TO_RESPONSE,
+                'include_video_language': f'{language},en,null',
             },
         )
         if data is None:
             return None
+        collection = data.get('belongs_to_collection')
         return TmdbMovie(
             tmdb_id=data['id'],
             title=data.get('title') or '',
@@ -181,6 +300,15 @@ class TmdbClient:
             rating=_rating(data),
             votes=data.get('vote_count') or 0,
             imdb_id=(data.get('external_ids') or {}).get('imdb_id') or '',
+            countries=_production_countries(data),
+            collection=TmdbCollectionRef(
+                tmdb_id=collection['id'],
+                name=collection.get('name') or '',
+                poster_url=_image(collection.get('poster_path'), 'w185'),
+            )
+            if collection
+            else None,
+            **_enrichment(data),
         )
 
     def tv(self, tmdb_id: int, language: str = 'en') -> TmdbShow | None:
@@ -189,7 +317,8 @@ class TmdbClient:
             f'{BASE}/tv/{tmdb_id}',
             params={
                 'language': language_tag(language),
-                'append_to_response': 'external_ids',
+                'append_to_response': APPEND_TO_RESPONSE,
+                'include_video_language': f'{language},en,null',
             },
         )
         if data is None:
@@ -215,6 +344,9 @@ class TmdbClient:
                 )
                 for item in data.get('seasons', [])
             ],
+            countries=tuple(data.get('origin_country') or ())
+            or _production_countries(data),
+            **_enrichment(data),
         )
 
     def season(
@@ -240,6 +372,84 @@ class TmdbClient:
                 )
                 for item in data.get('episodes', [])
             ],
+        )
+
+    def discover(
+        self,
+        kind: str,
+        *,
+        genre: str | None,
+        country: str | None,
+        year: int | None,
+        sort: str,
+        page: int,
+        language: str,
+    ) -> HitPage:
+        """List movies or TV shows by genre, country and year.
+
+        Args:
+            kind: ``movie`` or ``tv``.
+            genre: A genre slug; an unknown slug filters nothing.
+            country: An ISO 3166-1 country code.
+            year: Release (movie) or first air (TV) year.
+            sort: ``popularity``, ``date``, ``title`` or ``rating``.
+            page: 1-based page number.
+            language: Site language of the titles in the result.
+
+        Returns:
+            One page of hits; empty when TMDB answers 404.
+        """
+        params = {
+            'language': language_tag(language),
+            'include_adult': 'false',
+            'page': page,
+            'sort_by': DISCOVER_SORTS[kind][sort],
+        }
+        if sort == 'rating':
+            params['vote_count.gte'] = RATING_SORT_MIN_VOTES
+        if genre and (genre_filter := tmdb_genre_filter(genre)):
+            params['with_genres'] = genre_filter
+        if country:
+            params['with_origin_country'] = country
+        if year:
+            year_param = (
+                'primary_release_year' if kind == 'movie' else 'first_air_date_year'
+            )
+            params[year_param] = year
+        data = self._http.get_json(
+            f'{BASE}/discover/{kind}', params=params, ttl=DISCOVER_TTL
+        )
+        if data is None:
+            return HitPage(hits=[], total=0, has_more=False)
+        return HitPage(
+            hits=[_hit(item, kind) for item in data.get('results', [])],
+            total=data.get('total_results') or 0,
+            has_more=page < (data.get('total_pages') or 0),
+        )
+
+    def collection(self, tmdb_id: int, language: str = 'en') -> TmdbCollection | None:
+        """Return a movie collection, or None when TMDB does not know the id."""
+        data = self._http.get_json(
+            f'{BASE}/collection/{tmdb_id}',
+            params={'language': language_tag(language)},
+            ttl=COLLECTION_TTL,
+        )
+        if data is None:
+            return None
+        # ISO dates sort as strings; parts without a date go last.
+        parts = sorted(
+            data.get('parts', []),
+            key=lambda item: (
+                not item.get('release_date'),
+                item.get('release_date') or '',
+            ),
+        )
+        return TmdbCollection(
+            tmdb_id=data['id'],
+            name=data.get('name') or '',
+            overview=data.get('overview') or '',
+            poster_url=_image(data.get('poster_path'), 'w342'),
+            parts=[_hit(item, 'movie') for item in parts],
         )
 
     def seasons(self, show: TmdbShow, language: str = 'en') -> dict[int, TmdbSeason]:
