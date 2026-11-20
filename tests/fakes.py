@@ -130,11 +130,15 @@ class FakeTmdb:
 
 
 class FakeAniList:
-    """``AniListClient`` over dictionaries; ``schedules`` maps id to ``AniListSchedule``."""
+    """``AniListClient`` over dictionaries.
 
-    def __init__(self, *entries, schedules=None):
+    ``schedules`` maps id to ``AniListSchedule``, ``details`` id to ``AniListDetails``.
+    """
+
+    def __init__(self, *entries, schedules=None, details=None):
         self.by_id = {entry.anilist_id: entry for entry in entries}
         self.schedules = schedules or {}
+        self.details_by_id = details or {}
         self.schedule_calls = []
 
     def media_many(self, ids):
@@ -143,6 +147,9 @@ class FakeAniList:
     def schedule(self, anilist_id):
         self.schedule_calls.append(anilist_id)
         return self.schedules.get(anilist_id, AniListSchedule(upcoming={}, all={}))
+
+    def details(self, anilist_id):
+        return self.details_by_id.get(anilist_id)
 
 
 class FailingProvider:
