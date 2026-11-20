@@ -1,0 +1,41 @@
+{% extends 'web/base.html' %}{% load i18n %}
+{% block title %}{% trans 'Browse' %}{% endblock %}
+{% block content %}
+{% comment %}
+Browse. The form holds the filters (hidden inputs for the active ones, selects for
+the facets that can still be added) and the sort; a change or a click on a chip asks
+for the results block, which also brings the heading, the count and the filters out
+of band. Without JavaScript the form and the chips are plain GETs. The Alpine scope
+only tells a failed request of the form from a good one.
+{% endcomment %}
+<div id="browse" class="mt-browse" x-data="{ failed: false }"
+     @htmx:response-error="if ($event.target.closest('#browse-form')) failed = true"
+     @htmx:send-error="if ($event.target.closest('#browse-form')) failed = true"
+     @htmx:after-swap="failed = false">
+  <div class="mt-br-head">
+    <span class="mt-br-kicker">{% trans 'Browse' %}</span>
+    {% include 'web/_browse_head.html' %}
+  </div>
+  <form id="browse-form" class="mt-br-bar" method="get" action="{% url 'browse' %}"
+        hx-get="{% url 'browse' %}" hx-trigger="change, submit" hx-target="#browse-results" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#browse" hx-sync="this:replace"
+        @htmx:config-request="[...$event.detail.parameters.entries()].forEach(([k, v]) => { if (v === '') $event.detail.parameters.delete(k) })">
+    {% include 'web/_browse_filters.html' %}
+    <label class="mt-br-sort">{% trans 'Sort' %}
+      <select name="sort" class="input mt-touch">
+        {% for value, label in sorts %}<option value="{{ value }}"{% if value == query.sort %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <noscript><button type="submit" class="btn btn-secondary mt-touch">{% trans 'Apply filters' %}</button></noscript>
+  </form>
+  <div id="browse-error" x-show="failed" x-cloak>
+    {% trans "Couldn't load titles" as error_heading %}
+    {% include 'web/components/_state_error.html' with heading=error_heading retry_click="failed = false; htmx.trigger('#browse-form', 'submit')" %}
+  </div>
+  <div class="mt-br-body" x-show="!failed">
+    <div class="mt-br-loading">
+      {% trans 'Loading titles…' as loading_label %}{% include 'web/components/_state_loading.html' with label=loading_label %}
+    </div>
+    {% include 'web/_browse_results.html' %}
+  </div>
+</div>
+{% endblock %}

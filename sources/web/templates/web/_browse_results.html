@@ -1,0 +1,46 @@
+{% comment %}
+The part of Browse an HTMX request replaces: #browse-results with its state (error,
+nothing found, or the grid of cards with "Load more" as its last item and the
+"Showing" line). As an HTMX answer (oob) it also sends the heading, the count and the
+filter bar out of band.
+With append (page 2 and later) it is only the next cards and the next "Load more"
+item, which replace the old "Load more" item (outerHTML); "Showing" goes out of band.
+Context: query, state (results, empty or error), rows, total, shown, partial,
+failed_names, more_url, retry_url, clear_url, append, oob.
+{% endcomment %}{% load i18n %}
+{% if append %}
+{% if state == 'results' %}
+<p id="browse-shown" class="mt-br-shown" role="status" hx-swap-oob="true">{% blocktrans trimmed %}Showing {{ shown }} of {{ total }}{% endblocktrans %}</p>
+{% for row in rows %}<li class="mt-br-cell">{% include 'web/_browse_card.html' %}</li>{% endfor %}
+{% if more_url %}{% include 'web/_browse_more.html' %}{% endif %}
+{% elif state == 'error' %}
+<li class="mt-br-more mt-br-more--error" role="alert">
+  <span>{% trans "Couldn't load more titles" %}</span>
+  <a class="btn btn-secondary mt-touch" href="{{ retry_url }}" hx-get="{{ retry_url }}" hx-target="closest li" hx-swap="outerHTML">{% trans 'Try again' %}</a>
+</li>
+{% endif %}
+{% else %}
+{% if oob %}
+{% include 'web/_browse_head.html' %}
+{% include 'web/_browse_filters.html' %}
+{% endif %}
+<div id="browse-results" class="mt-br-results">
+{% if state == 'error' %}
+  {% trans "Couldn't load titles" as error_heading %}{% blocktrans trimmed asvar error_text %}{{ failed_names }} didn't respond. Your filters are kept.{% endblocktrans %}
+  {% include 'web/components/_state_error.html' with heading=error_heading text=error_text retry_url=retry_url retry_target='#browse-results' %}
+{% elif state == 'empty' %}
+  <div class="mt-state mt-state--empty">
+    <h2 class="mt-state-title">{% trans 'No titles match these filters' %}</h2>
+    <p class="mt-state-text">{% trans 'Remove a filter, or start over.' %}</p>
+    <a class="btn btn-secondary mt-touch" href="{{ clear_url }}" hx-get="{{ clear_url }}" hx-target="#browse-results" hx-swap="outerHTML" hx-push-url="true">{% trans 'Clear filters' %}</a>
+  </div>
+{% else %}
+  {% if partial %}<p class="mt-search-notice" role="status">{% blocktrans trimmed %}Results may be incomplete: {{ failed_names }} did not respond.{% endblocktrans %}</p>{% endif %}
+  <ul class="mt-br-grid">
+    {% for row in rows %}<li class="mt-br-cell">{% include 'web/_browse_card.html' %}</li>{% endfor %}
+    {% if more_url %}{% include 'web/_browse_more.html' %}{% endif %}
+  </ul>
+  <p id="browse-shown" class="mt-br-shown" role="status">{% blocktrans trimmed %}Showing {{ shown }} of {{ total }}{% endblocktrans %}</p>
+{% endif %}
+</div>
+{% endif %}

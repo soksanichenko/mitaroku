@@ -820,6 +820,63 @@ msgstr "Не удалось открыть тайтл"
 msgid "The metadata provider didn't answer. Nothing was lost."
 msgstr "Источник метаданных не ответил. Ничего не потеряно."
 
+msgid "Browse"
+msgstr "Обзор"
+
+msgid "Add filter"
+msgstr "Добавить фильтр"
+
+msgid "Any"
+msgstr "Не важно"
+
+msgid "Clear all"
+msgstr "Сбросить всё"
+
+msgid "Genre"
+msgstr "Жанр"
+
+msgid "Country"
+msgstr "Страна"
+
+msgid "Year"
+msgstr "Год"
+
+msgid "Popularity"
+msgstr "Популярность"
+
+msgid "Release date"
+msgstr "Дата выхода"
+
+#, python-format
+msgid "Remove filter %(facet)s: %(value)s"
+msgstr "Убрать фильтр %(facet)s: %(value)s"
+
+msgid "Load more"
+msgstr "Показать ещё"
+
+msgid "Couldn't load titles"
+msgstr "Не удалось загрузить тайтлы"
+
+msgid "Couldn't load more titles"
+msgstr "Не удалось загрузить ещё тайтлы"
+
+msgid "Loading titles…"
+msgstr "Загружаем тайтлы…"
+
+msgid "No titles match these filters"
+msgstr "Нет тайтлов с такими фильтрами"
+
+msgid "Remove a filter, or start over."
+msgstr "Уберите фильтр или начните заново."
+
+#, python-format
+msgid "%(failed_names)s didn't respond. Your filters are kept."
+msgstr "Нет ответа от: %(failed_names)s. Ваши фильтры сохранены."
+
+#, python-format
+msgid "Showing %(shown)s of %(total)s"
+msgstr "Показано %(shown)s из %(total)s"
+
 #~ msgid "D, M j"
 #~ msgstr "D, j E"
 

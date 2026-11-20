@@ -1,0 +1,6 @@
+{% comment %}
+The heading (the active filters, or "All titles") and the number of titles. As an
+HTMX answer (oob) both replace the ones on the page. Context: heading, state, total, oob.
+{% endcomment %}{% load i18n %}
+<h1 id="browse-heading" class="mt-page-title mt-br-title"{% if oob %} hx-swap-oob="true"{% endif %}>{{ heading }}</h1>
+<span id="browse-count" class="mt-lib-total mt-br-count"{% if oob %} hx-swap-oob="true"{% endif %}>{% if state == 'results' %}{% blocktrans trimmed count count=total %}{{ count }} title{% plural %}{{ count }} titles{% endblocktrans %}{% endif %}</span>

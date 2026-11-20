@@ -3,6 +3,7 @@
 from django.urls import path
 from web.views import (
     actions,
+    browse,
     library,
     opening,
     search,
@@ -15,6 +16,7 @@ from web.views import (
 urlpatterns = [
     path('', shell.index, name='index'),
     path('library/', library.library, name='library'),
+    path('browse/', browse.browse_page, name='browse'),
     path('upcoming/', upcoming.upcoming, name='upcoming'),
     path('search/', search.search_page, name='search'),
     path('search/add/', search.search_add, name='search_add'),
