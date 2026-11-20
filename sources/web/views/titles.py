@@ -2,20 +2,27 @@
 
 from dataclasses import dataclass
 from datetime import date, timedelta
+from typing import NamedTuple
 
 from catalog import tasks
-from catalog.models import Episode, Season, Title
-from catalog.translations import FALLBACK_LANGUAGE
+from catalog.models import Episode, ExternalId, Season, Title, TitleDetails
+from catalog.sync.common import MAX_SIMILAR, MAX_TRAILERS, TRAILER_KEY
+from catalog.translations import FALLBACK_LANGUAGE, localized_title
+from catalog.vocab import BROWSE_COUNTRIES, GENRES, browse_years
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import patch_cache_control
 from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_GET, require_POST
+from providers.browse import BrowseQuery
 from tracking import queries, services
+from tracking.adding import EXTERNAL_ID, PROVIDER_KIND
 from tracking.models import LibraryEntry
 from web.templatetags.web_extras import episode_code
+from web.views.browse import browse_heading, browse_url
 
 # A title that has not synced this long after it was created gets a retry button.
 SYNC_TIMEOUT = timedelta(minutes=15)
@@ -29,6 +36,9 @@ LIBRARY_UI = 'library'
 # are fetched when the user first opens it (``season_rows``).
 LAZY_ROW_LIMIT = 10
 
+# The first people of the cast are shown, the rest wait behind "Show all".
+CAST_VISIBLE = 8
+
 SYNCING = 'syncing'
 STUCK = 'stuck'
 READY = 'ready'
@@ -40,6 +50,19 @@ SEASON_KIND_LABELS = {
     Season.Kind.MOVIE: _('Movie'),
     Season.Kind.SPECIAL: _('Special'),
 }
+
+
+class Link(NamedTuple):
+    """A link into Browse.
+
+    Attributes:
+        value: A genre slug or a country code for the tags of the header (the
+            template turns it into a label), the text of the link for "See also".
+        url: The Browse URL, or '' when Browse cannot filter by the value.
+    """
+
+    value: str
+    url: str
 
 
 @dataclass(frozen=True)
@@ -234,8 +257,223 @@ def _whole_check(groups: list[GroupView]) -> str:
     return 'partly' if watched else 'unwatched'
 
 
+def _genre_links(title: Title, slugs: list[str]) -> list[Link]:
+    """Return a Browse link on the title's type for each genre."""
+    return [
+        Link(slug, browse_url(BrowseQuery(kind=title.kind, genre=slug)))
+        for slug in slugs
+    ]
+
+
+def _country_links(title: Title, codes: list[str]) -> list[Link]:
+    """Return a Browse link for each country; '' where Browse has no such filter."""
+    return [
+        Link(
+            code,
+            browse_url(BrowseQuery(kind=title.kind, country=code))
+            if code in BROWSE_COUNTRIES
+            else '',
+        )
+        for code in codes
+    ]
+
+
+def _see_also(title: Title, genres: list[str], countries: list[str]) -> list[Link]:
+    """Return the "See also" links, or none when fewer than two can be built.
+
+    The links are Browse queries on the title's type from its first genre, its
+    second genre, its first country and its year, worded like the Browse heading.
+    A query whose parts are missing is left out, and so is a repeated one.
+    """
+    today = timezone.localdate()
+    year = title.release_date.year if title.release_date else None
+    if year not in range(browse_years(today)[-1], today.year + 2):
+        year = None
+    g1, g2 = (genres + [None, None])[:2]
+    c1 = next((code for code in countries if code in BROWSE_COUNTRIES), None)
+    recipes = (
+        {'genre': g1},
+        {'country': c1},
+        {'genre': g1, 'country': c1},
+        {'genre': g1, 'year': year},
+        {'genre': g2},
+        {'year': year},
+    )
+    links = {}
+    for fields in recipes:
+        if None in fields.values():
+            continue
+        query = BrowseQuery(kind=title.kind, **fields)
+        links.setdefault(browse_url(query), browse_heading(query))
+    if len(links) < 2:
+        return []
+    return [Link(heading, url) for url, heading in links.items()]
+
+
+def _cast(items: list) -> list[dict]:
+    """Return the cast entries that have a name, with the initials of each."""
+    return [
+        {
+            'name': item['name'],
+            'role': str(item.get('role') or ''),
+            'photo_url': str(item.get('photo_url') or ''),
+            'initials': ''.join(word[0] for word in item['name'].split()[:2]).upper(),
+        }
+        for item in items
+        if isinstance(item, dict) and isinstance(item.get('name'), str) and item['name']
+    ]
+
+
+def _trailers(items: list, language: str) -> list[dict]:
+    """Return up to ``MAX_TRAILERS`` trailers with a valid YouTube key.
+
+    The key goes into an embed URL, so it is checked here and not in the template.
+    Trailers in ``language`` come first; the order is otherwise kept.
+    """
+    valid = [
+        item
+        for item in items
+        if isinstance(item, dict)
+        and isinstance(item.get('key'), str)
+        and TRAILER_KEY.fullmatch(item['key'])
+    ]
+    valid.sort(key=lambda item: item.get('language') != language)
+    return [
+        # AniList trailers have no name.
+        {'key': item['key'], 'name': str(item.get('name') or '') or gettext('Trailer')}
+        for item in valid[:MAX_TRAILERS]
+    ]
+
+
+def _collection(value: object) -> dict | None:
+    """Return the collection card (name, poster, URL), or None without one."""
+    if not (
+        isinstance(value, dict)
+        and isinstance(value.get('id'), int)
+        and isinstance(value.get('name'), str)
+        and value['name']
+    ):
+        return None
+    return {
+        'name': value['name'],
+        'url': reverse('collection', args=[value['id']]),
+        'poster': {
+            'pk': value['id'],
+            'poster_url': str(value.get('poster_url') or ''),
+            'rating': None,
+        },
+    }
+
+
+def _similar(items: list, language: str) -> list[dict]:
+    """Return up to ``MAX_SIMILAR`` similar titles ready to show.
+
+    A title that is in the catalog links to its page and is named in ``language``;
+    any other opens through ``open_title``. The catalog is asked once for all of
+    them, translations included.
+    """
+    entries = [
+        item
+        for item in items
+        if isinstance(item, dict)
+        and item.get('provider') in PROVIDER_KIND
+        and isinstance(item.get('external_id'), str)
+        and EXTERNAL_ID.fullmatch(item['external_id'])
+    ][:MAX_SIMILAR]
+    if not entries:
+        return []
+    links = (
+        ExternalId.objects.filter(
+            provider__in={item['provider'] for item in entries},
+            external_id__in={item['external_id'] for item in entries},
+        )
+        .select_related('title')
+        .prefetch_related('title__translations')
+    )
+    known = {(link.provider, link.external_id): link.title for link in links}
+    cards = []
+    for item in entries:
+        provider, external_id = item['provider'], item['external_id']
+        title = known.get((provider, external_id))
+        name = (
+            localized_title(title, language)[0]
+            if title
+            else item.get('title') or item.get('original_title')
+        ) or gettext('Untitled')
+        original = (
+            title.original_title if title else str(item.get('original_title') or '')
+        )
+        rating = item.get('rating')
+        cards.append(
+            {
+                'href': reverse('title', args=[title.pk])
+                if title
+                else reverse('open_title', args=[provider, int(external_id)]),
+                'name': name,
+                'original': original if original != name else '',
+                'poster': {
+                    # Only the colour of the placeholder depends on the number.
+                    'pk': int(external_id),
+                    'poster_url': str(item.get('poster_url') or ''),
+                    'rating': rating if isinstance(rating, int | float) else None,
+                    'rating_source': 'anilist' if provider == 'anilist' else 'tmdb',
+                },
+            }
+        )
+    return cards
+
+
+def enrichment(title: Title, language: str) -> dict:
+    """Return what the title page shows beyond the sync: tags, cast, trailers...
+
+    Nothing here depends on the user. A title without a ``TitleDetails`` row (an
+    anime synced before the details existed, or one whose details call failed)
+    gets empty values, so the page hides only these sections.
+
+    Args:
+        title: A synced title.
+        language: The user's metadata language, for the order of the trailers and
+            the names of the similar titles.
+
+    Returns:
+        ``details`` (the row or None), ``genre_links`` and ``country_links`` (the
+        header tags), ``see_also``, ``trailers``, ``cast``, ``cast_more`` (how
+        many people wait behind "Show all"), ``collection`` and ``similar``.
+    """
+    details = TitleDetails.objects.filter(title=title).first()
+    if details is None:
+        return {
+            'details': None,
+            'genre_links': [],
+            'country_links': [],
+            'see_also': [],
+            'trailers': [],
+            'cast': [],
+            'cast_more': 0,
+            'collection': None,
+            'similar': [],
+        }
+    genres = [slug for slug in details.genres if slug in GENRES]
+    countries = [code for code in details.countries if isinstance(code, str)]
+    cast = _cast(details.cast)
+    return {
+        'details': details,
+        'genre_links': _genre_links(title, genres),
+        'country_links': _country_links(title, countries),
+        'see_also': _see_also(title, genres, countries),
+        'trailers': _trailers(details.trailers, language),
+        'cast': cast,
+        'cast_more': max(0, len(cast) - CAST_VISIBLE),
+        'collection': _collection(details.collection),
+        'similar': _similar(details.similar, language),
+    }
+
+
 def page_context(
-    request: HttpRequest, title: Title, expanded: int | None = None
+    request: HttpRequest,
+    title: Title,
+    expanded: int | None = None,
+    enrich: bool = True,
 ) -> dict:
     """Build the context of the page body for the signed-in user.
 
@@ -250,6 +488,8 @@ def page_context(
         title: The title shown.
         expanded: Pk of a season whose rows are rendered even when it is collapsed
             (see ``_group_views``).
+        enrich: Whether to add ``enrichment`` (the answers to the watch actions
+            do not show it, so they skip its queries).
 
     Returns:
         The template context; only ``title``, ``sync_state`` and ``entry`` until
@@ -260,6 +500,8 @@ def page_context(
         return context
     today = timezone.localdate()
     language = request.user.profile.metadata_language
+    if enrich:
+        context.update(enrichment(title, language))
     state = queries.title_page_state(request.user, title, today, language)
     context.update(
         entry=state.entry,
@@ -310,7 +552,7 @@ def season_rows(request: HttpRequest, pk: int) -> HttpResponse:
         season, 409 while the title has not synced.
     """
     season = get_object_or_404(Season.objects.select_related('title'), pk=pk)
-    context = page_context(request, season.title, expanded=pk)
+    context = page_context(request, season.title, expanded=pk, enrich=False)
     if context['sync_state'] != READY:
         return HttpResponse('The title is not ready yet', status=409)
     group = next(
@@ -403,7 +645,7 @@ def title_status(request: HttpRequest, pk: int) -> HttpResponse:
     )
     if from_library(request):
         return HttpResponse(status=204)
-    context = page_context(request, title)
+    context = page_context(request, title, enrich=False)
     context.update(
         entry=entry,
         saved=entry is not None,

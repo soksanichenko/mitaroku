@@ -1,4 +1,5 @@
-{% comment %}Poster, names, tags, year, runtime and rating of a title. Context: title.{% endcomment %}{% load i18n web_extras %}
+{% comment %}Poster, names, tags, year, runtime and rating of a title. Context: title; optional
+genre_links and country_links (web.views.titles.Link lists) for the tags that open Browse.{% endcomment %}{% load i18n web_extras %}
 {% title_name title as name %}
 <header class="mt-th">
   <div class="mt-th-poster">{% include 'web/components/_poster.html' with title=title variant='hero' %}</div>
@@ -8,6 +9,8 @@
     <ul class="mt-th-tags">
       <li class="mt-tag">{{ title.kind|kind_label }}</li>
       {% with airing=title.status|airing_label:title.kind %}{% if airing %}<li class="mt-tag">{{ airing }}</li>{% endif %}{% endwith %}
+      {% for g in genre_links %}<li><a class="mt-tag-link" href="{{ g.url }}"><span class="mt-tag">{{ g.value|genre_label }}</span></a></li>{% endfor %}
+      {% for c in country_links %}{% if c.url %}<li><a class="mt-tag-link" href="{{ c.url }}"><span class="mt-tag">{{ c.value|country_label }}</span></a></li>{% else %}<li class="mt-tag">{{ c.value|country_label }}</li>{% endif %}{% endfor %}
     </ul>
     {% if title.release_date or title.runtime_minutes %}
     <p class="mt-th-meta">

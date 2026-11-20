@@ -1,0 +1,9 @@
+{% comment %}"See also": Browse links built from the genres, country and year. Context: see_also (a list of links, hidden when empty).{% endcomment %}{% load i18n %}
+{% if see_also %}
+<section id="see-also" class="mt-section" aria-labelledby="see-also-heading">
+  <h2 id="see-also-heading" class="mt-section-title">{% trans 'See also' %}</h2>
+  <ul class="mt-see-also">
+    {% for link in see_also %}<li><a class="mt-touch" href="{{ link.url }}">{{ link.value }}</a></li>{% endfor %}
+  </ul>
+</section>
+{% endif %}

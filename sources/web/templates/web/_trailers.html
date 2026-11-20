@@ -1,0 +1,42 @@
+{% comment %}
+Trailers. Nothing is loaded from YouTube until Play is pressed: the card holds only the
+key (data-key, checked in the view) and the page builds the player on the click.
+Context: trailers (key, name; hidden when empty).
+{% endcomment %}{% load i18n %}
+{% if trailers %}
+<section id="trailers" class="mt-section" aria-labelledby="trailers-heading" x-data="{
+  play(card) {
+    this.stop();
+    const f = document.createElement('iframe');
+    f.src = 'https://www.youtube-nocookie.com/embed/' + card.dataset.key + '?autoplay=1';
+    f.allow = 'autoplay; encrypted-media; picture-in-picture';
+    f.allowFullscreen = true;
+    f.referrerPolicy = 'strict-origin-when-cross-origin';
+    f.title = card.querySelector('.mt-tr-name').textContent;
+    card.querySelector('.mt-tr-frame').append(f);
+    card.classList.add('mt-tr--on');
+  },
+  stop(card) {
+    (card ? [card] : this.$root.querySelectorAll('.mt-tr--on')).forEach(c => {
+      c.querySelector('iframe').remove();
+      c.classList.remove('mt-tr--on');
+    });
+    if (card) card.querySelector('.mt-tr-play').focus();
+  }
+}">
+  <h2 id="trailers-heading" class="mt-section-title">{% trans 'Trailers' %}</h2>
+  <ul class="mt-trailers">
+    {% for t in trailers %}
+    <li class="mt-tr" data-key="{{ t.key }}">
+      <div class="mt-tr-frame">
+        <button type="button" class="mt-tr-play" aria-label="{% blocktrans trimmed with name=t.name %}Play {{ name }}{% endblocktrans %}" @click="play($el.closest('li'))"><svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>{% trans 'Play' %}</button>
+      </div>
+      <div class="mt-tr-caption">
+        <span class="mt-tr-name">{{ t.name }}</span>
+        <button type="button" class="mt-link-btn mt-tr-stop mt-touch" @click="stop($el.closest('li'))">{% trans 'Stop' %}</button>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}

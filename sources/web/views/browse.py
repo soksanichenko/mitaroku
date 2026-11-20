@@ -17,13 +17,13 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils.text import get_text_list
-from django.utils.translation import get_language, gettext
+from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.vary import vary_on_headers
 from providers.browse import MAX_PAGE, BrowseQuery, BrowseResults, browse
 from redis.exceptions import RedisError
 from web.clients import shared_clients
-from web.templatetags.web_extras import rating_source_name
+from web.templatetags.web_extras import interface_language, rating_source_name
 from web.views.hits import decorate, is_fragment_request
 from web.views.search import GROUPS
 
@@ -122,11 +122,6 @@ def _shown(value: str) -> int:
     return min(int(value), MAX_SHOWN)
 
 
-def _language() -> str:
-    """Return the interface language code, such as ``ru``."""
-    return (get_language() or 'en').split('-')[0]
-
-
 def _heading(chips: list[Chip]) -> str:
     """Return the active filters joined by dots, or "All titles"."""
     return ' · '.join(chip.value for chip in chips) or gettext('All titles')
@@ -151,6 +146,19 @@ def _chips(query: BrowseQuery, language: str) -> list[Chip]:
         for name, value in values
         if value is not None
     ]
+
+
+def browse_heading(query: BrowseQuery) -> str:
+    """Return the heading Browse shows for a query, such as ``Shows · Drama``.
+
+    Args:
+        query: The filters; ``sort`` and ``page`` do not matter.
+
+    Returns:
+        The active filters in the interface language, joined by dots, or "All
+        titles" for none.
+    """
+    return _heading(_chips(query, interface_language()))
 
 
 def _facets(query: BrowseQuery, language: str) -> list[Facet]:
@@ -222,7 +230,7 @@ def browse_page(request: HttpRequest) -> HttpResponse:
             hits=[], total=0, has_more=False, failed=['tmdb', 'anilist']
         )
     rows = decorate(request.user, results.hits)
-    language = _language()
+    language = interface_language()
     chips = _chips(query, language)
     # The cards of the earlier pages are not known here: "Load more" carries
     # their number, and the totals of the providers can be off.

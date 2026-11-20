@@ -903,6 +903,37 @@ msgstr "Эта коллекция пуста"
 msgid "Titles appear here when TMDB adds them to the collection."
 msgstr "Тайтлы появятся здесь, когда TMDB добавит их в коллекцию."
 
+msgid "See also"
+msgstr "Смотрите также"
+
+msgid "Cast"
+msgstr "В ролях"
+
+msgid "Voice cast"
+msgstr "Роли озвучивали"
+
+msgid "Trailers"
+msgstr "Трейлеры"
+
+msgid "Trailer"
+msgstr "Трейлер"
+
+#, python-format
+msgid "Play %(name)s"
+msgstr "Смотреть: %(name)s"
+
+msgid "Play"
+msgstr "Смотреть"
+
+msgid "Stop"
+msgstr "Остановить"
+
+msgid "Collections"
+msgstr "Коллекции"
+
+msgid "Similar"
+msgstr "Похожие"
+
 #~ msgid "D, M j"
 #~ msgstr "D, j E"
 

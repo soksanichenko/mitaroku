@@ -1,0 +1,22 @@
+{% comment %}
+The cast: the first people, the rest behind "Show all". Context: title, cast (name, role,
+photo_url, initials), cast_more (how many wait behind the toggle; hidden when empty).
+{% endcomment %}{% load i18n %}
+{% if cast %}
+<section id="cast" class="mt-section" aria-labelledby="cast-heading" x-data="{ all: false }">
+  <h2 id="cast-heading" class="mt-section-title">{% if title.kind == 'anime' %}{% trans 'Voice cast' %}{% else %}{% trans 'Cast' %}{% endif %}</h2>
+  <ul class="mt-cast">
+    {% for p in cast %}
+    <li class="mt-cast-item"{% if forloop.counter > 8 %} x-show="all" x-cloak{% endif %}>
+      <span class="mt-cast-photo" aria-hidden="true">{% if p.photo_url %}<img src="{{ p.photo_url }}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">{% else %}<span>{{ p.initials }}</span>{% endif %}</span>
+      <span class="mt-cast-text"><span class="mt-cast-name">{{ p.name }}</span>{% if p.role %}<span class="mt-cast-role">{{ p.role }}</span>{% endif %}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% if cast_more %}
+  <button type="button" class="mt-link-btn mt-touch" :aria-expanded="all" aria-expanded="false" @click="all = !all">
+    <span x-show="!all">{% blocktrans trimmed with count=cast|length %}Show all {{ count }}{% endblocktrans %}</span><span x-show="all" x-cloak>{% trans 'Less' %}</span>
+  </button>
+  {% endif %}
+</section>
+{% endif %}
