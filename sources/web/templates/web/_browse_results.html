@@ -5,12 +5,14 @@ nothing found, or the grid of cards with "Load more" as its last item and the
 filter bar out of band.
 With append (page 2 and later) it is only the next cards and the next "Load more"
 item, which replace the old "Load more" item (outerHTML); "Showing" goes out of band.
-Context: query, state (results, empty or error), rows, total, shown, partial,
-failed_names, more_url, retry_url, clear_url, append, oob.
+A page whose hits were all dropped has no rows but still a "Load more" item.
+Context: query, state (results, empty or error), rows, count, shown, partial,
+failed_names, more_url, retry_url, clear_url, rating_hint, append, oob.
 {% endcomment %}{% load i18n %}
 {% if append %}
 {% if state == 'results' %}
-<p id="browse-shown" class="mt-br-shown" role="status" hx-swap-oob="true">{% blocktrans trimmed %}Showing {{ shown }} of {{ total }}{% endblocktrans %}</p>
+<p id="browse-shown" class="mt-br-shown" role="status" hx-swap-oob="true">{% if shown and not count %}{% blocktrans trimmed %}Showing {{ shown }}{% endblocktrans %}{% endif %}</p>
+{% include 'web/_browse_count.html' with oob=True %}
 {% for row in rows %}<li class="mt-br-cell">{% include 'web/_browse_card.html' %}</li>{% endfor %}
 {% if more_url %}{% include 'web/_browse_more.html' %}{% endif %}
 {% elif state == 'error' %}
@@ -32,6 +34,7 @@ failed_names, more_url, retry_url, clear_url, append, oob.
   <div class="mt-state mt-state--empty">
     <h2 class="mt-state-title">{% trans 'No titles match these filters' %}</h2>
     <p class="mt-state-text">{% trans 'Remove a filter, or start over.' %}</p>
+    {% if rating_hint %}<p class="mt-state-text">{% trans 'Rating sort only lists titles with at least 100 votes.' %}</p>{% endif %}
     <a class="btn btn-secondary mt-touch" href="{{ clear_url }}" hx-get="{{ clear_url }}" hx-target="#browse-results" hx-swap="outerHTML" hx-push-url="true">{% trans 'Clear filters' %}</a>
   </div>
 {% else %}
@@ -40,7 +43,7 @@ failed_names, more_url, retry_url, clear_url, append, oob.
     {% for row in rows %}<li class="mt-br-cell">{% include 'web/_browse_card.html' %}</li>{% endfor %}
     {% if more_url %}{% include 'web/_browse_more.html' %}{% endif %}
   </ul>
-  <p id="browse-shown" class="mt-br-shown" role="status">{% blocktrans trimmed %}Showing {{ shown }} of {{ total }}{% endblocktrans %}</p>
+  <p id="browse-shown" class="mt-br-shown" role="status">{% if shown and not count %}{% blocktrans trimmed %}Showing {{ shown }}{% endblocktrans %}{% endif %}</p>
 {% endif %}
 </div>
 {% endif %}

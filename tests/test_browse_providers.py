@@ -46,7 +46,7 @@ def test_parse_accepts_valid_values():
     year = date.today().year + 1
     query = BrowseQuery.parse(
         {
-            'kind': 'anime',
+            'type': 'anime',
             'genre': 'sci-fi',
             'country': 'JP',
             'year': str(year),
@@ -66,7 +66,7 @@ def test_parse_ignores_invalid_values():
             'genre': '<script>',
             'country': 'ZZ',
             'sort': 'x',
-            'kind': 'music',
+            'type': 'music',
             'page': '0',
         }
     )
@@ -86,14 +86,20 @@ def test_parse_ignores_invalid_values():
         assert BrowseQuery.parse({'page': page}).page == 1
 
 
+def test_parse_reads_the_type_key_and_not_the_kind_key():
+    assert BrowseQuery.parse({'type': 'tv'}).kind == 'tv'
+    assert BrowseQuery.parse({'kind': 'tv'}) == BrowseQuery()
+    assert BrowseQuery.parse({'type': 'anime', 'kind': 'tv'}).kind == 'anime'
+
+
 def test_parse_takes_the_first_value_of_a_repeated_key():
-    params = QueryDict('kind=tv&kind=anime&page=2&page=5')
+    params = QueryDict('type=tv&type=anime&page=2&page=5')
     assert BrowseQuery.parse(params) == BrowseQuery(kind='tv', page=2)
 
 
 def test_parse_survives_absurd_input():
     query = BrowseQuery.parse(
-        {key: '9' * 10_000 for key in ('kind', 'genre', 'country', 'year', 'page')}
+        {key: '9' * 10_000 for key in ('type', 'genre', 'country', 'year', 'page')}
     )
     assert query == BrowseQuery(page=MAX_PAGE)
 
@@ -183,7 +189,7 @@ def test_a_skipped_anime_kind_is_empty_and_not_failed():
         BrowseQuery(kind='anime', country='FR'), 'en', tmdb=tmdb, anilist=anilist
     )
     assert results.hits == [] and results.failed == []
-    assert (results.total, results.has_more) == (0, False)
+    assert results.has_more is False
     assert tmdb.calls == [] and anilist.calls == []
 
 
@@ -226,7 +232,7 @@ def test_one_source_down():
     )
     assert results.hits == []
     assert results.failed == ['tmdb', 'anilist']
-    assert (results.total, results.has_more) == (0, False)
+    assert results.has_more is False
 
 
 def test_no_tmdb_token_is_a_failed_source():
@@ -241,7 +247,7 @@ def test_no_tmdb_token_is_a_failed_source():
     assert results.failed == ['tmdb'] and results.hits == []
 
 
-def test_totals_add_up():
+def test_has_more_is_true_when_any_source_has_a_later_page():
     tmdb = FakeTmdbDiscover(
         {
             'movie': HitPage([hit('tmdb_movie', 'm1')], 100, False),
@@ -249,11 +255,33 @@ def test_totals_add_up():
         }
     )
     anilist = FakeAniListDiscover(HitPage([hit('anilist', 'a1', 'anime')], 7, False))
-    results = browse(BrowseQuery(), 'en', tmdb=tmdb, anilist=anilist)
-    assert results.total == 147
-    assert results.has_more is True
-
+    assert browse(BrowseQuery(), 'en', tmdb=tmdb, anilist=anilist).has_more is True
     tmdb = FakeTmdbDiscover({'movie': HitPage([], 100, False)})
-    results = browse(BrowseQuery(), 'en', tmdb=tmdb, anilist=anilist)
-    assert results.total == 107
-    assert results.has_more is False
+    assert browse(BrowseQuery(), 'en', tmdb=tmdb, anilist=anilist).has_more is False
+
+
+def test_a_genre_tmdb_cannot_filter_skips_tmdb_and_asks_anilist():
+    tmdb = FakeTmdbDiscover()
+    anilist = FakeAniListDiscover(HitPage([hit('anilist', 'a1', 'anime')], 1, False))
+    results = browse(BrowseQuery(genre='sports'), 'en', tmdb=tmdb, anilist=anilist)
+    assert tmdb.calls == []
+    assert [call['genre'] for call in anilist.calls] == ['Sports']
+    assert ids(results) == ['a1'] and results.failed == []
+
+
+def test_a_genre_tmdb_cannot_filter_is_not_a_failure_for_a_single_tmdb_kind():
+    tmdb = FakeTmdbDiscover()
+    anilist = FakeAniListDiscover()
+    for kind in ('movie', 'tv'):
+        results = browse(
+            BrowseQuery(kind=kind, genre='sports'), 'en', tmdb=tmdb, anilist=anilist
+        )
+        assert results.hits == [] and results.failed == []
+        assert results.has_more is False
+    assert tmdb.calls == [] and anilist.calls == []
+
+
+def test_skipping_tmdb_for_a_genre_needs_no_token():
+    anilist = FakeAniListDiscover(HitPage([hit('anilist', 'a1', 'anime')], 1, False))
+    results = browse(BrowseQuery(genre='mecha'), 'en', tmdb=None, anilist=anilist)
+    assert ids(results) == ['a1'] and results.failed == []

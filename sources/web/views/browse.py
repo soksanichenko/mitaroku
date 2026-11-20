@@ -20,7 +20,14 @@ from django.utils.text import get_text_list
 from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.vary import vary_on_headers
-from providers.browse import MAX_PAGE, BrowseQuery, BrowseResults, browse
+from providers.browse import (
+    MAX_PAGE,
+    SORTS,
+    BrowseQuery,
+    BrowseResults,
+    browse,
+    tmdb_covers_genre,
+)
 from redis.exceptions import RedisError
 from web.clients import shared_clients
 from web.templatetags.web_extras import interface_language, rating_source_name
@@ -29,7 +36,6 @@ from web.views.search import GROUPS
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_SORT = 'popularity'
 SORT_LABELS = {
     'popularity': _('Popularity'),
     'date': _('Release date'),
@@ -84,7 +90,7 @@ def browse_url(query: BrowseQuery, *, shown: int = 0) -> str:
     Args:
         query: The query to link to.
         shown: How many cards the visitor has loaded already; only "Load more"
-            carries it, to tell "Showing N of TOTAL" how many there are.
+            carries it, to tell "Showing N" how many there are.
 
     Returns:
         The path with a query string, or the bare path for the default query.
@@ -96,7 +102,7 @@ def browse_url(query: BrowseQuery, *, shown: int = 0) -> str:
             ('genre', query.genre),
             ('country', query.country),
             ('year', query.year),
-            ('sort', query.sort if query.sort != DEFAULT_SORT else None),
+            ('sort', query.sort if query.sort != SORTS[0] else None),
             ('page', query.page if query.page > 1 else None),
             ('shown', shown or None),
         )
@@ -104,15 +110,6 @@ def browse_url(query: BrowseQuery, *, shown: int = 0) -> str:
     }
     url = reverse('browse')
     return f'{url}?{urlencode(params)}' if params else url
-
-
-def _parse(params) -> BrowseQuery:
-    """Build the query from the request; the public ``type`` key is the kind."""
-    mapped = params.copy()
-    types = mapped.getlist('type')
-    # A visitor cannot reach the kind through any other key.
-    mapped.setlist('kind', types[:1])
-    return BrowseQuery.parse(mapped)
 
 
 def _shown(value: str) -> int:
@@ -214,7 +211,7 @@ def browse_page(request: HttpRequest) -> HttpResponse:
     HTMX request for a later page answers with just the next cards and the next
     "Load more" item.
     """
-    query = _parse(request.GET)
+    query = BrowseQuery.parse(request.GET)
     clients = shared_clients()
     try:
         results = browse(
@@ -226,17 +223,21 @@ def browse_page(request: HttpRequest) -> HttpResponse:
     except RedisError as error:
         # The provider layer keeps its rate limits and cache in Redis.
         logger.warning('Browse failed: %s', type(error).__name__)
-        results = BrowseResults(
-            hits=[], total=0, has_more=False, failed=['tmdb', 'anilist']
-        )
+        results = BrowseResults(hits=[], has_more=False, failed=['tmdb', 'anilist'])
     rows = decorate(request.user, results.hits)
     language = interface_language()
     chips = _chips(query, language)
     # The cards of the earlier pages are not known here: "Load more" carries
-    # their number, and the totals of the providers can be off.
-    shown = _shown(request.GET.get('shown', '')) + len(rows)
+    # their number. The providers' totals are estimates, so none is shown.
+    previous = _shown(request.GET.get('shown', ''))
+    shown = previous + len(rows)
     fragment = is_fragment_request(request)
     append = fragment and query.page > 1
+    more_url = (
+        browse_url(replace(query, page=query.page + 1), shown=shown)
+        if results.has_more and query.page < MAX_PAGE
+        else ''
+    )
     failed_names = get_text_list(
         [rating_source_name(name) for name in results.failed], gettext('and')
     )
@@ -245,9 +246,9 @@ def browse_page(request: HttpRequest) -> HttpResponse:
         'heading': _heading(chips),
         'chips': chips,
         'facets': _facets(query, language),
-        'sorts': [(value, str(label)) for value, label in SORT_LABELS.items()],
+        'sorts': [(value, str(SORT_LABELS[value])) for value in SORTS],
         'clear_url': browse_url(BrowseQuery(sort=query.sort)),
-        'retry_url': browse_url(query),
+        'retry_url': browse_url(query, shown=previous if append else 0),
         'failed_names': failed_names,
         'append': append,
         'oob': fragment and not append,
@@ -255,19 +256,29 @@ def browse_page(request: HttpRequest) -> HttpResponse:
     }
     if not rows and results.failed:
         context['state'] = 'error'
-    elif not rows:
+    elif not rows and not more_url:
         context['state'] = 'empty'
+        # TMDB lists only the titles with enough votes when sorting by rating.
+        context['rating_hint'] = (
+            query.sort == 'rating'
+            and query.kind != 'anime'
+            and tmdb_covers_genre(query)
+        )
     else:
+        # A page can lose every hit to the filters after paging: it still has a
+        # next page, so "Load more" stays.
         context.update(
             rows=rows,
-            total=max(results.total, shown),
             shown=shown,
-            partial=bool(results.failed),
-            more_url=(
-                browse_url(replace(query, page=query.page + 1), shown=shown)
-                if results.has_more and query.page < MAX_PAGE
-                else ''
+            # A number is exact only for a list that has ended. A hand-edited page
+            # does not know the cards before it.
+            count=(
+                shown
+                if rows and not results.has_more and (query.page == 1 or previous)
+                else 0
             ),
+            partial=bool(results.failed),
+            more_url=more_url,
         )
     template = 'web/_browse_results.html' if fragment else 'web/browse.html'
     return render(request, template, context)

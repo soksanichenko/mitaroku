@@ -32,7 +32,7 @@ class BrowseRecorder:
 
     def __init__(self) -> None:
         self.calls: list[tuple[BrowseQuery, str]] = []
-        self.result = BrowseResults(hits=[], total=0, has_more=False, failed=[])
+        self.result = BrowseResults(hits=[], has_more=False, failed=[])
         self.error: Exception | None = None
 
     def __call__(self, query: BrowseQuery, language: str, **clients) -> BrowseResults:
@@ -66,14 +66,9 @@ def hit(name: str, number: int = 1, kind: str = 'movie', **kwargs) -> SearchHit:
     return SearchHit(provider, str(number), kind, name, **values)
 
 
-def results(hits, *, total=None, has_more=False, failed=()) -> BrowseResults:
+def results(hits, *, has_more=False, failed=()) -> BrowseResults:
     """Build a ``BrowseResults`` of ``hits``."""
-    return BrowseResults(
-        hits=list(hits),
-        total=len(hits) if total is None else total,
-        has_more=has_more,
-        failed=list(failed),
-    )
+    return BrowseResults(hits=list(hits), has_more=has_more, failed=list(failed))
 
 
 def get(client, portal_headers, url, **extra) -> str:
@@ -166,11 +161,11 @@ def test_browse_heading_and_chips(client, portal_headers, patched_browse):
 def test_browse_heading_in_russian(client, portal_headers, patched_browse, alice):
     alice.profile.interface_language = 'ru'
     alice.profile.save()
-    patched_browse.result = results([hit('A', 1)], total=40, has_more=True)
+    patched_browse.result = results([hit('A', 1)], has_more=True)
     page = get(client, portal_headers, '/browse/?type=tv&genre=drama&country=IS')
     heading = re.search(r'<h1[^>]*>(.*?)</h1>', page, re.S).group(1)
     assert ' '.join(heading.split()) == 'Сериалы · Драма · Исландия'
-    assert 'Показать ещё' in page and 'Показано 1 из 40' in page
+    assert 'Показать ещё' in page and 'Показано 1<' in page and ' из ' not in page
     assert 'Добавить фильтр' in page and 'Сбросить всё' in page
     assert 'Browse' not in page
     for english in ('Load more', 'Showing', 'Add filter', 'Clear all'):
@@ -289,6 +284,25 @@ def test_browse_ignores_invalid_parameters(client, portal_headers, patched_brows
     assert chips(page) == []
 
 
+def test_browse_takes_the_first_value_of_a_repeated_key(
+    client, portal_headers, patched_browse
+):
+    response = client.get(
+        '/browse/?genre=drama&genre=<script>alert(1)</script>&type=tv&type=movie',
+        **portal_headers,
+    )
+    page = response.content.decode()
+    assert response.status_code == 200
+    assert [query for query, _ in patched_browse.calls] == [
+        BrowseQuery(kind='tv', genre='drama')
+    ]
+    # The language switcher may echo the query string, but only escaped.
+    assert '<script>alert' not in page
+    assert [text for text, _ in chips(page)] == ['Type: Shows', 'Genre: Drama']
+    get(client, portal_headers, '/browse/?genre=<script>&genre=drama&type=x&type=tv')
+    assert patched_browse.calls[-1][0] == BrowseQuery()
+
+
 def test_browse_with_one_source_down(client, portal_headers, patched_browse):
     patched_browse.result = results([hit('Frieren', 1, kind='anime')], failed=['tmdb'])
     page = get(client, portal_headers, '/browse/')
@@ -321,7 +335,7 @@ def test_browse_error_names_the_one_source_that_failed(
 
 
 def test_browse_hides_the_count_on_an_error(client, portal_headers, patched_browse):
-    patched_browse.result = results([hit('A')], total=40)
+    patched_browse.result = results([hit('A', n) for n in range(1, 41)])
     assert '40 titles' in get(client, portal_headers, '/browse/')
     patched_browse.result = results([], failed=['tmdb', 'anilist'])
     assert 'titles</span>' not in get(client, portal_headers, '/browse/')
@@ -353,7 +367,7 @@ def test_browse_loading_skeleton_is_wired_to_the_indicator(
 
 
 def test_load_more_is_the_last_item_of_the_grid(client, portal_headers, patched_browse):
-    patched_browse.result = results([hit('A', 1), hit('B', 2)], total=50, has_more=True)
+    patched_browse.result = results([hit('A', 1), hit('B', 2)], has_more=True)
     page = get(client, portal_headers, '/browse/?type=movie')
     grid = re.search(r'<ul[^>]*mt-br-grid.*?</ul>', page, re.S).group()
     items = re.findall(r'<li\b.*?</li>', grid, re.S)
@@ -363,34 +377,36 @@ def test_load_more_is_the_last_item_of_the_grid(client, portal_headers, patched_
     assert href == '/browse/?type=movie&page=2&shown=2'
     assert f'hx-get="{htmllib.escape(href)}"' in link
     assert 'hx-swap="outerHTML"' in link
-    assert 'Showing 2 of 50' in page
+    assert 'Showing 2<' in page
 
 
 def test_no_load_more_without_has_more(client, portal_headers, patched_browse):
-    patched_browse.result = results([hit('A')], total=1, has_more=False)
+    patched_browse.result = results([hit('A')], has_more=False)
     page = get(client, portal_headers, '/browse/')
-    assert 'Load more' not in page and 'Showing 1 of 1' in page
+    assert 'Load more' not in page and 'Showing' not in page
+    assert '1 title<' in page
 
 
 def test_load_more_returns_only_the_next_cards(client, portal_headers, patched_browse):
-    patched_browse.result = results([hit('C', 3), hit('D', 4)], total=50, has_more=True)
+    patched_browse.result = results([hit('C', 3), hit('D', 4)], has_more=True)
     page = get(client, portal_headers, '/browse/?page=2&shown=2', **HTMX)
     assert '<html' not in page and '<form' not in page and '<h1' not in page
-    assert page.count('mt-bcard') >= 2
+    assert page.count('<article class="mt-lcard mt-bcard">') == 2
     assert patched_browse.calls[0][0].page == 2
     assert page.rstrip().endswith('</li>')
     last = re.findall(r'<li\b.*?</li>', page, re.S)[-1]
     assert 'Load more' in last
     assert 'page=3' in htmllib.unescape(last) and 'shown=4' in htmllib.unescape(last)
-    assert 'Showing 4 of 50' in page
+    assert 'Showing 4<' in page
 
 
 def test_load_more_ends_without_a_link_on_the_last_page(
     client, portal_headers, patched_browse
 ):
-    patched_browse.result = results([hit('E', 5)], total=21, has_more=False)
+    patched_browse.result = results([hit('E', 5)], has_more=False)
     page = get(client, portal_headers, '/browse/?page=2', **HTMX)
-    assert 'Load more' not in page and page.count('mt-bcard') >= 1
+    assert 'Load more' not in page
+    assert page.count('<article class="mt-lcard mt-bcard">') == 1
 
 
 def test_load_more_failure_stays_in_the_grid(client, portal_headers, patched_browse):
@@ -399,12 +415,15 @@ def test_load_more_failure_stays_in_the_grid(client, portal_headers, patched_bro
     assert '<html' not in page and 'mt-bcard' not in page
     assert "Couldn't load more titles" in unescape(page)
     assert 'page=2' in htmllib.unescape(page) and 'Try again' in page
+    # The retry keeps the number of cards loaded so far.
+    link = re.search(r'<a [^>]*hx-get="([^"]*)"', page).group(1)
+    assert unescape(link) == '/browse/?page=2&shown=20'
 
 
 def test_fragment_request_returns_only_the_results(
     client, portal_headers, patched_browse
 ):
-    patched_browse.result = results([hit('A')], total=60, has_more=True)
+    patched_browse.result = results([hit('A')], has_more=True)
     response = client.get(FILTERED, **portal_headers, **HTMX)
     page = response.content.decode()
     assert '<html' not in page and '<form id="browse-form"' not in page
@@ -432,7 +451,7 @@ def test_browse_requires_a_signed_in_member(client, patched_browse):
     assert patched_browse.calls == []
 
 
-def test_browse_query_count_is_constant(alice, django_assert_num_queries):
+def test_browse_query_count_is_constant(alice):
     def count(hits) -> int:
         with CaptureQueriesContext(connection) as queries:
             decorate(alice, hits)
@@ -457,3 +476,160 @@ def test_decorate_builds_the_href(alice):
     )
     assert known.href == f'/titles/{title.pk}/'
     assert unknown.href == '/open/anilist/6/'
+
+
+def cards(page: str) -> int:
+    """Return how many title cards a page or fragment holds."""
+    return page.count('<article class="mt-lcard mt-bcard">')
+
+
+def count_text(page: str) -> str:
+    """Return the text of the title count of a page or fragment."""
+    found = re.search(r'<span id="browse-count"[^>]*>(.*?)</span>', page, re.S)
+    return ' '.join(re.sub('<[^>]+>', '', found.group(1)).split())
+
+
+def test_a_page_whose_hits_were_all_dropped_still_offers_the_next_page(
+    client, portal_headers, patched_browse
+):
+    patched_browse.result = results([], has_more=True)
+    page = get(client, portal_headers, '/browse/?type=movie')
+    assert 'No titles match' not in page and cards(page) == 0
+    grid = re.search(r'<ul[^>]*mt-br-grid.*?</ul>', page, re.S).group()
+    items = re.findall(r'<li\b.*?</li>', grid, re.S)
+    assert len(items) == 1 and 'Load more' in items[0]
+    assert '/browse/?type=movie&page=2' in unescape(items[0])
+    assert 'Showing' not in page and count_text(page) == ''
+
+
+def test_an_emptied_page_ends_the_list_at_the_page_limit(
+    client, portal_headers, patched_browse
+):
+    patched_browse.result = results([], has_more=True)
+    page = get(client, portal_headers, '/browse/?page=99999')
+    assert 'No titles match these filters' in page and 'Load more' not in page
+
+
+def test_an_emptied_appended_page_carries_the_next_load_more_item(
+    client, portal_headers, patched_browse
+):
+    patched_browse.result = results([], has_more=True)
+    page = get(client, portal_headers, '/browse/?page=3&shown=40', **HTMX)
+    assert cards(page) == 0 and 'No titles match' not in page
+    items = re.findall(r'<li\b.*?</li>', page, re.S)
+    assert len(items) == 1 and 'Load more' in items[0]
+    assert '/browse/?page=4&shown=40' in unescape(items[0])
+    assert 'Showing 40<' in page and count_text(page) == ''
+
+
+def test_an_emptied_last_page_does_not_hide_a_failure(
+    client, portal_headers, patched_browse
+):
+    patched_browse.result = results([], has_more=True, failed=['tmdb'])
+    page = get(client, portal_headers, '/browse/?page=3&shown=40', **HTMX)
+    assert "Couldn't load more titles" in unescape(page)
+
+
+def test_the_count_and_the_showing_line_are_claimed_only_for_a_complete_list(
+    client, portal_headers, patched_browse
+):
+    patched_browse.result = results([hit('A', n) for n in range(1, 4)], has_more=True)
+    page = get(client, portal_headers, '/browse/')
+    assert count_text(page) == '' and 'Showing 3<' in page
+    assert re.search(r'Showing \d+ of', page) is None and '5000' not in page
+    assert 'Load more' in page
+    patched_browse.result = results([hit('A', n) for n in range(1, 4)])
+    page = get(client, portal_headers, '/browse/')
+    assert count_text(page) == '3 titles' and 'Showing' not in page
+    assert 'Load more' not in page
+
+
+def test_the_count_is_withheld_while_load_more_exists_in_a_fragment(
+    client, portal_headers, patched_browse
+):
+    patched_browse.result = results([hit('C', 3), hit('D', 4)], has_more=True)
+    page = get(client, portal_headers, '/browse/?page=2&shown=2', **HTMX)
+    assert count_text(page) == '' and 'hx-swap-oob' in page
+    assert 'Showing 4<' in page and 'Showing 4 of' not in page
+    patched_browse.result = results([hit('E', 5)], has_more=True)
+    fresh = get(client, portal_headers, '/browse/?type=tv', **HTMX)
+    assert count_text(fresh) == '' and 'Showing 1<' in fresh
+
+
+def test_the_last_load_more_fills_in_the_exact_count(
+    client, portal_headers, patched_browse
+):
+    patched_browse.result = results([hit('E', 5), hit('F', 6)], has_more=False)
+    page = get(client, portal_headers, '/browse/?page=2&shown=20', **HTMX)
+    assert count_text(page) == '22 titles'
+    assert re.search(r'<span id="browse-count"[^>]*hx-swap-oob="true"', page)
+    assert 'Showing' not in page and 'Load more' not in page
+
+
+def test_a_hand_edited_page_does_not_claim_a_count(
+    client, portal_headers, patched_browse
+):
+    patched_browse.result = results([hit('E', 5)], has_more=False)
+    assert count_text(get(client, portal_headers, '/browse/?page=3')) == ''
+
+
+@pytest.mark.parametrize(
+    ('number', 'text'),
+    [(1, '1 название'), (2, '2 названия'), (5, '5 названий'), (21, '21 название')],
+)
+def test_the_count_has_russian_plural_forms(
+    client, portal_headers, patched_browse, alice, number, text
+):
+    alice.profile.interface_language = 'ru'
+    alice.profile.save()
+    patched_browse.result = results([hit('A', n) for n in range(1, number + 1)])
+    assert count_text(get(client, portal_headers, '/browse/')) == text
+
+
+def test_a_failed_load_more_retries_with_the_cards_shown(
+    client, portal_headers, patched_browse
+):
+    patched_browse.result = results([], failed=['tmdb'])
+    for shown, expected in (
+        ('20', '/browse/?type=tv&page=2&shown=20'),
+        ('junk', '/browse/?type=tv&page=2'),
+    ):
+        page = get(
+            client, portal_headers, f'/browse/?type=tv&page=2&shown={shown}', **HTMX
+        )
+        assert unescape(re.search(r'hx-get="([^"]*)"', page).group(1)) == expected
+
+
+HINT = 'Rating sort only lists titles with at least 100 votes.'
+
+
+@pytest.mark.parametrize(
+    ('url', 'shown'),
+    [
+        ('/browse/?type=tv&sort=rating', True),
+        ('/browse/?type=movie&sort=rating', True),
+        ('/browse/?sort=rating', True),
+        ('/browse/?type=anime&sort=rating', False),
+        ('/browse/?type=tv&sort=date', False),
+        ('/browse/?type=tv', False),
+        ('/browse/?type=movie&genre=sports&sort=rating', False),
+    ],
+)
+def test_the_rating_hint_is_shown_only_when_tmdb_was_asked(
+    client, portal_headers, patched_browse, url, shown
+):
+    assert (HINT in get(client, portal_headers, url)) is shown
+
+
+def test_the_rating_hint_is_translated(client, portal_headers, patched_browse, alice):
+    alice.profile.interface_language = 'ru'
+    alice.profile.save()
+    page = get(client, portal_headers, '/browse/?type=tv&sort=rating')
+    assert HINT not in page and 'не менее 100 голосов' in page
+
+
+def test_the_rating_hint_is_only_for_the_empty_state(
+    client, portal_headers, patched_browse
+):
+    patched_browse.result = results([hit('A')])
+    assert HINT not in get(client, portal_headers, '/browse/?type=tv&sort=rating')

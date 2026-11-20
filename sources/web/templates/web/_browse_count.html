@@ -1,0 +1,6 @@
+{% comment %}
+The number of titles, which is known only for a list that has ended (the providers'
+own totals are estimates); otherwise the element is empty. Context: count (0 for
+none), oob.
+{% endcomment %}{% load i18n %}
+<span id="browse-count" class="mt-lib-total mt-br-count"{% if oob %} hx-swap-oob="true"{% endif %}>{% if count %}{% blocktrans trimmed count count=count %}{{ count }} title{% plural %}{{ count }} titles{% endblocktrans %}{% endif %}</span>

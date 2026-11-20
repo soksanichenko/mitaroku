@@ -880,6 +880,13 @@ msgstr "Нет ответа от: %(failed_names)s. Ваши фильтры со
 msgid "Showing %(shown)s of %(total)s"
 msgstr "Показано %(shown)s из %(total)s"
 
+#, python-format
+msgid "Showing %(shown)s"
+msgstr "Показано %(shown)s"
+
+msgid "Rating sort only lists titles with at least 100 votes."
+msgstr "Сортировка по рейтингу показывает только тайтлы, у которых не менее 100 голосов."
+
 msgid "Collection"
 msgstr "Коллекция"
 

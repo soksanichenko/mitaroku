@@ -12,6 +12,7 @@ from catalog.vocab import (
     BROWSE_COUNTRIES,
     GENRES,
     anilist_genre_name,
+    tmdb_genre_filter,
 )
 from providers.anilist import AniListClient
 from providers.http import ProviderError
@@ -56,7 +57,8 @@ class BrowseQuery:
     """What the Browse screen asks for.
 
     Attributes:
-        kind: ``movie``, ``tv``, ``anime``, or None for all of them.
+        kind: ``movie``, ``tv``, ``anime``, or None for all of them; the ``type``
+            key of the URL.
         genre: A genre slug from ``catalog.vocab.GENRES``.
         country: An origin country from ``catalog.vocab.BROWSE_COUNTRIES``.
         year: Release (or first air) year.
@@ -68,7 +70,7 @@ class BrowseQuery:
     genre: str | None = None
     country: str | None = None
     year: int | None = None
-    sort: str = 'popularity'
+    sort: str = SORTS[0]
     page: int = 1
 
     @classmethod
@@ -84,7 +86,7 @@ class BrowseQuery:
         Returns:
             A query holding only valid values.
         """
-        kind = _first(params, 'kind')
+        kind = _first(params, 'type')
         genre = _first(params, 'genre')
         country = _first(params, 'country')
         year = _first(params, 'year')
@@ -103,7 +105,7 @@ class BrowseQuery:
                 and _FIRST_YEAR <= int(year) <= date.today().year + 1
                 else None
             ),
-            sort=sort if sort in SORTS else 'popularity',
+            sort=sort if sort in SORTS else SORTS[0],
             page=_parse_page(_first(params, 'page')),
         )
 
@@ -115,16 +117,23 @@ class BrowseResults:
     Attributes:
         hits: Movies, TV shows and anime, the sources interleaved so that none
             buries the others.
-        total: How many results the sources have between them.
         has_more: Whether any source has a later page.
         failed: Names of the providers that could not answer; the page can say
             that the list is incomplete.
     """
 
     hits: list[SearchHit]
-    total: int
     has_more: bool
     failed: list[str]
+
+
+def tmdb_covers_genre(query: BrowseQuery) -> bool:
+    """Return whether TMDB can filter by the genre of a query, if it has one.
+
+    A genre such as Sports has no TMDB id; asking TMDB anyway would list its most
+    popular titles under that genre's name.
+    """
+    return not query.genre or bool(tmdb_genre_filter(query.genre))
 
 
 def browse(
@@ -137,8 +146,9 @@ def browse(
     """Run a Browse query against TMDB and AniList.
 
     Japanese animation found by TMDB is dropped, because anime titles come from
-    AniList. Anime is skipped, without counting as a failure, when AniList cannot
-    filter by the requested country or genre.
+    AniList. A source is skipped, without counting as a failure, when it cannot
+    filter by the requested country or genre: it would list titles that do not
+    match.
 
     Args:
         query: What to list; ``sort`` must be one of ``SORTS``.
@@ -147,7 +157,8 @@ def browse(
         anilist: AniList client.
 
     Returns:
-        The merged hits, the combined totals and the providers that failed.
+        The merged hits, whether any source has a later page and the providers
+        that failed.
     """
     kinds = KINDS if query.kind is None else (query.kind,)
     anilist_genre = anilist_genre_name(query.genre) if query.genre else None
@@ -159,6 +170,8 @@ def browse(
     for kind in kinds:
         provider = 'anilist' if kind == 'anime' else 'tmdb'
         if kind == 'anime' and not anime_covered:
+            continue
+        if provider == 'tmdb' and not tmdb_covers_genre(query):
             continue
         if provider == 'tmdb' and tmdb is None:
             if provider not in failed:
@@ -201,7 +214,6 @@ def browse(
             for hit in group
             if hit is not None
         ],
-        total=sum(page.total for page in pages),
         has_more=any(page.has_more for page in pages),
         failed=failed,
     )
