@@ -145,7 +145,9 @@ As built for the on-site channel (plan 4a; email and Telegram are plan 4b):
   | release changed | Planned | the date moved and one of the two dates is in the future |
 
   Completed and Dropped entries receive nothing, and neither do episodes the user
-  already watched.
+  already watched. For release announced and release changed, "in the future" and
+  "later than today" are judged against the UTC date at sync time; the scanner kinds
+  are judged in the user's zone.
 - A scanner runs every 15 minutes over a 48-hour look-back, so a stopped worker
   catches up. Only events later than the library entry's `added_at` and the profile's
   `notify_since` count, so adding a long-running show never floods the user.

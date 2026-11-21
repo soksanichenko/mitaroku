@@ -708,3 +708,29 @@ def test_the_new_labels_render_in_russian(client, portal_headers, alice):
     assert 'Отметить все как прочитанные' in html
     assert 'Mark as read' not in html
     assert 'Mark all as read' not in html
+
+
+def _filter_link(html: str) -> str:
+    """Return the "Unread only" anchor of the page."""
+    return re.search(r'<a[^>]*mt-nt-filter.*?</a>', html, re.DOTALL).group(0)
+
+
+def test_the_unread_filter_link_conveys_its_state_without_aria_pressed(
+    client, portal_headers, alice
+):
+    notify(alice, make_title('Fresh'))
+    off = page(client, portal_headers)
+    on = page(client, portal_headers, '?unread=1')
+    assert 'aria-pressed' not in off and 'aria-pressed' not in on
+    assert 'aria-current' not in _filter_link(off)
+    assert '<span class="mt-sr-only">(off)</span>' in _filter_link(off)
+    assert 'aria-current="true"' in _filter_link(on)
+    assert '<span class="mt-sr-only">(on)</span>' in _filter_link(on)
+
+
+def test_the_unread_filter_state_is_translated(client, portal_headers, alice):
+    alice.profile.interface_language = 'ru'
+    alice.profile.save()
+    off = _filter_link(page(client, portal_headers))
+    on = _filter_link(page(client, portal_headers, '?unread=1'))
+    assert '(выкл.)' in off and '(вкл.)' in on

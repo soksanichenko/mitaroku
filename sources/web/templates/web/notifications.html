@@ -19,8 +19,8 @@ retry that clicks the same link again. Without JavaScript the link is a plain pa
       <p class="mt-muted">{% if unread_total %}{% blocktrans trimmed count count=unread_total %}{{ count }} unread{% plural %}{{ count }} unread{% endblocktrans %}{% else %}{% trans 'No unread notifications' %}{% endif %}</p>
     </div>
     <div class="mt-nt-actions">
-      <a class="mt-nt-filter mt-touch" href="{% url 'notifications' %}{% if not unread_only %}?unread=1{% endif %}" aria-pressed="{% if unread_only %}true{% else %}false{% endif %}">
-        <span class="mt-nt-switch" aria-hidden="true"></span>{% trans 'Unread only' %}
+      <a class="mt-nt-filter mt-touch" href="{% url 'notifications' %}{% if not unread_only %}?unread=1{% endif %}"{% if unread_only %} aria-current="true"{% endif %}>
+        <span class="mt-nt-switch" aria-hidden="true"></span>{% trans 'Unread only' %} <span class="mt-sr-only">{% if unread_only %}{% trans '(on)' %}{% else %}{% trans '(off)' %}{% endif %}</span>
       </a>
       <form method="post" action="{% url 'notifications_read_all' %}">
         {% csrf_token %}

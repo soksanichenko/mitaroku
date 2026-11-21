@@ -117,7 +117,9 @@ and dropped titles are silent, and so are episodes you have already checked off.
   up without repeating anything. Releases from before you added the title are ignored.
 - There is one notification per title, kind and day; a later event the same day updates
   it and marks it unread. A first sync of a title and removed dates notify nobody, and a
-  date that moves and comes back the same day leaves nothing.
+  date that moves and comes back the same day leaves nothing. A release date announced
+  or changed counts only when it is later than today, judged against the UTC date at
+  sync time (the other kinds are judged in your zone).
 - Read notifications are deleted after 90 days and all of them after 180 days.
 - Email and Telegram are not built yet (plan 4b).
 

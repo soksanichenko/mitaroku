@@ -3266,11 +3266,11 @@ a:focus-visible .mt-poster-img,
   background: var(--color-text);
 }
 
-.mt-nt-filter[aria-pressed='true'] .mt-nt-switch {
+.mt-nt-filter[aria-current='true'] .mt-nt-switch {
   background: var(--color-text);
 }
 
-.mt-nt-filter[aria-pressed='true'] .mt-nt-switch::after {
+.mt-nt-filter[aria-current='true'] .mt-nt-switch::after {
   left: 18px;
   background: var(--color-bg);
 }

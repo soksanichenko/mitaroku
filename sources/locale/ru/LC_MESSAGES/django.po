@@ -973,6 +973,12 @@ msgstr "Нет непрочитанных уведомлений"
 msgid "Unread only"
 msgstr "Только непрочитанные"
 
+msgid "(on)"
+msgstr "(вкл.)"
+
+msgid "(off)"
+msgstr "(выкл.)"
+
 msgid "Turn off “Unread only” to see earlier notifications."
 msgstr "Отключите «Только непрочитанные», чтобы увидеть более ранние уведомления."
 

@@ -92,7 +92,8 @@ Calls I made, open to correction:
 - `release_announced` is written only when the new date is later than today (a date
   announced straight into the past is not news); a title that is already released sends
   `movie_released` or `episode_aired` through the scanner instead. `release_changed`
-  needs the old or the new date to be later than today.
+  needs the old or the new date to be later than today. For these two kinds "today" is
+  the UTC date at sync time; the scanner kinds are judged in the user's zone.
 - Episodes the user already has a `WatchEvent` for are skipped (an import must not
   produce "new episode" notifications for watched ones). One anti-join in the scan.
 - `LibraryEntry.added_at` is the gate even after a Planned to Watching switch: an
