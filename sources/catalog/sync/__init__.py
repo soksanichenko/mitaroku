@@ -11,6 +11,7 @@ from catalog.sync.movies import sync_movie
 from catalog.sync.tv import sync_tv
 from django.db import IntegrityError, transaction
 from django.utils import timezone
+from notifications.changes import record_release_change
 from providers.types import SearchHit
 
 logger = logging.getLogger(__name__)
@@ -35,9 +36,17 @@ def sync_title(
     Raises:
         ProviderError: A provider failed; callers retry later.
     """
-    SYNC_BY_KIND[Title.Kind(title.kind)](
-        title, clients or default_clients(), now or timezone.now()
-    )
+    now = now or timezone.now()
+    # The kind-specific sync fills this same instance in place, so read what the
+    # hook needs first.
+    old_date = title.release_date
+    was_synced = title.synced_at is not None
+    SYNC_BY_KIND[Title.Kind(title.kind)](title, clients or default_clients(), now)
+    try:
+        record_release_change(title, old_date, was_synced, now)
+    except Exception:
+        # A notification failure must never fail or retry the sync itself.
+        logger.exception('Recording the release change of title %s failed', title.pk)
 
 
 def find_franchise_title(hit: SearchHit, clients: Clients | None) -> Title | None:
