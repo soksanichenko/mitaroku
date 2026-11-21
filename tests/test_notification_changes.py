@@ -177,3 +177,30 @@ def test_a_failing_hook_does_not_fail_the_sync(alice, fake_clients, monkeypatch)
     title.refresh_from_db()
     assert title.synced_at == NOW
     assert title.release_date == date(1999, 3, 31)
+
+
+def test_a_change_undone_on_the_same_day_leaves_no_row(alice):
+    title = _title(SOON)
+    _follow(alice, title)
+    record_release_change(title, LATER, True, NOW)
+
+    title.release_date = LATER
+    assert record_release_change(title, SOON, True, NOW) == 1
+
+    assert not _rows().exists()
+
+
+def test_a_new_change_after_an_undone_one_makes_a_fresh_unread_row(alice):
+    title = _title(SOON)
+    _follow(alice, title)
+    record_release_change(title, LATER, True, NOW)
+    title.release_date = LATER
+    record_release_change(title, SOON, True, NOW)
+
+    title.release_date = date(2027, 3, 1)
+    record_release_change(title, LATER, True, NOW)
+
+    row = _rows().get()
+    assert row.kind == Kind.RELEASE_CHANGED
+    assert row.payload == {'from': '2027-02-01', 'to': '2027-03-01'}
+    assert row.read_at is None

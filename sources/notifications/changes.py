@@ -22,7 +22,8 @@ def record_release_change(
     is unchanged or removed, when a new date is already past, or when a date
     moves between two past dates. A repeat on the same local day keeps the
     original ``from``, replaces ``to`` and marks the row unread; a repeat that
-    changes nothing leaves the row alone.
+    changes nothing leaves the row alone, and one that moves the date back to
+    ``from`` deletes the row.
 
     Args:
         title: The synced title, already holding the new date.
@@ -66,6 +67,7 @@ def record_release_change(
     }
     created: list[Notification] = []
     changed: list[Notification] = []
+    undone: list[int] = []
     for user_id, day in days.items():
         key = dedupe_key(kind, title.pk, day)
         row = existing.get((user_id, key))
@@ -87,6 +89,10 @@ def record_release_change(
         merged = {**payload, **kept}
         if merged == row.payload:
             continue
+        if merged.get('from') == merged['to']:
+            # Moved back to where it was the same day: net unchanged, so no row.
+            undone.append(row.pk)
+            continue
         row.payload = merged
         row.read_at = None
         changed.append(row)
@@ -95,5 +101,12 @@ def record_release_change(
     Notification.objects.bulk_create(created, ignore_conflicts=True)
     if changed:
         Notification.objects.bulk_update(changed, ['payload', 'read_at'])
-    logger.debug('Release change: %d created, %d changed', len(created), len(changed))
-    return len(created) + len(changed)
+    if undone:
+        Notification.objects.filter(pk__in=undone).delete()
+    logger.debug(
+        'Release change: %d created, %d changed, %d undone',
+        len(created),
+        len(changed),
+        len(undone),
+    )
+    return len(created) + len(changed) + len(undone)
