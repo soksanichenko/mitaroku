@@ -56,8 +56,9 @@ for secrets, Docker, Ansible (repo created from `service-repo-template`).
   A rewatch is an additional event.
 - `Profile`: interface language, metadata language, notification preferences,
   `timezone` (IANA name, default UTC; an unknown name behaves as UTC) and
-  `notify_since` (nothing earlier than this moment is notified; saving a different
-  time zone resets it to now).
+  `notify_since` (nothing earlier than this moment is notified; it guards against
+  events from before the feature or the profile existed, and a zone change does not
+  touch it).
 - `Notification`: one row per user, kind, title and local day (unique `dedupe_key`),
   with a data-only `payload`, `created_at` and `read_at`. It is user data: read through
   the user-scoped manager and not registered in the admin.
@@ -147,8 +148,7 @@ As built for the on-site channel (plan 4a; email and Telegram are plan 4b):
   already watched.
 - A scanner runs every 15 minutes over a 48-hour look-back, so a stopped worker
   catches up. Only events later than the library entry's `added_at` and the profile's
-  `notify_since` count, so adding a long-running show or changing the zone never
-  floods the user.
+  `notify_since` count, so adding a long-running show never floods the user.
 - There is one row per user, kind, title and local day. A later event of the same
   key merges into the row and marks it unread again.
 - The first sync of a title records a baseline only. Removed dates never notify. A

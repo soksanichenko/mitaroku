@@ -5,7 +5,6 @@ from accounts.models import User
 from catalog.models import Title, TitleTranslation
 from django.conf import settings
 from django.test import Client, override_settings
-from django.utils import timezone
 from mitaroku.settings import backends_for, middleware_for
 from tracking.models import LibraryEntry
 
@@ -348,21 +347,23 @@ def test_the_zones_are_grouped_by_region_with_utc_alone_first(
     assert 'value="UTC"' not in ''.join(groups.values())
 
 
-def test_a_valid_zone_is_saved_and_notify_since_moves(client, portal_headers, alice):
+def test_a_valid_zone_is_saved_and_notify_since_stays(client, portal_headers, alice):
     before = alice.profile.notify_since
     response = client.post(TIMEZONE_URL, {'timezone': 'Asia/Tokyo'}, **portal_headers)
     assert response.status_code == 302
     assert response['Location'] == '/settings/'
     alice.profile.refresh_from_db()
     assert alice.profile.timezone == 'Asia/Tokyo'
-    assert before < alice.profile.notify_since <= timezone.now()
+    assert alice.profile.notify_since == before
     html = client.get('/settings/', **portal_headers).content.decode()
     assert 'Settings saved' in html
     assert selected(html, 'id_timezone') == 'Asia/Tokyo'
     assert 'Settings saved' not in page(client, portal_headers)
 
 
-def test_saving_the_same_zone_keeps_notify_since(client, portal_headers, alice):
+def test_saving_the_same_zone_keeps_zone_and_notify_since(
+    client, portal_headers, alice
+):
     alice.profile.timezone = 'Asia/Tokyo'
     alice.profile.save()
     alice.profile.refresh_from_db()

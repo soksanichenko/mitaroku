@@ -260,3 +260,34 @@ def test_the_query_count_does_not_grow(db):
     Episode.objects.all().delete()
     large = _count_queries(4, 4)
     assert small == large
+
+
+def test_switching_the_zone_east_delivers_an_already_due_event(alice):
+    _user(alice, 'America/Los_Angeles')
+    title, _, _ = _show()
+    _follow(alice, title)
+    alice.profile.timezone = 'Europe/Kyiv'  # what the zone view does, nothing more
+    alice.profile.save(update_fields=['timezone'])
+
+    # 09:00 in Kyiv is 07:00 UTC, already past; 09:00 in LA would be 17:00 UTC.
+    assert scan_due(datetime(2026, 11, 21, 8, 0, tzinfo=UTC)) == 1
+
+    row = _rows(alice).get()
+    assert row.kind == Notification.Kind.EPISODE_AIRED
+    assert row.day == DAY
+
+
+def test_switching_the_zone_after_delivery_makes_no_duplicate(alice):
+    _user(alice, 'Europe/Kyiv')
+    title, _, _ = _show()
+    _follow(alice, title)
+    assert scan_due(datetime(2026, 11, 21, 8, 0, tzinfo=UTC)) == 1
+    read_at = datetime(2026, 11, 21, 8, 30, tzinfo=UTC)
+    Notification.objects.filter(user=alice).update(read_at=read_at)
+
+    alice.profile.timezone = 'America/Los_Angeles'
+    alice.profile.save(update_fields=['timezone'])
+
+    assert scan_due(datetime(2026, 11, 21, 18, 0, tzinfo=UTC)) == 0
+    row = _rows(alice).get()
+    assert row.read_at == read_at

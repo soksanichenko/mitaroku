@@ -6,7 +6,6 @@ from django.conf import settings
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
-from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_http_methods, require_POST
 from notifications.moments import zone_names
@@ -115,10 +114,12 @@ def settings_page(request: HttpRequest) -> HttpResponse:
 def settings_timezone(request: HttpRequest) -> HttpResponse:
     """Save the time zone of the signed-in user.
 
-    A different zone also moves ``notify_since`` to now, so a zone change never
-    replays or floods old releases. Saving the zone the profile already holds
-    changes nothing. The value is checked against ``zone_names()``; what the
-    browser guessed is never trusted.
+    Only ``Profile.timezone`` changes; ``notify_since`` is left alone. The
+    notification dedupe key uses the release date, which no zone changes, so a
+    zone change cannot repeat a notification, while an event that is already due
+    in the new zone (a move to the east) is delivered at the next scan. Saving
+    the zone the profile already holds changes nothing. The value is checked
+    against ``zone_names()``; what the browser guessed is never trusted.
 
     Args:
         request: The POST request carrying ``timezone``.
@@ -133,7 +134,6 @@ def settings_timezone(request: HttpRequest) -> HttpResponse:
     zone = form.cleaned_data['timezone']
     if zone != profile.timezone:
         profile.timezone = zone
-        profile.notify_since = timezone.now()
-        profile.save(update_fields=['timezone', 'notify_since'])
+        profile.save(update_fields=['timezone'])
     request.session[SAVED_FLAG] = True
     return HttpResponseRedirect(reverse('settings'))

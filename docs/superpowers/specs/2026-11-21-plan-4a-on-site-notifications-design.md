@@ -108,10 +108,11 @@ Calls I made, open to correction:
   moment is after both `LibraryEntry.added_at` and `Profile.notify_since` (set to the
   deploy time for existing profiles and to creation time for new ones), so nothing
   floods after the deploy or when a show is added.
-- Changing the time zone sets `Profile.notify_since` to now, so events that were already
-  due are not notified again under the new zone. In the rare case that the new zone
-  pushes a moment that was already notified into the future, one duplicate can occur;
-  this is accepted.
+- Changing the time zone does not touch `Profile.notify_since`; it only guards against
+  events from before the feature or the profile existed. The dedupe key uses the release
+  date, which no zone changes, so a zone change cannot repeat a notification. A move to
+  the east can deliver an event that is already due in the new zone at the next scan;
+  that is intended.
 - Several episodes of the same title due on the same local day merge into one row: the
   later run appends them to the row's payload and marks it unread again.
 - **Sync hook.** The title sync compares `Title.release_date` before and after writing. A

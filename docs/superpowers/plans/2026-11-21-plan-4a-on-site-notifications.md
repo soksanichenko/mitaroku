@@ -29,7 +29,7 @@
 Rulings the implementer cannot make alone; they restate the design and are binding.
 
 1. **Due moment.** A release is due at `NOTIFY_HOUR = 9` o'clock in the user's zone on its date. Anime too: AniList's exact `airingAt` is not stored. There is no `Episode.aired_at`.
-2. **Zone.** `Profile.timezone` is an IANA name, default `UTC`; an unknown or removed name behaves as UTC at use time. `Profile.notify_since` (default: creation time; set to the migration time for existing profiles) is a lower bound for every scanned event. Saving a different zone sets it to now.
+2. **Zone.** `Profile.timezone` is an IANA name, default `UTC`; an unknown or removed name behaves as UTC at use time. `Profile.notify_since` (default: creation time; set to the migration time for existing profiles) is a lower bound for every scanned event.
 3. **Kinds and recipients.**
 
    | Kind (`Notification.Kind`) | Recipients | Rule |

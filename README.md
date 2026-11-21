@@ -111,7 +111,8 @@ plan or watch, and a release date announced or changed for a planned title. Comp
 and dropped titles are silent, and so are episodes you have already checked off.
 
 - A release is due at 09:00 in your time zone on its date, for anime too. Choose the
-  time zone in Settings (default UTC); changing it only affects what happens afterwards.
+  time zone in Settings (default UTC). Changing it does not move any earlier cut-off: a
+  release that is already due in the new zone shows up at the next scan, once.
 - `run_huey` scans every 15 minutes, looking back 48 hours, so a stopped worker catches
   up without repeating anything. Releases from before you added the title are ignored.
 - There is one notification per title, kind and day; a later event the same day updates
