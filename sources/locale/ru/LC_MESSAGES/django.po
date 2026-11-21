@@ -1009,6 +1009,12 @@ msgstr "Дата изменена"
 msgid "The movie was released."
 msgstr "Фильм вышел."
 
+msgid "Mark as read"
+msgstr "Отметить как прочитанное"
+
+msgid "Mark all as read"
+msgstr "Отметить все как прочитанные"
+
 #~ msgid "D, M j"
 #~ msgstr "D, j E"
 

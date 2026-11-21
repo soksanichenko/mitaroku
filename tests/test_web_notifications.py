@@ -1,5 +1,6 @@
 import re
 from datetime import date, datetime, timedelta
+from html.parser import HTMLParser
 
 import pytest
 from catalog.models import (
@@ -12,6 +13,7 @@ from catalog.models import (
 from django.contrib.auth.models import AnonymousUser
 from django.db import connection
 from django.template import Context
+from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from notifications.models import Notification, dedupe_key
@@ -431,3 +433,278 @@ def test_the_subtitle_counts_only_own_unread(client, portal_headers, alice, bob)
     html = page(client, portal_headers)
     assert '2 unread' in html
     assert '>1 unread<' not in html
+
+
+def post(client, headers, url: str, **data):
+    """POST ``data`` to ``url`` as the user of ``headers``."""
+    return client.post(url, data, **headers)
+
+
+def open_url(row: Notification) -> str:
+    """Return the URL that opens ``row``."""
+    return f'/notifications/{row.pk}/open/'
+
+
+def read_url(row: Notification) -> str:
+    """Return the URL that marks ``row`` read."""
+    return f'/notifications/{row.pk}/read/'
+
+
+def test_opening_marks_read_and_redirects_to_the_title(client, portal_headers, alice):
+    title = make_title('Opened')
+    row = notify(alice, title)
+    response = post(client, portal_headers, open_url(row))
+    assert response.status_code == 303
+    assert response['Location'] == f'/titles/{title.pk}/'
+    row.refresh_from_db()
+    assert row.read_at is not None
+
+
+def test_opening_keeps_the_first_read_time(client, portal_headers, alice):
+    row = notify(alice, read=True)
+    first = timezone.now() - timedelta(days=3)
+    Notification.objects.filter(pk=row.pk).update(read_at=first)
+    response = post(client, portal_headers, open_url(row))
+    assert response.status_code == 303
+    row.refresh_from_db()
+    assert row.read_at == first
+    # Marking one that is already read keeps the time too.
+    post(client, portal_headers, read_url(row))
+    row.refresh_from_db()
+    assert row.read_at == first
+
+
+def test_marking_one_keeps_the_user_on_the_list(client, portal_headers, alice):
+    row = notify(alice)
+    response = post(client, portal_headers, read_url(row))
+    assert response.status_code == 303
+    assert response['Location'] == '/notifications/'
+    row.refresh_from_db()
+    assert row.read_at is not None
+    other = notify(alice)
+    response = post(
+        client,
+        portal_headers,
+        read_url(other),
+        next='/notifications/?unread=1&page=2',
+    )
+    assert response['Location'] == '/notifications/?unread=1&page=2'
+    other.refresh_from_db()
+    assert other.read_at is not None
+
+
+@pytest.mark.parametrize(
+    'target',
+    [
+        'https://evil.example/',
+        'https://evil.example/notifications/',
+        '//evil.example/',
+        '/\\evil.example/',
+        '\\\\evil.example',
+        'javascript:alert(1)',
+        'notifications/',
+        '/library/',
+        '',
+    ],
+)
+def test_next_must_be_a_local_path(client, portal_headers, alice, target):
+    row = notify(alice)
+    response = post(client, portal_headers, read_url(row), next=target)
+    assert response.status_code == 303
+    assert response['Location'] == '/notifications/'
+    row.refresh_from_db()
+    assert row.read_at is not None
+
+
+def test_mark_all_read_marks_only_own_rows(client, portal_headers, alice, bob):
+    mine = [notify(alice, make_title(f'A{index}')) for index in range(3)]
+    already = notify(alice, make_title('Seen'), read=True)
+    first = timezone.now() - timedelta(days=2)
+    Notification.objects.filter(pk=already.pk).update(read_at=first)
+    theirs = [notify(bob, make_title(f'B{index}')) for index in range(2)]
+    response = post(client, portal_headers, '/notifications/read-all/')
+    assert response.status_code == 303
+    assert response['Location'] == '/notifications/'
+    for row in mine:
+        row.refresh_from_db()
+        assert row.read_at is not None
+    already.refresh_from_db()
+    assert already.read_at == first
+    for row in theirs:
+        row.refresh_from_db()
+        assert row.read_at is None
+
+
+def test_mark_all_is_one_update(client, portal_headers, alice):
+    for index in range(5):
+        notify(alice, make_title(f'T{index}'))
+    with CaptureQueriesContext(connection) as queries:
+        post(client, portal_headers, '/notifications/read-all/')
+    updates = [q for q in queries if q['sql'].startswith('UPDATE "notifications_')]
+    assert len(updates) == 1
+
+
+def test_another_users_row_is_a_404_for_open_and_read(
+    client, portal_headers, alice, bob
+):
+    row = notify(bob, make_title('Secret'))
+    # Control: the same URLs work for the owner of a row.
+    own = notify(alice, make_title('Mine'))
+    assert post(client, portal_headers, read_url(own)).status_code == 303
+    assert post(client, portal_headers, open_url(own)).status_code == 303
+    assert post(client, portal_headers, open_url(row)).status_code == 404
+    assert post(client, portal_headers, read_url(row)).status_code == 404
+    row.refresh_from_db()
+    assert row.read_at is None
+    assert post(client, portal_headers, '/notifications/0/open/').status_code == 404
+
+
+def test_get_is_not_allowed_on_the_mutating_urls(client, portal_headers, alice):
+    row = notify(alice)
+    for url in (open_url(row), read_url(row), '/notifications/read-all/'):
+        assert client.get(url, **portal_headers).status_code == 405, url
+    row.refresh_from_db()
+    assert row.read_at is None
+
+
+def test_post_without_csrf_is_rejected(portal_headers, alice):
+    strict = Client(enforce_csrf_checks=True)
+    row = notify(alice)
+    for url in (open_url(row), read_url(row), '/notifications/read-all/'):
+        assert strict.post(url, {}, **portal_headers).status_code == 403, url
+    row.refresh_from_db()
+    assert row.read_at is None
+
+
+def test_an_anonymous_post_is_refused(client, alice):
+    row = notify(alice)
+    assert client.post(open_url(row), {}).status_code == 401
+    row.refresh_from_db()
+    assert row.read_at is None
+
+
+def test_mark_all_is_disabled_when_nothing_is_unread(client, portal_headers, alice):
+    pattern = re.compile(
+        r'<form[^>]*action="/notifications/read-all/"[^>]*>.*?</form>', re.S
+    )
+    empty = pattern.search(page(client, portal_headers)).group(0)
+    assert 'disabled' in empty
+    notify(alice, read=True)
+    assert 'disabled' in pattern.search(page(client, portal_headers)).group(0)
+    notify(alice, make_title('Fresh'))
+    html = pattern.search(page(client, portal_headers)).group(0)
+    assert 'disabled' not in html
+    assert 'Mark all as read' in html
+    assert 'csrfmiddlewaretoken' in html
+
+
+def test_the_bell_updates_after_marking(client, portal_headers, alice):
+    rows = [notify(alice, make_title(f'T{index}')) for index in range(3)]
+    assert BADGE.findall(page(client, portal_headers)) == ['3']
+    post(client, portal_headers, read_url(rows[0]))
+    assert BADGE.findall(page(client, portal_headers)) == ['2']
+    post(client, portal_headers, open_url(rows[1]))
+    assert BADGE.findall(page(client, portal_headers)) == ['1']
+    post(client, portal_headers, '/notifications/read-all/')
+    assert BADGE.findall(page(client, portal_headers)) == []
+
+
+class FormCheck(HTMLParser):
+    """Collect the structure mistakes of a page: nested forms, nested controls."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.stack: list[str] = []
+        self.problems: list[str] = []
+        self.forms: list[dict] = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ('input', 'br', 'img', 'path', 'rect', 'circle', 'polyline'):
+            if tag == 'input' and self.forms:
+                self.forms[-1]['inputs'].append(dict(attrs))
+            return
+        if tag == 'form':
+            if 'form' in self.stack:
+                self.problems.append('form in form')
+            self.forms.append({'attrs': dict(attrs), 'inputs': [], 'buttons': 0})
+        if tag in ('button', 'a') and any(t in ('button', 'a') for t in self.stack):
+            self.problems.append(f'{tag} inside an interactive element')
+        if tag == 'button' and self.forms and 'form' in self.stack:
+            self.forms[-1]['buttons'] += 1
+        self.stack.append(tag)
+
+    def handle_endtag(self, tag):
+        if tag in self.stack:
+            while self.stack.pop() != tag:
+                pass
+
+
+def row_forms(html: str) -> FormCheck:
+    """Parse ``html`` and return what the structure check found."""
+    check = FormCheck()
+    check.feed(html)
+    return check
+
+
+def test_rows_are_form_buttons_without_nesting(client, portal_headers, alice):
+    unread = notify(alice, make_title('New one'))
+    seen = notify(alice, make_title('Old one'), read=True)
+    html = page(client, portal_headers)
+    check = row_forms(html)
+    assert check.problems == []
+    actions = [form['attrs'].get('action') for form in check.forms]
+    assert open_url(unread) in actions
+    assert open_url(seen) in actions
+    # Only the unread row has the small button.
+    assert read_url(unread) in actions
+    assert read_url(seen) not in actions
+    assert html.count('Mark as read') == 1
+    for form in check.forms:
+        if form['attrs'].get('action', '').startswith('/notifications/'):
+            assert form['attrs'].get('method') == 'post'
+            names = [i.get('name') for i in form['inputs']]
+            assert 'csrfmiddlewaretoken' in names
+            assert form['buttons'] == 1
+    assert 'class="mt-nt-link"' in html
+    assert '<a class="mt-nt-link"' not in html
+
+
+def test_the_mark_button_carries_the_current_list(client, portal_headers, alice):
+    notify(alice, make_title('New one'))
+    html = page(client, portal_headers, '?unread=1')
+    assert '<input type="hidden" name="next" value="/notifications/?unread=1">' in html
+    html = page(client, portal_headers, '?page=abc')
+    assert '<input type="hidden" name="next" value="/notifications/">' in html
+
+
+def test_appended_rows_carry_working_forms(client, portal_headers, alice):
+    today = today_of(alice)
+    now = timezone.now()
+    for index in range(31):
+        notify(
+            alice,
+            make_title(f'Today {index:02d}'),
+            day=today,
+            created_at=now - timedelta(minutes=index),
+        )
+    notify(alice, make_title('Old'), day=today - timedelta(days=5))
+    rest = fragment(client, portal_headers, '?page=2')
+    check = row_forms(rest)
+    assert check.problems == []
+    posts = [f for f in check.forms if f['attrs'].get('action')]
+    # Three rows, each with an open form and a mark form.
+    assert len(posts) == 4
+    for form in posts:
+        assert 'csrfmiddlewaretoken' in [i.get('name') for i in form['inputs']]
+    assert '<input type="hidden" name="next" value="/notifications/?page=2">' in rest
+
+
+def test_the_new_labels_render_in_russian(client, portal_headers, alice):
+    alice.profile.interface_language = 'ru'
+    alice.profile.save()
+    notify(alice, make_title('Any'))
+    html = page(client, portal_headers)
+    assert 'Отметить как прочитанное' in html
+    assert 'Отметить все как прочитанные' in html
+    assert 'Mark as read' not in html
+    assert 'Mark all as read' not in html

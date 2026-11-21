@@ -1,9 +1,14 @@
 {% comment %}
 One notification: kind icon, uppercase kind label, title name, a text line and an
-unread dot. Context: row (web.views.notifications.Row).
+unread dot. The row is a form button that marks it read and opens the title, so it
+works without JavaScript; an unread row has a second small form that only marks it
+read and returns to the list. The two forms are siblings (a form never nests in a
+form or a button). Context: row (web.views.notifications.Row), next_url.
 {% endcomment %}{% load i18n web_extras %}
 <li class="mt-nt-item{% if row.unread %} mt-nt-item--unread{% endif %}">
-  <a class="mt-nt-link" href="{% url 'title' row.title.pk %}">
+  <form class="mt-nt-open" method="post" action="{% url 'notification_open' row.pk %}">
+  {% csrf_token %}
+  <button type="submit" class="mt-nt-link">
     <span class="mt-nt-icon mt-nt-icon--{{ row.icon }}" aria-hidden="true">
       {% if row.icon == 'aired' %}<svg viewBox="0 0 24 24"><rect width="20" height="15" x="2" y="7"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
       {% elif row.icon == 'premiere' %}<svg viewBox="0 0 24 24"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"></path><path d="m6.2 5.3 3.1 3.9M12.4 3.4l3.1 4"></path><path d="M3 11h18v10H3Z"></path></svg>
@@ -17,5 +22,13 @@ unread dot. Context: row (web.views.notifications.Row).
       {% if row.text or row.new %}<span class="mt-nt-text">{{ row.text }}{% if row.old and row.new %}<s>{{ row.old|short_date }}</s> → {% endif %}{% if row.new %}<strong>{{ row.new|short_date }}</strong>{% endif %}</span>{% endif %}
     </span>
     <span class="mt-nt-dotcell">{% if row.unread %}<span class="mt-nt-dot" aria-hidden="true"></span>{% endif %}</span>
-  </a>
+  </button>
+  </form>
+  {% if row.unread %}
+  <form class="mt-nt-mark" method="post" action="{% url 'notification_read' row.pk %}">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next_url }}">
+    <button type="submit" class="btn btn-secondary mt-touch">{% trans 'Mark as read' %}<span class="mt-sr-only">: {% title_name row.title %}</span></button>
+  </form>
+  {% endif %}
 </li>

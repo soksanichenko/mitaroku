@@ -18,9 +18,15 @@ retry that clicks the same link again. Without JavaScript the link is a plain pa
       <h1 class="mt-page-title">{% trans 'Notifications' %}</h1>
       <p class="mt-muted">{% if unread_total %}{% blocktrans trimmed count count=unread_total %}{{ count }} unread{% plural %}{{ count }} unread{% endblocktrans %}{% else %}{% trans 'No unread notifications' %}{% endif %}</p>
     </div>
-    <a class="mt-nt-filter mt-touch" href="{% url 'notifications' %}{% if not unread_only %}?unread=1{% endif %}" aria-pressed="{% if unread_only %}true{% else %}false{% endif %}">
-      <span class="mt-nt-switch" aria-hidden="true"></span>{% trans 'Unread only' %}
-    </a>
+    <div class="mt-nt-actions">
+      <a class="mt-nt-filter mt-touch" href="{% url 'notifications' %}{% if not unread_only %}?unread=1{% endif %}" aria-pressed="{% if unread_only %}true{% else %}false{% endif %}">
+        <span class="mt-nt-switch" aria-hidden="true"></span>{% trans 'Unread only' %}
+      </a>
+      <form method="post" action="{% url 'notifications_read_all' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-secondary mt-touch"{% if not unread_total %} disabled{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 7 17l-5-5"></path><path d="m22 10-7.5 7.5L13 16"></path></svg>{% trans 'Mark all as read' %}</button>
+      </form>
+    </div>
   </div>
   {% if groups %}
   <div id="notifications-list">

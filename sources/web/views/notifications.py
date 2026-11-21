@@ -2,17 +2,19 @@
 
 from dataclasses import dataclass
 from datetime import date, timedelta
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
 from catalog.models import Episode, EpisodeTranslation, Title, TitleTranslation
 from catalog.translations import FALLBACK_LANGUAGE, localized_episode
 from django.db.models import Prefetch, prefetch_related_objects
-from django.http import HttpRequest, HttpResponse
-from django.shortcuts import render
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
+from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
+from django.views.decorators.http import require_POST
 from django.views.decorators.vary import vary_on_headers
 from notifications.models import Notification
 from notifications.moments import local_day
@@ -39,6 +41,7 @@ class Row:
     """A notification prepared for display.
 
     Attributes:
+        pk: The primary key of the notification, for its open and read forms.
         title: The title the notification is about.
         icon: Which kind icon to draw (``aired``, ``premiere``, ``released``,
             ``announced`` or ``changed``).
@@ -50,6 +53,7 @@ class Row:
         unread: Whether the notification has not been read.
     """
 
+    pk: int
     title: Title
     icon: str
     label: str
@@ -77,6 +81,12 @@ class Group:
     label: str
     rows: list[Row]
     continued: bool = False
+
+
+def _list_url(params: dict[str, int]) -> str:
+    """Return the URL of the list with the given query parameters."""
+    url = reverse('notifications')
+    return f'{url}?{urlencode(params)}' if params else url
 
 
 def _page(value: str) -> int:
@@ -177,6 +187,7 @@ def _row(notification: Notification, episodes: dict[int, Episode], language: str
         Notification.Kind.RELEASE_CHANGED,
     )
     return Row(
+        pk=notification.pk,
         title=notification.title,
         icon=icon,
         label=str(label),
@@ -268,16 +279,16 @@ def notifications_page(request: HttpRequest) -> HttpResponse:
     episodes = _episodes(notifications, profile.metadata_language)
     rows = [_row(n, episodes, profile.metadata_language) for n in notifications]
     today = local_day(timezone.now(), profile.timezone)
+    params = {'unread': 1} if unread_only else {}
     context = {
         'groups': _groups(notifications, rows, today, after),
         'unread_only': unread_only,
         'more_url': '',
+        # What the "Mark as read" forms send back, to land on the same list.
+        'next_url': _list_url({**params, 'page': page} if page > 1 else params),
     }
     if more:
-        params = {'unread': 1} if unread_only else {}
-        context['more_url'] = f'{reverse("notifications")}?' + urlencode(
-            {**params, 'page': page + 1}
-        )
+        context['more_url'] = _list_url({**params, 'page': page + 1})
     if append:
         return render(request, 'web/_notifications_more.html', context)
 
@@ -291,3 +302,66 @@ def notifications_page(request: HttpRequest) -> HttpResponse:
         and Notification.objects.for_user(user).exists()
     )
     return render(request, 'web/notifications.html', context)
+
+
+def _list_target(request: HttpRequest) -> str:
+    """Return where to go back to after marking one notification read.
+
+    The ``next`` field of the form names the list the user was on (with its
+    ``unread`` and ``page``). It is used only when it is a local path to the list
+    itself; anything else, such as another site or another page, is the plain list.
+    """
+    target = request.POST.get('next', '')
+    parsed = urlsplit(target)
+    if (
+        target.startswith('/')
+        and not target.startswith(('//', '/\\'))
+        and not parsed.scheme
+        and not parsed.netloc
+        and parsed.path == reverse('notifications')
+        and url_has_allowed_host_and_scheme(
+            target,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        )
+    ):
+        return target
+    return reverse('notifications')
+
+
+def _mark_read(request: HttpRequest, pk: int) -> Notification:
+    """Mark the requester's notification ``pk`` read; a row of another user is a 404.
+
+    The first read time is kept: only a row without one is updated, in the same
+    statement that checks it.
+    """
+    notification = get_object_or_404(Notification.objects.for_user(request.user), pk=pk)
+    Notification.objects.for_user(request.user).filter(
+        pk=notification.pk, read_at__isnull=True
+    ).update(read_at=timezone.now())
+    return notification
+
+
+@require_POST
+def notification_open(request: HttpRequest, pk: int) -> HttpResponseRedirect:
+    """Mark a notification read and go to its title (the main control of a row)."""
+    notification = _mark_read(request, pk)
+    return HttpResponseRedirect(
+        reverse('title', args=[notification.title_id]), status=303
+    )
+
+
+@require_POST
+def notification_read(request: HttpRequest, pk: int) -> HttpResponseRedirect:
+    """Mark one notification read and return to the list the user was on."""
+    _mark_read(request, pk)
+    return HttpResponseRedirect(_list_target(request), status=303)
+
+
+@require_POST
+def notifications_read_all(request: HttpRequest) -> HttpResponseRedirect:
+    """Mark every unread notification of the requester read, in one statement."""
+    Notification.objects.for_user(request.user).filter(read_at__isnull=True).update(
+        read_at=timezone.now()
+    )
+    return HttpResponseRedirect(reverse('notifications'), status=303)

@@ -3212,6 +3212,27 @@ a:focus-visible .mt-poster-img,
   font-size: 14px;
 }
 
+.mt-nt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.mt-nt-actions .btn {
+  gap: 8px;
+}
+
+.mt-nt-actions .btn svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .mt-nt-filter {
   display: flex;
   align-items: center;
@@ -3267,7 +3288,33 @@ a:focus-visible .mt-poster-img,
 }
 
 .mt-nt-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   border-bottom: 1px solid var(--color-divider);
+}
+
+/* The row's two forms are siblings: the wide one opens the title, the small one
+   (unread rows only) just marks the row read. */
+.mt-nt-open {
+  flex: 1 1 100%;
+  min-width: 0;
+  margin: 0;
+}
+
+/* On a narrow screen the small button sits under the text, in line with it. */
+.mt-nt-mark {
+  margin: 0 4px 10px 52px;
+}
+
+@media (min-width: 600px) {
+  .mt-nt-open {
+    flex-basis: 0;
+  }
+
+  .mt-nt-mark {
+    margin: 0 8px 0 12px;
+  }
 }
 
 .mt-nt-item--unread {
@@ -3275,6 +3322,12 @@ a:focus-visible .mt-poster-img,
 }
 
 .mt-nt-link {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr) 12px;
   gap: 12px;
