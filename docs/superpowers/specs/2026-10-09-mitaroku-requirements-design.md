@@ -54,7 +54,13 @@ for secrets, Docker, Ansible (repo created from `service-repo-template`).
   means no entry). Score stored 0 to 10 and shown as 5 stars. Private note.
 - `WatchEvent`: user, title, nullable episode, `watched_at`. Progress is derived.
   A rewatch is an additional event.
-- `Profile`: interface language, metadata language, notification preferences.
+- `Profile`: interface language, metadata language, notification preferences,
+  `timezone` (IANA name, default UTC; an unknown name behaves as UTC) and
+  `notify_since` (nothing earlier than this moment is notified; saving a different
+  time zone resets it to now).
+- `Notification`: one row per user, kind, title and local day (unique `dedupe_key`),
+  with a data-only `payload`, `created_at` and `read_at`. It is user data: read through
+  the user-scoped manager and not registered in the admin.
 
 All user-data queries go through a model manager that scopes them to the user.
 
@@ -122,6 +128,34 @@ Channels:
 Mechanics: dedupe through a unique key, grouping per title per day, one `Delivery`
 row per channel with retries. The first sync records a baseline only. A removed
 date produces no notification. Providers give dates, not times.
+
+As built for the on-site channel (plan 4a; email and Telegram are plan 4b):
+
+- A release is due at 09:00 in the user's time zone on its date, anime included
+  (AniList's exact airing time is not stored). The zone is set in Settings.
+- Kinds and recipients by library status:
+
+  | Kind | Recipients | Fires when |
+  |---|---|---|
+  | episode aired | Watching | an episode became due |
+  | premiere | Planned | episode 1 of a regular TV season became due |
+  | movie released | Planned, Watching | a movie's release date became due |
+  | release announced | Planned | the date went from empty to a future date |
+  | release changed | Planned | the date moved and one of the two dates is in the future |
+
+  Completed and Dropped entries receive nothing, and neither do episodes the user
+  already watched.
+- A scanner runs every 15 minutes over a 48-hour look-back, so a stopped worker
+  catches up. Only events later than the library entry's `added_at` and the profile's
+  `notify_since` count, so adding a long-running show or changing the zone never
+  floods the user.
+- There is one row per user, kind, title and local day. A later event of the same
+  key merges into the row and marks it unread again.
+- The first sync of a title records a baseline only. Removed dates never notify. A
+  date that moves and returns to its original value on the same day leaves no
+  notification: the row is deleted.
+- Read notifications are deleted after 90 days and all notifications after 180 days.
+- The digest of one scan pass for email and Telegram is decided in plan 4b.
 
 ## 8. Import and export
 
