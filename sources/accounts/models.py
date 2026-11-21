@@ -3,6 +3,7 @@
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone as dj_timezone
 
 
 class User(AbstractUser):
@@ -30,6 +31,8 @@ class Profile(models.Model):
     metadata_language = models.CharField(
         max_length=5, choices=settings.LANGUAGES, default='en'
     )
+    timezone = models.CharField(max_length=64, default='UTC')
+    notify_since = models.DateTimeField(default=dj_timezone.now)
 
     def __str__(self) -> str:
         """Return a readable label for the admin."""
