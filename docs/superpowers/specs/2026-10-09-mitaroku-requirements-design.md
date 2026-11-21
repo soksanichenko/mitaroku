@@ -30,8 +30,9 @@ light and dark themes, 390 and 960 px).
 
 ## 2. Architecture
 
-Modular monolith (Django LTS, PostgreSQL, HTMX + Alpine + Tailwind), two
-processes: web (gunicorn) and worker (Huey on Redis).
+Modular monolith (Django, PostgreSQL, HTMX + Alpine + Tailwind), two
+processes: web (gunicorn) and worker (Huey on Redis). Django tracks the latest
+stable release (not an LTS pin), so security fixes arrive through Dependabot.
 
 Django apps: `accounts`, `catalog`, `providers`, `tracking`, `imports`/`exports`,
 `notifications`, `web`.
