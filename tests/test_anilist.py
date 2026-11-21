@@ -2,7 +2,12 @@ from datetime import UTC, date, datetime
 
 import httpx
 import pytest
-from providers.anilist import AniListClient
+from providers.anilist import (
+    AniListClient,
+    AniListCredit,
+    AniListDetails,
+    media_from_json,
+)
 from providers.http import ProviderError
 
 FRIEREN = {
@@ -195,3 +200,268 @@ def test_an_error_body_without_data_is_a_provider_error_and_not_cached(provider_
     with pytest.raises(ProviderError):
         client.media_many([1])
     assert client.media_many([1]) == []  # the error was not cached
+
+
+def recommendation(anilist_id, **changes):
+    media = {
+        'id': anilist_id,
+        'format': 'TV',
+        'isAdult': False,
+        'averageScore': 84,
+        'title': {'romaji': 'Mushishi', 'english': 'Mushi-shi'},
+        'coverImage': {'large': 'https://img.example/m.jpg'},
+        'startDate': {'year': 2005},
+    }
+    return {'mediaRecommendation': {**media, **changes}}
+
+
+DETAILS = {
+    'genres': ['Adventure', 'Fantasy'],
+    'countryOfOrigin': 'JP',
+    'trailer': {'id': 'tR8YH0G67Rk', 'site': 'youtube'},
+    'characters': {
+        'edges': [
+            {
+                'node': {
+                    'name': {'full': 'Frieren'},
+                    'image': {'medium': 'https://img.example/c1.jpg'},
+                },
+                'voiceActors': [
+                    {'name': {'full': 'Atsumi Tanezaki'}},
+                    {'name': {'full': 'Someone Else'}},
+                ],
+            },
+            {
+                'node': {'name': {'full': 'Fern'}, 'image': {'medium': None}},
+                'voiceActors': [],
+            },
+        ]
+    },
+    'recommendations': {
+        'nodes': [
+            recommendation(1),
+            {'mediaRecommendation': None},
+            recommendation(2, isAdult=True),
+            recommendation(3, format='MANGA'),
+        ]
+    },
+}
+
+
+def graphql_client(provider_http, body):
+    """Return a client answering every request with ``body``; it records requests."""
+    bodies = []
+
+    def handler(request):
+        import json
+
+        bodies.append(json.loads(request.content))
+        return httpx.Response(200, json=body)
+
+    client = AniListClient(provider_http(handler, name='anilist'))
+    client.bodies = bodies
+    return client
+
+
+def test_details_parse(provider_http):
+    client = graphql_client(provider_http, {'data': {'Media': DETAILS}})
+    details = client.details(154587)
+    assert client.bodies[0]['variables'] == {'id': 154587}
+    assert details.genres == ('Adventure', 'Fantasy')
+    assert details.country == 'JP'
+    assert details.trailer == ('youtube', 'tR8YH0G67Rk')
+    assert details.cast == (
+        AniListCredit('Frieren', 'Atsumi Tanezaki', 'https://img.example/c1.jpg'),
+        AniListCredit('Fern', '', ''),
+    )
+    assert [(h.provider, h.external_id, h.kind) for h in details.recommendations] == [
+        ('anilist', '1', 'anime')
+    ]
+    hit = details.recommendations[0]
+    assert hit.title == 'Mushi-shi'
+    assert hit.original_title == 'Mushishi'
+    assert hit.year == 2005
+    assert hit.poster_url == 'https://img.example/m.jpg'
+    assert hit.rating == 8.4
+
+
+def test_details_without_voice_actor_has_an_empty_actor(provider_http):
+    client = graphql_client(provider_http, {'data': {'Media': DETAILS}})
+    assert client.details(154587).cast[1].actor == ''
+
+
+def test_details_of_a_sparse_entry(provider_http):
+    sparse = {'genres': None, 'countryOfOrigin': None, 'trailer': None}
+    client = graphql_client(provider_http, {'data': {'Media': sparse}})
+    assert client.details(1) == AniListDetails(
+        genres=(), country='', trailer=None, cast=(), recommendations=()
+    )
+
+
+def test_details_skip_null_elements(provider_http):
+    sparse = {
+        'characters': {
+            'edges': [
+                None,
+                {
+                    'node': {'name': {'full': 'Fern'}},
+                    'voiceActors': [None, {'name': {'full': 'Kana Ichinose'}}],
+                },
+                {'node': None, 'voiceActors': [None]},
+            ]
+        },
+        'recommendations': {'nodes': [None, recommendation(1)]},
+    }
+    client = graphql_client(provider_http, {'data': {'Media': sparse}})
+    assert client.details(1).cast == (
+        AniListCredit('Fern', 'Kana Ichinose', ''),
+        AniListCredit('', '', ''),
+    )
+
+
+def test_unknown_entry_has_no_details(provider_http):
+    client = graphql_client(provider_http, {'data': {'Media': None}})
+    assert client.details(404) is None
+
+
+def discover_item(anilist_id, edges=(), **changes):
+    item = {
+        'id': anilist_id,
+        'isAdult': False,
+        'averageScore': 77,
+        'title': {'romaji': f'Romaji {anilist_id}', 'english': None},
+        'coverImage': {'large': f'https://img.example/{anilist_id}.jpg'},
+        'startDate': {'year': 2022},
+        'relations': {
+            'edges': [
+                {'relationType': relation, 'node': {'type': node_type}}
+                for relation, node_type in edges
+            ]
+        },
+    }
+    return {**item, **changes}
+
+
+def discover_body(*media, total=2, has_next=False):
+    page_info = {'total': total, 'hasNextPage': has_next}
+    return {'data': {'Page': {'pageInfo': page_info, 'media': list(media)}}}
+
+
+def test_discover_variables(provider_http):
+    client = graphql_client(provider_http, discover_body())
+    client.discover(genre='Sports', country='JP', year=2022, sort='rating', page=3)
+    assert client.bodies[0]['variables'] == {
+        'genre': 'Sports',
+        'countryOfOrigin': 'JP',
+        'startDate_greater': 20220000,
+        'startDate_lesser': 20221232,
+        'sort': ['SCORE_DESC'],
+        'page': 3,
+        'perPage': 20,
+    }
+
+
+def test_discover_without_filters_omits_them(provider_http):
+    client = graphql_client(provider_http, discover_body())
+    client.discover(genre=None, country=None, year=None, sort='popularity', page=1)
+    assert client.bodies[0]['variables'] == {
+        'sort': ['POPULARITY_DESC'],
+        'page': 1,
+        'perPage': 20,
+    }
+
+
+@pytest.mark.parametrize(
+    ('sort', 'value'),
+    [
+        ('popularity', 'POPULARITY_DESC'),
+        ('date', 'START_DATE_DESC'),
+        ('title', 'TITLE_ENGLISH'),
+        ('rating', 'SCORE_DESC'),
+    ],
+)
+def test_discover_sorts(provider_http, sort, value):
+    client = graphql_client(provider_http, discover_body())
+    client.discover(genre=None, country=None, year=None, sort=sort, page=1)
+    assert client.bodies[0]['variables']['sort'] == [value]
+
+
+def test_discover_unknown_sort_is_a_key_error(provider_http):
+    client = graphql_client(provider_http, discover_body())
+    with pytest.raises(KeyError):
+        client.discover(genre=None, country=None, year=None, sort='nope', page=1)
+
+
+def test_discover_drops_sequels_and_adult(provider_http):
+    client = graphql_client(
+        provider_http,
+        discover_body(
+            discover_item(1, edges=[('SEQUEL', 'ANIME'), ('ADAPTATION', 'MANGA')]),
+            discover_item(2, edges=[('PREQUEL', 'ANIME')]),
+            discover_item(3, edges=[('PREQUEL', 'MANGA')]),
+            discover_item(4, isAdult=True),
+        ),
+    )
+    page = client.discover(genre=None, country=None, year=None, sort='date', page=1)
+    assert [h.external_id for h in page.hits] == ['1', '3']
+    hit = page.hits[0]
+    assert (hit.provider, hit.kind) == ('anilist', 'anime')
+    assert hit.title == 'Romaji 1'
+    assert hit.original_title == 'Romaji 1'
+    assert hit.year == 2022
+    assert hit.poster_url == 'https://img.example/1.jpg'
+    assert hit.rating == 7.7
+
+
+def test_discover_survives_null_relations_and_items(provider_http):
+    sequel = discover_item(2)
+    sequel['relations']['edges'] = [
+        None,
+        {'relationType': None, 'node': None},
+        {'node': {'type': 'ANIME'}},
+        {'relationType': 'PREQUEL', 'node': {'type': 'ANIME'}},
+    ]
+    client = graphql_client(
+        provider_http,
+        discover_body(None, discover_item(1, relations={'edges': [None]}), sequel),
+    )
+    page = client.discover(genre=None, country=None, year=None, sort='date', page=1)
+    assert [h.external_id for h in page.hits] == ['1']
+
+
+def test_media_survives_null_relation_edges():
+    media = media_from_json(
+        {
+            'id': 1,
+            'relations': {
+                'edges': [
+                    None,
+                    {'relationType': 'SEQUEL', 'node': None},
+                    {'relationType': 'SEQUEL', 'node': {'id': 2, 'type': 'ANIME'}},
+                ]
+            },
+        }
+    )
+    assert [edge.anilist_id for edge in media.edges] == [2]
+
+
+def test_discover_unrated_entry_has_no_rating(provider_http):
+    client = graphql_client(
+        provider_http, discover_body(discover_item(1, averageScore=None))
+    )
+    page = client.discover(genre=None, country=None, year=None, sort='date', page=1)
+    assert page.hits[0].rating is None
+
+
+def test_discover_paging(provider_http):
+    client = graphql_client(
+        provider_http, discover_body(discover_item(1), total=137, has_next=True)
+    )
+    page = client.discover(genre=None, country=None, year=None, sort='date', page=1)
+    assert (page.total, page.has_more) == (137, True)
+
+
+def test_discover_bad_body_is_an_error(provider_http):
+    client = graphql_client(provider_http, {'errors': [{'message': 'boom'}]})
+    with pytest.raises(ProviderError, match='boom'):
+        client.discover(genre=None, country=None, year=None, sort='date', page=1)

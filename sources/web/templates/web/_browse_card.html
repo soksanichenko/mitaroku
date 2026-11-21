@@ -1,0 +1,27 @@
+{% comment %}
+A title of Browse: poster with its rating, name, year and kind, and the add control
+exactly as Search renders it (the status in the library, the progress of a running
+add, or the picker). Context: row (web.views.hits.ResultRow).
+{% endcomment %}{% load i18n web_extras %}{% with hit=row.hit %}
+<article class="mt-lcard mt-bcard">
+  <a class="mt-lcard-link" href="{{ row.href }}">
+    <span class="mt-lcard-img">{% include 'web/components/_poster.html' with title=row.poster %}</span>
+    <span class="mt-lcard-text">
+      <span class="mt-lcard-name">{{ row.name }}</span>
+      <span class="mt-lcard-meta">{% if hit.year %}{{ hit.year }} · {% endif %}{{ row.kind_label }}</span>
+    </span>
+  </a>
+  <div class="mt-bcard-act">
+    {% if row.entry %}
+    {% with label=row.entry.status|status_label %}
+    <span class="mt-result-status" aria-label="{% blocktrans trimmed %}In your library: {{ label }}{% endblocktrans %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>{{ label }}</span>
+    {% endwith %}
+    {% elif row.pending %}
+    {% include 'web/_add_result.html' with state='pending' add_request=row.pending %}
+    {% else %}
+    {% url 'search_add' as add_url %}
+    {% include 'web/components/_status_picker.html' with display_name=row.name entry=None action=add_url fields=row.fields align='right' %}
+    {% endif %}
+  </div>
+</article>
+{% endwith %}

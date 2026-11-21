@@ -30,8 +30,9 @@ light and dark themes, 390 and 960 px).
 
 ## 2. Architecture
 
-Modular monolith (Django LTS, PostgreSQL, HTMX + Alpine + Tailwind), two
-processes: web (gunicorn) and worker (Huey on Redis).
+Modular monolith (Django, PostgreSQL, HTMX + Alpine + Tailwind), two
+processes: web (gunicorn) and worker (Huey on Redis). Django tracks the latest
+stable release (not an LTS pin), so security fixes arrive through Dependabot.
 
 Django apps: `accounts`, `catalog`, `providers`, `tracking`, `imports`/`exports`,
 `notifications`, `web`.
@@ -91,7 +92,9 @@ Library (continue watching, tabs, status filter, sort, grid/list), Upcoming,
 Search and add, title pages (show, anime, movie), Browse (target of every "See
 also" link, filters live in the URL), Collection (TMDB movie franchises),
 Notifications, Settings, Import, Export, Login (local fallback). Every screen has
-loading, empty and error states. Touch targets are at least 44 px.
+loading, empty and error states. Touch targets are at least 44 px. Browse has no
+bottom-bar tab: it is reached from "See also", from the genre and country tags on
+the title page and from one link on the idle Search page.
 
 Admin uses the standard Django admin; no separate design.
 
@@ -171,9 +174,14 @@ role from the `new-service-repo` and `new-nginx-service` skills.
 
 ## 13. Open items for the implementation plan
 
-- Plan 3b: Browse, Collection and the title-page enrichment (genres, country, cast,
-  trailers, similar titles, "See also" links) need new provider data.
+- "Mark all as watched" on the Collection page needs a bulk add; adding one title at
+  a time cannot do it within the cap of 5 requests in progress.
 - Whether a Simkl provider is added later together with Simkl login and sync.
+- Browse shows a count of titles only for a list that has ended: the providers'
+  totals are estimates (AniList caps at 5000, TMDB at 500 pages), so a list that
+  can load more shows "Showing N".
+- Opening a title nobody has added yet (`/open/<provider>/<id>/`) has no per-user cap,
+  unlike the add flow, which caps pending requests at 5. Known follow-up.
 - Telegram: webhook or polling.
 - Subdomain or subpath.
 - Verify the exact export format of each supported service.

@@ -1,0 +1,25 @@
+{% extends 'web/base.html' %}{% load i18n %}
+{% comment %}
+Shown while a title nobody has added yet is created. It is the unit the page
+polls (outerHTML), so the loading, the error and the done state all live in
+#opening. The done state answers the poll once the title is ready: it replaces the
+page in the history instead of pushing the title page on top of it (HX-Redirect
+would, and Back would then return to this page). Without JavaScript the loading
+page reloads itself.
+Context: state (loading, error or done), poll_url, target (done only).
+{% endcomment %}
+{% block title %}{% trans 'Opening…' %}{% endblock %}
+{% block content %}
+{% if state == 'loading' %}<noscript><meta http-equiv="refresh" content="2"></noscript>{% endif %}
+<div id="opening" class="mt-opening"{% if state == 'done' %} x-data x-init="window.location.replace('{{ target|escapejs }}')"{% endif %}{% if state == 'loading' %} hx-get="{{ poll_url }}" hx-trigger="every 2s" hx-select="#opening" hx-target="#opening" hx-swap="outerHTML"{% endif %}>
+  {% if state == 'loading' or state == 'done' %}
+  {% trans 'Opening this title…' as opening_label %}
+  {% include 'web/components/_state_loading.html' with variant='rows' label=opening_label %}
+  {% else %}
+  <div x-data>
+    {% trans "We couldn't open this title" as failed_heading %}{% trans "The metadata provider didn't answer. Nothing was lost." as failed_text %}
+    {% include 'web/components/_state_error.html' with heading=failed_heading text=failed_text retry_click='window.location.reload()' %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

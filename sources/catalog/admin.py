@@ -1,6 +1,6 @@
 """Admin registrations: the catalog is read-only for the admins' group."""
 
-from catalog.models import Episode, ExternalId, Season, Title
+from catalog.models import Episode, ExternalId, Season, Title, TitleDetails
 from django.contrib import admin
 
 
@@ -34,3 +34,11 @@ class EpisodeAdmin(admin.ModelAdmin):
 
     list_display = ('season', 'number', 'air_date')
     search_fields = ('season__title__original_title',)
+
+
+@admin.register(TitleDetails)
+class TitleDetailsAdmin(admin.ModelAdmin):
+    """Provider details of titles."""
+
+    list_display = ('title', 'updated_at')
+    search_fields = ('title__original_title',)

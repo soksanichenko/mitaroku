@@ -1113,6 +1113,7 @@ a:focus-visible .mt-poster-img,
 .mt-th-tags {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
   margin: 12px 0 0;
   padding: 0;
@@ -2630,4 +2631,538 @@ a:focus-visible .mt-poster-img,
 .mt-set-field select[aria-invalid='true'] {
   border-color: var(--color-accent-700);
   border-width: 2px;
+}
+
+/* Browse. */
+.mt-br-head {
+  display: grid;
+  gap: 4px;
+  padding-bottom: 14px;
+}
+
+.mt-br-kicker {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mt-muted);
+}
+
+.mt-br-title {
+  margin: 0;
+  font-size: clamp(28px, 6vw, 40px);
+  text-wrap: balance;
+}
+
+.mt-br-count {
+  min-height: 1.3em;
+}
+
+.mt-browse.htmx-request .mt-br-count {
+  visibility: hidden;
+}
+
+/* The chips, the "Add filter" disclosure and the sort share one wrapping row. */
+.mt-br-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 2px solid var(--color-divider);
+}
+
+.mt-br-filters {
+  display: contents;
+}
+
+.mt-br-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 8px 0 12px;
+  border: 1px solid var(--color-text);
+  background: var(--color-text);
+  color: var(--color-bg);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mt-br-chip:hover {
+  text-decoration: none;
+  background: color-mix(in srgb, var(--color-text) 82%, var(--color-bg));
+}
+
+.mt-br-chip:focus-visible,
+.mt-br-add-btn:focus-visible,
+.mt-br-clear:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.mt-br-chip-k {
+  font-weight: 400;
+}
+
+.mt-br-chip svg,
+.mt-br-add-btn svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.mt-br-clear {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Open, the disclosure takes a row of its own, after the sort. */
+.mt-br-add[open] {
+  order: 10;
+  flex: 1 0 100%;
+}
+
+.mt-br-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px dashed var(--color-text);
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  list-style: none;
+}
+
+.mt-br-add-btn::-webkit-details-marker {
+  display: none;
+}
+
+.mt-br-add-btn:hover {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+
+.mt-br-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 6px;
+  padding: 12px;
+  border: 1px solid var(--color-text);
+}
+
+.mt-br-sort {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--mt-muted);
+}
+
+.mt-br-sort .input {
+  width: auto;
+  color: var(--color-text);
+}
+
+/* The skeleton covers the results while HTMX waits for them. */
+.mt-br-body {
+  position: relative;
+  margin-top: 12px;
+}
+
+.mt-br-loading {
+  display: none;
+  pointer-events: none;
+}
+
+.mt-browse.htmx-request .mt-br-loading {
+  display: block;
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow: hidden;
+  background: var(--color-bg);
+  animation: mt-appear 0.01s linear 0.2s backwards;
+}
+
+.mt-br-loading .mt-state {
+  border-top: 0;
+  padding-top: 8px;
+}
+
+.mt-br-results .mt-search-notice {
+  margin: 0 0 12px;
+}
+
+.mt-br-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 24px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mt-br-cell {
+  display: flex;
+  min-width: 0;
+}
+
+/* The link covers the card (mt-lcard-link::after); the add control sits above it. */
+.mt-bcard-act {
+  position: relative;
+  min-height: 44px;
+}
+
+.mt-br-more {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.mt-br-more .htmx-request {
+  opacity: 0.6;
+}
+
+.mt-br-more--error {
+  font-size: 14px;
+  color: var(--mt-muted);
+}
+
+.mt-br-shown {
+  margin: 24px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-divider);
+  font-size: 13px;
+  color: var(--mt-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Collection: the rows of Search with the number of the film in front. */
+.mt-cl-head {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  padding-bottom: 16px;
+}
+
+.mt-cl-title {
+  margin: 0;
+  font-size: clamp(28px, 6vw, 40px);
+  text-wrap: balance;
+}
+
+.mt-cl-overview {
+  max-width: 60ch;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.mt-cl-progress {
+  display: grid;
+  gap: 6px;
+  width: min(100%, 420px);
+  margin-top: 4px;
+}
+
+.mt-cl-progress-text {
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.mt-cl-list {
+  border-top: 2px solid var(--color-divider);
+}
+
+.mt-cl-row {
+  grid-template-columns: 24px 56px minmax(0, 1fr);
+  grid-template-areas: 'num img body' 'num img act';
+}
+
+.mt-cl-row:last-child {
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.mt-cl-num {
+  grid-area: num;
+  align-self: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--mt-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 600px) {
+  .mt-cl-row {
+    grid-template-columns: 24px 56px minmax(0, 1fr) 150px;
+    grid-template-areas: 'num img body act';
+  }
+}
+
+/* A genre or country tag that opens Browse: the link is a 44 px target, the
+   visible tag (.mt-tag) inside it stays small. */
+.mt-tag-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.mt-tag-link:hover {
+  text-decoration: none;
+}
+
+.mt-tag-link:hover .mt-tag,
+.mt-tag-link:focus-visible .mt-tag {
+  border-color: var(--color-text);
+  color: var(--color-text);
+}
+
+/* See also. */
+.mt-see-also {
+  display: grid;
+  gap: 0 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mt-see-also li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mt-see-also li::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  background: var(--color-text);
+}
+
+.mt-see-also a {
+  display: inline-flex;
+  align-items: center;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+/* Cast. */
+.mt-cast {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px 16px;
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.mt-cast-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.mt-cast-photo {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  background: var(--color-surface);
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--mt-muted);
+}
+
+.mt-cast-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mt-cast-text {
+  display: grid;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.mt-cast-name {
+  font-size: 15px;
+  font-weight: 800;
+  overflow-wrap: break-word;
+}
+
+.mt-cast-role {
+  font-size: 13px;
+  color: var(--mt-muted);
+}
+
+/* Trailers: a tinted placeholder with Play; the page puts the player in when it is
+   pressed. */
+.mt-trailers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mt-tr-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background-color: var(--color-surface);
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-text) 10%, transparent) 0 1px,
+    transparent 1px 10px
+  );
+}
+
+.mt-tr-frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.mt-tr-play {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 16px 0 12px;
+  border: 0;
+  background: var(--color-text);
+  color: var(--color-bg);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.mt-tr-play:hover {
+  background: color-mix(in srgb, var(--color-text) 82%, var(--color-bg));
+}
+
+.mt-tr-play svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.mt-tr--on .mt-tr-play {
+  display: none;
+}
+
+.mt-tr-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.mt-tr-name {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.mt-tr-stop {
+  display: none;
+}
+
+.mt-tr--on .mt-tr-stop {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* The collection of a movie. */
+.mt-col {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 10px 16px 10px 10px;
+  border: 1px solid var(--color-divider);
+  color: var(--color-text);
+}
+
+.mt-col:hover {
+  border-color: var(--color-text);
+  text-decoration: none;
+}
+
+.mt-col-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mt-col-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mt-muted);
+}
+
+.mt-col-name {
+  font-size: 16px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+/* Similar titles: a row that scrolls sideways, the cards of the Browse look. */
+.mt-sim {
+  display: flex;
+  gap: 14px;
+  margin: 0;
+  padding: 0 0 8px;
+  list-style: none;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+}
+
+.mt-sim-item {
+  flex: none;
+  width: 138px;
+  scroll-snap-align: start;
+}
+
+@media (min-width: 600px) {
+  .mt-see-also {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

@@ -19,6 +19,7 @@ class SearchHit:
         overview: Short description, possibly empty.
         anime_like: TMDB hit that is animation from Japan; the AniList search
             covers these, so the merged search drops them.
+        rating: Average vote from 0 to 10, None when nobody voted.
     """
 
     provider: str
@@ -30,3 +31,19 @@ class SearchHit:
     poster_url: str
     overview: str
     anime_like: bool = False
+    rating: float | None = None
+
+
+@dataclass(frozen=True)
+class HitPage:
+    """One page of browse results.
+
+    Attributes:
+        hits: The hits of the page.
+        total: How many results the whole listing has.
+        has_more: Whether a later page exists.
+    """
+
+    hits: list[SearchHit]
+    total: int
+    has_more: bool

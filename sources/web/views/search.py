@@ -4,7 +4,6 @@ import logging
 from dataclasses import dataclass
 from urllib.parse import urlencode
 
-from catalog.models import ExternalId
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
@@ -14,11 +13,9 @@ from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_POST
 from django.views.decorators.vary import vary_on_headers
 from providers.search import SearchResults, search
-from providers.types import SearchHit
 from redis.exceptions import RedisError
 from tracking.adding import (
     MAX_PENDING,
-    PENDING_TIMEOUT,
     TooManyPending,
     expire_stale,
     request_add,
@@ -26,6 +23,7 @@ from tracking.adding import (
 from tracking.models import AddRequest, LibraryEntry
 from web.clients import shared_clients
 from web.templatetags.web_extras import rating_source_name
+from web.views.hits import KIND_LABELS, ResultRow, decorate, is_fragment_request
 
 logger = logging.getLogger(__name__)
 
@@ -34,39 +32,6 @@ MAX_QUERY = 100
 GROUP_LIMIT = 5
 # Group order and headings; the keys are the ``SearchHit.kind`` values.
 GROUPS = (('tv', _('Shows')), ('anime', _('Anime')), ('movie', _('Movies')))
-KIND_LABELS = {'tv': _('Show'), 'anime': _('Anime'), 'movie': _('Movie')}
-
-
-@dataclass
-class ResultRow:
-    """One search hit prepared for display.
-
-    Attributes:
-        hit: The provider's search hit.
-        poster: What the poster component reads (``pk``, ``poster_url``,
-            ``rating``); a hit has no catalog title yet.
-        kind_label: The translated kind: Show, Anime or Movie.
-        title_id: The catalog title when the title is already known, else None.
-        entry: The user's library entry for it, if any.
-        pending: The user's add request for it that is still running, if any.
-    """
-
-    hit: SearchHit
-    poster: dict
-    kind_label: str
-    title_id: int | None
-    entry: LibraryEntry | None
-    pending: AddRequest | None
-
-    @property
-    def name(self) -> str:
-        """The name to show: provider data may lack a title or both names."""
-        return self.hit.title or self.hit.original_title or gettext('Untitled')
-
-    @property
-    def fields(self) -> dict[str, str]:
-        """The hidden fields the add picker sends."""
-        return {'provider': self.hit.provider, 'external_id': self.hit.external_id}
 
 
 @dataclass
@@ -93,58 +58,6 @@ def _search_url(**params: str) -> str:
     return f'{reverse("search")}?{urlencode(params)}'
 
 
-def _pending_requests(user, hits: list[SearchHit]) -> dict[tuple[str, str], AddRequest]:
-    """Return the user's running add requests for the hits, in one query.
-
-    A request older than the timeout belongs to a job that died; it is not shown
-    as running (the next add expires it).
-    """
-    return {
-        (request.provider, request.external_id): request
-        for request in AddRequest.objects.for_user(user).filter(
-            state=AddRequest.State.PENDING,
-            created_at__gte=timezone.now() - PENDING_TIMEOUT,
-            provider__in={h.provider for h in hits},
-            external_id__in={h.external_id for h in hits},
-        )
-    }
-
-
-def _rows(user, hits: list[SearchHit]) -> list[ResultRow]:
-    """Attach the catalog title, the library entry and the running add request."""
-    links = ExternalId.objects.filter(
-        provider__in={h.provider for h in hits},
-        external_id__in={h.external_id for h in hits},
-    ).values_list('provider', 'external_id', 'title_id')
-    title_ids = {(provider, external_id): pk for provider, external_id, pk in links}
-    entries = {
-        entry.title_id: entry
-        for entry in LibraryEntry.objects.for_user(user).filter(
-            title_id__in=set(title_ids.values())
-        )
-    }
-    pending = _pending_requests(user, hits)
-    rows = []
-    for hit in hits:
-        title_id = title_ids.get((hit.provider, hit.external_id))
-        rows.append(
-            ResultRow(
-                hit=hit,
-                # Only the colour of the placeholder depends on the number.
-                poster={
-                    'pk': int(hit.external_id),
-                    'poster_url': hit.poster_url,
-                    'rating': None,
-                },
-                kind_label=str(KIND_LABELS[hit.kind]),
-                title_id=title_id,
-                entry=entries.get(title_id),
-                pending=pending.get((hit.provider, hit.external_id)),
-            )
-        )
-    return rows
-
-
 def _groups(rows: list[ResultRow], query: str, expanded: str) -> list[ResultGroup]:
     """Group rows as Shows, Anime and Movies; empty groups are left out."""
     groups = []
@@ -163,17 +76,6 @@ def _groups(rows: list[ResultRow], query: str, expanded: str) -> list[ResultGrou
             )
         )
     return groups
-
-
-def _is_fragment_request(request: HttpRequest) -> bool:
-    """Tell whether only the results block is wanted.
-
-    HTMX restoring a page from history asks with ``HX-Request`` too but needs
-    the whole page.
-    """
-    return request.headers.get('HX-Request') == 'true' and not request.headers.get(
-        'HX-History-Restore-Request'
-    )
 
 
 @vary_on_headers('HX-Request', 'HX-History-Restore-Request')
@@ -203,7 +105,7 @@ def search_page(request: HttpRequest) -> HttpResponse:
             # The provider layer keeps its rate limits and cache in Redis.
             logger.warning('Search failed: %s', type(error).__name__)
             results = SearchResults(hits=[], failed=['tmdb', 'anilist'])
-        rows = _rows(request.user, results.hits)
+        rows = decorate(request.user, results.hits)
         context['partial'] = bool(results.failed)
         context['failed_names'] = ', '.join(
             rating_source_name(name) for name in results.failed
@@ -219,7 +121,7 @@ def search_page(request: HttpRequest) -> HttpResponse:
                 total=len(rows),
                 groups=_groups(rows, query, expanded),
             )
-    template = 'web/_search_results.html' if _is_fragment_request(request) else None
+    template = 'web/_search_results.html' if is_fragment_request(request) else None
     return render(request, template or 'web/search.html', context)
 
 

@@ -67,7 +67,10 @@ def _respond(
     """
     # The group an action answers about is the one the user is in: it keeps its rows.
     context = page_context(
-        request, title, expanded=season.pk if mode == 'group' else None
+        request,
+        title,
+        expanded=season.pk if mode == 'group' else None,
+        enrich=False,
     )
     entry = context['entry']
     context.update(

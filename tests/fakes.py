@@ -11,6 +11,7 @@ from providers.tmdb import (
     TmdbSeasonSummary,
     TmdbShow,
 )
+from providers.types import HitPage
 
 
 def edge(relation, anilist_id, fmt='TV', media_type='ANIME'):
@@ -66,7 +67,18 @@ def tmdb_season(number, count, first, name=''):
     )
 
 
-def tmdb_show(tmdb_id, seasons, status='Ended', name='Show', imdb_id=''):
+def tmdb_show(
+    tmdb_id,
+    seasons,
+    status='Ended',
+    name='Show',
+    imdb_id='',
+    genre_ids=(),
+    countries=(),
+    cast=(),
+    videos=(),
+    recommendations=(),
+):
     return TmdbShow(
         tmdb_id=tmdb_id,
         name=name,
@@ -81,10 +93,26 @@ def tmdb_show(tmdb_id, seasons, status='Ended', name='Show', imdb_id=''):
         votes=120,
         imdb_id=imdb_id,
         seasons=[TmdbSeasonSummary(s.number, s.name, len(s.episodes)) for s in seasons],
+        genre_ids=tuple(genre_ids),
+        countries=tuple(countries),
+        cast=tuple(cast),
+        videos=tuple(videos),
+        recommendations=tuple(recommendations),
     )
 
 
-def tmdb_movie(tmdb_id, release=date(1999, 3, 31), status='Released', rating=8.2):
+def tmdb_movie(
+    tmdb_id,
+    release=date(1999, 3, 31),
+    status='Released',
+    rating=8.2,
+    genre_ids=(),
+    countries=(),
+    cast=(),
+    videos=(),
+    recommendations=(),
+    collection=None,
+):
     return TmdbMovie(
         tmdb_id=tmdb_id,
         title='The Matrix',
@@ -99,16 +127,46 @@ def tmdb_movie(tmdb_id, release=date(1999, 3, 31), status='Released', rating=8.2
         rating=rating,
         votes=25000 if rating is not None else 0,
         imdb_id='tt0133093',
+        genre_ids=tuple(genre_ids),
+        countries=tuple(countries),
+        cast=tuple(cast),
+        videos=tuple(videos),
+        recommendations=tuple(recommendations),
+        collection=collection,
     )
 
 
 class FakeTmdb:
-    """``TmdbClient`` over dictionaries. ``shows`` maps id to ``(TmdbShow, seasons)``."""
+    """``TmdbClient`` over dictionaries. ``shows`` maps id to ``(TmdbShow, seasons)``.
 
-    def __init__(self, movies=None, shows=None):
+    ``discover_pages`` maps ``movie`` or ``tv`` to the ``HitPage`` of ``discover``;
+    ``discover_error`` is raised by it when set.
+    """
+
+    def __init__(
+        self,
+        movies=None,
+        shows=None,
+        collections=None,
+        discover_pages=None,
+        discover_error=None,
+    ):
         self.movies = movies or {}
         self.shows = shows or {}
+        self.collections = collections or {}
+        self.discover_pages = discover_pages or {}
+        self.discover_error = discover_error
         self.calls = []
+
+    def discover(self, kind, **kwargs):
+        self.calls.append(('discover', kind, kwargs))
+        if self.discover_error:
+            raise self.discover_error
+        return self.discover_pages.get(kind, HitPage([], 0, False))
+
+    def collection(self, tmdb_id, language='en'):
+        self.calls.append(('collection', tmdb_id, language))
+        return self.collections.get(tmdb_id)
 
     def movie(self, tmdb_id, language='en'):
         self.calls.append(('movie', tmdb_id, language))
@@ -130,12 +188,35 @@ class FakeTmdb:
 
 
 class FakeAniList:
-    """``AniListClient`` over dictionaries; ``schedules`` maps id to ``AniListSchedule``."""
+    """``AniListClient`` over dictionaries.
 
-    def __init__(self, *entries, schedules=None):
+    ``schedules`` maps id to ``AniListSchedule``, ``details`` id to ``AniListDetails``;
+    ``discover_page`` is the ``HitPage`` of ``discover``, which raises
+    ``discover_error`` when set.
+    """
+
+    def __init__(
+        self,
+        *entries,
+        schedules=None,
+        details=None,
+        discover_page=None,
+        discover_error=None,
+    ):
         self.by_id = {entry.anilist_id: entry for entry in entries}
         self.schedules = schedules or {}
+        self.details_by_id = details or {}
         self.schedule_calls = []
+        self.details_calls = []
+        self.discover_page = discover_page or HitPage([], 0, False)
+        self.discover_error = discover_error
+        self.discover_calls = []
+
+    def discover(self, **kwargs):
+        self.discover_calls.append(kwargs)
+        if self.discover_error:
+            raise self.discover_error
+        return self.discover_page
 
     def media_many(self, ids):
         return [self.by_id[i] for i in ids if i in self.by_id]
@@ -143,6 +224,10 @@ class FakeAniList:
     def schedule(self, anilist_id):
         self.schedule_calls.append(anilist_id)
         return self.schedules.get(anilist_id, AniListSchedule(upcoming={}, all={}))
+
+    def details(self, anilist_id):
+        self.details_calls.append(anilist_id)
+        return self.details_by_id.get(anilist_id)
 
 
 class FailingProvider:

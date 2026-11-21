@@ -3,11 +3,12 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
-from catalog.models import Episode, EpisodeTranslation, ExternalId, Title
-from catalog.sync import get_or_create_title, sync_title
-from catalog.sync.common import Clients
+from catalog.models import Episode, EpisodeTranslation, ExternalId, Title, TitleDetails
+from catalog.sync import get_or_create_title, movies, sync_title
+from catalog.sync.common import MAX_TRAILERS, Clients, similar_dicts, trailer_dicts
 from fakes import FakeAniList, FakeTmdb, tmdb_movie, tmdb_season, tmdb_show
 from providers.http import ProviderError
+from providers.tmdb import TmdbCollectionRef, TmdbCredit, TmdbVideo
 from providers.types import SearchHit
 
 pytestmark = pytest.mark.django_db
@@ -239,3 +240,166 @@ def test_a_hit_without_a_native_title_falls_back_to_the_display_title():
     bare = SearchHit('tmdb_tv', '7', 'tv', 'Display', '', None, '', '')
     title, _ = get_or_create_title(bare)
     assert title.original_title == 'Display'
+
+
+def video(key='abcdef12', kind='Trailer', official=True, site='YouTube'):
+    return TmdbVideo(site, key, f'Video {key}', kind, official, 'en')
+
+
+def similar_hit(number, **kwargs):
+    fields = {
+        'provider': 'tmdb_movie',
+        'external_id': str(number),
+        'kind': 'movie',
+        'title': f'Similar {number}',
+        'original_title': f'Original {number}',
+        'year': 2000 + number,
+        'poster_url': f'https://p/{number}.jpg',
+        'overview': 'ignored',
+        'rating': 7.5,
+    }
+    return SearchHit(**{**fields, **kwargs})
+
+
+def credits(count):
+    return tuple(
+        TmdbCredit(f'Actor {i}', f'Role {i}', f'https://p/a{i}.jpg')
+        for i in range(count)
+    )
+
+
+def test_trailer_dicts_order_and_filter():
+    result = trailer_dicts(
+        [
+            video('vimeo0001', site='Vimeo'),
+            video('a b'),
+            video('unoffic01', 'Trailer', official=False),
+            video('teaser001', 'Teaser'),
+            video('trailer01', 'Trailer'),
+        ]
+    )
+    assert [item['key'] for item in result] == ['trailer01', 'teaser001', 'unoffic01']
+    assert result[0] == {
+        'key': 'trailer01',
+        'name': 'Video trailer01',
+        'kind': 'Trailer',
+        'language': 'en',
+        'official': True,
+    }
+    many = [video(f'valid{i:03d}') for i in range(MAX_TRAILERS + 1)]
+    assert len(trailer_dicts(many)) == MAX_TRAILERS
+
+
+def test_similar_dicts_excludes_and_caps():
+    hits = [similar_hit(n) for n in range(15)]
+    assert len(similar_dicts(hits)) == 12
+    result = similar_dicts(
+        [similar_hit(1), similar_hit(2), similar_hit(3, anime_like=True)],
+        exclude={('tmdb_movie', '1')},
+    )
+    assert result == [
+        {
+            'provider': 'tmdb_movie',
+            'external_id': '2',
+            'kind': 'movie',
+            'title': 'Similar 2',
+            'original_title': 'Original 2',
+            'year': 2002,
+            'poster_url': 'https://p/2.jpg',
+            'rating': 7.5,
+        }
+    ]
+
+
+def test_movie_sync_writes_details():
+    title = movie_title()
+    movie = tmdb_movie(
+        603,
+        genre_ids=[28, 878, 99999],
+        countries=['US'],
+        cast=credits(10),
+        videos=[video()],
+        recommendations=[similar_hit(1)],
+        collection=TmdbCollectionRef(2344, 'The Matrix Collection', 'https://p/c.jpg'),
+    )
+    sync_title(title, clients(FakeTmdb(movies={603: movie})), NOW)
+    details = title.details
+    assert details.genres == ['action', 'sci-fi']
+    assert details.countries == ['US']
+    assert len(details.cast) == 10
+    assert details.cast[0] == {
+        'name': 'Actor 0',
+        'role': 'Role 0',
+        'photo_url': 'https://p/a0.jpg',
+    }
+    assert [t['key'] for t in details.trailers] == ['abcdef12']
+    assert [s['external_id'] for s in details.similar] == ['1']
+    assert details.collection == {
+        'id': 2344,
+        'name': 'The Matrix Collection',
+        'poster_url': 'https://p/c.jpg',
+    }
+
+
+def test_a_movie_without_a_collection_stores_none():
+    title = movie_title()
+    sync_title(title, clients(FakeTmdb(movies={603: tmdb_movie(603)})), NOW)
+    assert title.details.collection is None
+    assert title.details.genres == [] and title.details.cast == []
+
+
+def test_tv_sync_writes_details():
+    title = tv_title()
+    seasons = {1: tmdb_season(1, 3, date(2020, 1, 1))}
+    show = tmdb_show(
+        1000,
+        list(seasons.values()),
+        genre_ids=[10765],
+        countries=['US', 'GB'],
+        cast=credits(3),
+        videos=[video('teaser001', 'Teaser')],
+        recommendations=[similar_hit(5, provider='tmdb_tv', kind='tv')],
+    )
+    sync_title(title, clients(FakeTmdb(shows={1000: (show, seasons)})), NOW)
+    details = title.details
+    assert details.genres == ['sci-fi', 'fantasy']
+    assert details.countries == ['US', 'GB']
+    assert [c['name'] for c in details.cast] == ['Actor 0', 'Actor 1', 'Actor 2']
+    assert details.trailers[0]['kind'] == 'Teaser'
+    assert details.similar[0]['provider'] == 'tmdb_tv'
+    assert details.collection is None
+
+
+def test_resync_replaces_details():
+    title = movie_title()
+    sync_title(
+        title, clients(FakeTmdb(movies={603: tmdb_movie(603, cast=credits(10))})), NOW
+    )
+    smaller = tmdb_movie(603, cast=credits(2))
+    sync_title(title, clients(FakeTmdb(movies={603: smaller})), NOW)
+    details = TitleDetails.objects.get(title=title)
+    assert [c['name'] for c in details.cast] == ['Actor 0', 'Actor 1']
+    assert TitleDetails.objects.filter(title=title).count() == 1
+
+
+def test_the_details_are_rolled_back_when_the_sync_fails_after_writing_them(
+    monkeypatch,
+):
+    title = movie_title()
+    sync_title(
+        title, clients(FakeTmdb(movies={603: tmdb_movie(603, cast=credits(3))})), NOW
+    )
+
+    real_write = movies.write_details
+
+    def write_then_fail(*args, **kwargs):
+        # The new details are written; the sync fails right after them.
+        real_write(*args, **kwargs)
+        assert len(TitleDetails.objects.get(title=title).cast) == 1
+        raise RuntimeError('crashed after the details were written')
+
+    monkeypatch.setattr('catalog.sync.movies.write_details', write_then_fail)
+    changed = tmdb_movie(603, cast=credits(1))
+    with pytest.raises(RuntimeError):
+        sync_title(title, clients(FakeTmdb(movies={603: changed})), NOW)
+    assert len(TitleDetails.objects.get(title=title).cast) == 3

@@ -1,15 +1,25 @@
-"""AniList client: anime entries, relations, schedule and search (no API key)."""
+"""AniList client: anime entries, relations, schedule, search and browse (no key)."""
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 
 from providers.http import ProviderError, ProviderHttp
-from providers.types import SearchHit
+from providers.types import HitPage, SearchHit
 
 URL = 'https://graphql.anilist.co'
 PAGE_SIZE = 50
 ANIME_FORMATS = {'TV', 'TV_SHORT', 'MOVIE', 'SPECIAL', 'OVA', 'ONA'}
+DISCOVER_PAGE_SIZE = 20
+DISCOVER_TTL = 3 * 3600
+DETAILS_TTL = 24 * 3600
+# AniList MediaSort value per site sort.
+DISCOVER_SORTS = {
+    'popularity': 'POPULARITY_DESC',
+    'date': 'START_DATE_DESC',
+    'title': 'TITLE_ENGLISH',
+    'rating': 'SCORE_DESC',
+}
 
 MEDIA_FIELDS = """
   id idMal format status episodes averageScore isAdult
@@ -40,6 +50,50 @@ query ($id: Int) {
     schedule: airingSchedule(perPage: 50) { nodes { episode airingAt } }
   }
 }
+"""
+HIT_FIELDS = """
+  id format isAdult averageScore
+  title { romaji english }
+  coverImage { large }
+  startDate { year }
+"""
+DETAILS_QUERY = f"""
+query ($id: Int) {{
+  Media(id: $id, type: ANIME) {{
+    genres
+    countryOfOrigin
+    trailer {{ id site }}
+    characters(role: MAIN, sort: [ROLE, RELEVANCE], perPage: 10) {{
+      edges {{
+        node {{ name {{ full }} image {{ medium }} }}
+        voiceActors(language: JAPANESE) {{ name {{ full }} }}
+      }}
+    }}
+    recommendations(sort: RATING_DESC, perPage: 10) {{
+      nodes {{ mediaRecommendation {{ {HIT_FIELDS} }} }}
+    }}
+  }}
+}}
+"""
+DISCOVER_QUERY = f"""
+query (
+  $genre: String, $countryOfOrigin: CountryCode,
+  $startDate_greater: FuzzyDateInt, $startDate_lesser: FuzzyDateInt,
+  $sort: [MediaSort], $page: Int, $perPage: Int
+) {{
+  Page(page: $page, perPage: $perPage) {{
+    pageInfo {{ total hasNextPage }}
+    media(
+      type: ANIME, isAdult: false, format_in: [TV, TV_SHORT, MOVIE, SPECIAL, OVA, ONA],
+      genre: $genre, countryOfOrigin: $countryOfOrigin,
+      startDate_greater: $startDate_greater, startDate_lesser: $startDate_lesser,
+      sort: $sort
+    ) {{
+      {HIT_FIELDS}
+      relations {{ edges {{ relationType node {{ type }} }} }}
+    }}
+  }}
+}}
 """
 
 
@@ -105,6 +159,34 @@ class AniListSchedule:
     all: dict[int, datetime]
 
 
+@dataclass(frozen=True)
+class AniListCredit:
+    """A main character and the Japanese voice actor, ``''`` when unknown."""
+
+    character: str
+    actor: str
+    photo_url: str
+
+
+@dataclass(frozen=True)
+class AniListDetails:
+    """What the Browse page shows beyond the entry itself.
+
+    Attributes:
+        genres: AniList genre names.
+        country: ``countryOfOrigin`` code, empty when unknown.
+        trailer: ``(site, id)`` of the trailer video, or None.
+        cast: Main characters with their Japanese voice actors.
+        recommendations: Other entries users recommend, best rated first.
+    """
+
+    genres: tuple[str, ...]
+    country: str
+    trailer: tuple[str, str] | None
+    cast: tuple[AniListCredit, ...]
+    recommendations: tuple[SearchHit, ...]
+
+
 def media_from_json(data: dict) -> AniListMedia:
     """Convert one ``Media`` object of the GraphQL response."""
     start = data.get('startDate') or {}
@@ -117,7 +199,8 @@ def media_from_json(data: dict) -> AniListMedia:
             format=edge['node'].get('format'),
             media_type=edge['node'].get('type'),
         )
-        for edge in (data.get('relations') or {}).get('edges', [])
+        for edge in (data.get('relations') or {}).get('edges') or []
+        if edge and edge.get('node')
     ]
     return AniListMedia(
         anilist_id=data['id'],
@@ -157,6 +240,45 @@ def _media_items(data: dict | None) -> list[dict]:
     if media is None:
         raise ProviderError('AniList error: no media in the response')
     return media
+
+
+def _hit(item: dict) -> SearchHit:
+    """Convert a ``HIT_FIELDS`` object into a hit."""
+    title = item.get('title') or {}
+    score = item.get('averageScore')
+    return SearchHit(
+        provider='anilist',
+        external_id=str(item['id']),
+        kind='anime',
+        title=title.get('english') or title.get('romaji') or '',
+        original_title=title.get('romaji') or '',
+        year=(item.get('startDate') or {}).get('year'),
+        poster_url=(item.get('coverImage') or {}).get('large') or '',
+        overview='',
+        rating=score / 10 if score else None,
+    )
+
+
+def _has_prequel(item: dict) -> bool:
+    """Whether the entry continues another anime."""
+    edges = (item.get('relations') or {}).get('edges') or []
+    return any(
+        edge.get('relationType') == 'PREQUEL'
+        and (edge.get('node') or {}).get('type') == 'ANIME'
+        for edge in edges
+        if edge
+    )
+
+
+def _credit(edge: dict) -> AniListCredit:
+    """Convert one character edge; the actor is the first voice actor."""
+    node = edge.get('node') or {}
+    actors = [actor for actor in edge.get('voiceActors') or [] if actor]
+    return AniListCredit(
+        character=(node.get('name') or {}).get('full') or '',
+        actor=((actors[0].get('name') or {}).get('full') or '') if actors else '',
+        photo_url=(node.get('image') or {}).get('medium') or '',
+    )
 
 
 def _nodes(connection: dict | None) -> dict[int, datetime]:
@@ -246,3 +368,92 @@ class AniListClient:
                 )
             )
         return hits
+
+    def details(self, anilist_id: int) -> AniListDetails | None:
+        """Fetch genres, country, trailer, main cast and recommendations.
+
+        Args:
+            anilist_id: AniList id of the entry.
+
+        Returns:
+            The details, or None when AniList does not know the id. Adult and
+            non-anime recommendations are dropped.
+        """
+        data = self._query(DETAILS_QUERY, {'id': anilist_id}, ttl=DETAILS_TTL)
+        media = (data or {}).get('Media')
+        if media is None:
+            return None
+        trailer = media.get('trailer') or {}
+        recommended = (
+            (node or {}).get('mediaRecommendation')
+            for node in (media.get('recommendations') or {}).get('nodes') or []
+        )
+        return AniListDetails(
+            genres=tuple(media.get('genres') or ()),
+            country=media.get('countryOfOrigin') or '',
+            trailer=(
+                (trailer['site'], trailer['id'])
+                if trailer.get('site') and trailer.get('id')
+                else None
+            ),
+            cast=tuple(
+                _credit(edge)
+                for edge in (media.get('characters') or {}).get('edges') or []
+                if edge
+            ),
+            recommendations=tuple(
+                _hit(item)
+                for item in recommended
+                if item
+                and not item.get('isAdult')
+                and item.get('format') in ANIME_FORMATS
+            ),
+        )
+
+    def discover(
+        self,
+        *,
+        genre: str | None,
+        country: str | None,
+        year: int | None,
+        sort: str,
+        page: int,
+    ) -> HitPage:
+        """List anime by genre, country and start year.
+
+        Args:
+            genre: An AniList genre name (not a slug).
+            country: An ISO 3166-1 country code.
+            year: Start year.
+            sort: ``popularity``, ``date``, ``title`` or ``rating``.
+            page: 1-based page number.
+
+        Returns:
+            One page of hits. Adult entries and entries with an anime prequel
+            are left out, so only the first entry of a franchise is listed.
+        """
+        variables: dict = {
+            'sort': [DISCOVER_SORTS[sort]],
+            'page': page,
+            'perPage': DISCOVER_PAGE_SIZE,
+        }
+        if genre:
+            variables['genre'] = genre
+        if country:
+            variables['countryOfOrigin'] = country
+        if year:
+            # The bounds are exclusive FuzzyDateInts (YYYYMMDD with 0 and 32 as
+            # the "unknown" month and day).
+            variables['startDate_greater'] = year * 10000
+            variables['startDate_lesser'] = year * 10000 + 1232
+        data = self._query(DISCOVER_QUERY, variables, ttl=DISCOVER_TTL)
+        page_info = ((data or {}).get('Page') or {}).get('pageInfo') or {}
+        return HitPage(
+            hits=[
+                _hit(item)
+                for item in _media_items(data)
+                if item and not item.get('isAdult') and not _has_prequel(item)
+            ],
+            total=page_info.get('total') or 0,
+            has_more=bool(page_info.get('hasNextPage')),
+        )

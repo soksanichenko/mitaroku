@@ -6,7 +6,7 @@ from datetime import timedelta
 
 from accounts.models import Profile
 from catalog.models import EpisodeTranslation, Title, TitleTranslation
-from catalog.sync import sync_title
+from catalog.sync import get_or_create_title, sync_title
 from catalog.sync.common import default_clients
 from catalog.translations import (
     FALLBACK_LANGUAGE,
@@ -20,7 +20,14 @@ from huey import crontab
 from huey.contrib.djhuey import db_periodic_task, db_task, lock_task
 from huey.exceptions import TaskLockedException
 from providers.clients import connect_redis
+from providers.http import ProviderError
 from redis.exceptions import RedisError
+from tracking.adding import (
+    EXTERNAL_ID,
+    PROVIDER_KIND,
+    discard_placeholder,
+    placeholder_hit,
+)
 from tracking.models import LibraryEntry
 
 logger = logging.getLogger(__name__)
@@ -41,6 +48,9 @@ SYNC_CLAIM_TTL = 300
 LANGUAGE_CLAIM_TTL = 3600
 # "Try again" on a title page forces a sync at most this often per title.
 REFRESH_CLAIM_TTL = 60
+# Opening a title nobody has added yet is claimed this long: a job that dies
+# lets the opening page report a failure instead of waiting for ever.
+OPEN_CLAIM_TTL = 600
 
 
 @db_task(retries=3, retry_delay=300)
@@ -86,6 +96,18 @@ def claim(key: str, ttl: int) -> bool:
     return bool(connect_redis().set(f'{CLAIM_PREFIX}{key}', '1', nx=True, ex=ttl))
 
 
+def release(key: str) -> None:
+    """Release the claim on ``key``; best effort, because the claim expires anyway.
+
+    Args:
+        key: A key given to ``claim``.
+    """
+    try:
+        connect_redis().delete(f'{CLAIM_PREFIX}{key}')
+    except (RedisError, OSError):
+        pass
+
+
 def claimed(key: str) -> bool:
     """Return whether ``key`` is claimed right now; False when Redis is down.
 
@@ -101,7 +123,9 @@ def claimed(key: str) -> bool:
         return False
 
 
-def queue_once(key: str, ttl: int, title: Title, enqueue: Callable[[], object]) -> bool:
+def queue_once(
+    key: str, ttl: int, title: Title | None, enqueue: Callable[[], object]
+) -> bool:
     """Claim ``key`` and run ``enqueue``; never raise because Redis is down.
 
     Page views call this inline, so a Redis outage must cost a background job,
@@ -111,26 +135,24 @@ def queue_once(key: str, ttl: int, title: Title, enqueue: Callable[[], object]) 
     Args:
         key: The claim key.
         ttl: How long the claim holds, in seconds.
-        title: The title, for the log line.
+        title: The title, for the log line; None when there is none yet.
         enqueue: Queues the job.
 
     Returns:
         True when the job was queued.
     """
+    subject = title.pk if title is not None else None
     try:
         if not claim(key, ttl):
             return False
     except (RedisError, OSError) as error:
-        logger.warning('Claim %s failed for title %s: %s', key, title.pk, type(error))
+        logger.warning('Claim %s failed for title %s: %s', key, subject, type(error))
         return False
     try:
         enqueue()
     except (RedisError, OSError) as error:
-        logger.warning('Enqueue %s failed for title %s: %s', key, title.pk, type(error))
-        try:
-            connect_redis().delete(f'{CLAIM_PREFIX}{key}')
-        except (RedisError, OSError):
-            pass  # best effort: the claim expires on its own
+        logger.warning('Enqueue %s failed for title %s: %s', key, subject, type(error))
+        release(key)
         return False
     return True
 
@@ -219,6 +241,73 @@ def enqueue_language_once(title: Title, language: str) -> bool:
         LANGUAGE_CLAIM_TTL,
         title,
         lambda: ensure_language_task(title.pk, language),
+    )
+
+
+def open_key(provider: str, external_id: str) -> str:
+    """Return the claim key of opening a title by its provider id."""
+    return f'open:{provider}:{external_id}'
+
+
+@db_task()
+def open_title_task(provider: str, external_id: str) -> str:
+    """Create and sync the title of a provider id that nobody has added yet.
+
+    It touches no user data: the title only enters the shared catalog. The
+    values come from a URL, so they are checked again here. The provider layer
+    already retries, so Huey does not; "Try again" on the opening page queues a
+    new job. The claim on the id is always released at the end.
+
+    Args:
+        provider: ``tmdb_movie``, ``tmdb_tv`` or ``anilist``.
+        external_id: The id at that provider: 1 to 10 digits, without leading zeros.
+
+    Returns:
+        ``done``, ``failed`` (the provider failed) or ``missing`` (the provider
+        or the id is not valid).
+    """
+    if provider not in PROVIDER_KIND or not EXTERNAL_ID.fullmatch(external_id):
+        return 'missing'  # the view never claims such a pair, so nothing to release
+    external_id = str(int(external_id))
+    hit = placeholder_hit(provider, external_id)
+    # One pair of clients per job: each opens a connection that is not closed.
+    clients = default_clients()
+    created = False
+    title = None
+    try:
+        title, created = get_or_create_title(hit, clients)
+        sync_title(title, clients)
+    except ProviderError as error:
+        logger.warning('Opening %s:%s failed: %s', provider, external_id, error)
+        if created:
+            discard_placeholder(title, provider, external_id)
+        return 'failed'
+    except Exception:
+        logger.exception('Opening %s:%s crashed', provider, external_id)
+        if created:
+            discard_placeholder(title, provider, external_id)
+        raise
+    finally:
+        release(open_key(provider, external_id))
+    return 'done'
+
+
+def enqueue_open_once(provider: str, external_id: str) -> bool:
+    """Queue the opening of a title by its provider id, at most once per window.
+
+    Args:
+        provider: A key of ``PROVIDER_KIND``.
+        external_id: The normalised provider id.
+
+    Returns:
+        True when a job was queued; False when one is already running or when
+        Redis is down.
+    """
+    return queue_once(
+        open_key(provider, external_id),
+        OPEN_CLAIM_TTL,
+        None,
+        lambda: open_title_task(provider, external_id),
     )
 
 

@@ -69,6 +69,15 @@ def test_idle_and_typing_states_have_their_hints(
     assert 'Type at least 2 characters' not in idle
 
 
+def test_idle_search_links_to_browse(client, portal_headers, patched_search):
+    idle = client.get('/search/', **portal_headers).content.decode()
+    link = re.search(r'<a[^>]*href="/browse/"[^>]*>(.*?)</a>', idle, re.S)
+    assert link is not None
+    assert 'Or browse by genre, country and year' in link.group(1)
+    typing = client.get('/search/?q=a', **portal_headers).content.decode()
+    assert 'href="/browse/"' not in typing
+
+
 def test_search_input_is_wired_to_htmx(client, portal_headers, patched_search):
     html = client.get('/search/?q=frieren', **portal_headers).content.decode()
     field = re.search(r'<input id="mt-q"[^>]*>', html, re.S).group()

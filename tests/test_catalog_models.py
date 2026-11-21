@@ -1,3 +1,6 @@
+import importlib
+from datetime import timedelta
+
 import pytest
 from catalog.models import (
     Episode,
@@ -5,9 +8,12 @@ from catalog.models import (
     ExternalId,
     Season,
     Title,
+    TitleDetails,
     TitleTranslation,
 )
+from django.apps import apps
 from django.db import IntegrityError, transaction
+from django.utils import timezone
 
 pytestmark = pytest.mark.django_db
 
@@ -96,3 +102,31 @@ def test_deleting_a_title_removes_everything_under_it(title):
     title.delete()
     for model in (Season, Episode, EpisodeTranslation, TitleTranslation, ExternalId):
         assert model.objects.count() == 0
+
+
+def test_title_details_defaults(title):
+    details = TitleDetails.objects.create(title=title)
+    assert details.genres == []
+    assert details.cast == []
+    assert details.collection is None
+    assert title.details == details
+    title.delete()
+    assert not TitleDetails.objects.exists()
+
+
+def test_the_migration_marks_synced_titles_due(title):
+    migration = importlib.import_module(
+        'catalog.migrations.0004_titledetails_permissions_and_resync'
+    )
+    now = timezone.now()
+    title.synced_at = now
+    title.next_sync_at = now + timedelta(days=14)
+    title.save()
+    unsynced = Title.objects.create(kind=Title.Kind.TV, original_title='Unsynced')
+
+    migration.resync(apps, None)
+
+    title.refresh_from_db()
+    unsynced.refresh_from_db()
+    assert title.next_sync_at <= timezone.now()
+    assert unsynced.next_sync_at is None

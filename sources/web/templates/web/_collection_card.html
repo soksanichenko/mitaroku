@@ -1,0 +1,13 @@
+{% comment %}The collection a movie belongs to. Context: collection (name, url, poster; hidden when None).{% endcomment %}{% load i18n %}
+{% if collection %}
+<section id="collections" class="mt-section" aria-labelledby="collections-heading">
+  <h2 id="collections-heading" class="mt-section-title">{% trans 'Collections' %}</h2>
+  <a class="mt-col" href="{{ collection.url }}">
+    {% include 'web/components/_poster.html' with title=collection.poster variant='thumb' %}
+    <span class="mt-col-text">
+      <span class="mt-col-kicker">{% trans 'Collection' %}</span>
+      <span class="mt-col-name">{{ collection.name }}</span>
+    </span>
+  </a>
+</section>
+{% endif %}

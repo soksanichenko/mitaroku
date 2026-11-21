@@ -5,7 +5,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
-from catalog.models import Episode, Season
+from catalog.models import Episode, Season, TitleDetails
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from tracking.models import LibraryEntry, WatchEvent
@@ -15,6 +15,8 @@ from web.views import titles
 pytestmark = pytest.mark.django_db
 
 PAGE_LIMIT = 150_000
+# What the maximum of the title details may add to the page (30.2 KB measured).
+DETAILS_LIMIT = 40_000
 
 
 @pytest.fixture
@@ -403,6 +405,56 @@ def test_a_missing_season_ends_the_error_state_without_a_retry(
     )
 
 
+def add_maximum_details(title) -> None:
+    """Give ``title`` the most the title page shows beyond the sync.
+
+    Ten people, eight trailers and twelve similar titles with long Cyrillic names
+    (two bytes a character), a collection and every facet of the header.
+    """
+    long_name = 'Ш' * 90
+    TitleDetails.objects.create(
+        title=title,
+        genres=['action', 'adventure', 'sci-fi', 'drama', 'fantasy', 'mystery'],
+        countries=['US', 'GB', 'JP'],
+        cast=[
+            {
+                'name': f'{long_name}{n}',
+                'role': f'{long_name}{n}',
+                'photo_url': f'https://image.tmdb.org/t/p/w185/{"a" * 27}{n}.jpg',
+            }
+            for n in range(10)
+        ],
+        trailers=[
+            {
+                'key': f'{"k" * 10}{n}',
+                'name': f'{long_name}{n}',
+                'kind': 'Trailer',
+                'language': 'en',
+                'official': True,
+            }
+            for n in range(8)
+        ],
+        similar=[
+            {
+                'provider': 'tmdb_movie',
+                'external_id': str(900_000 + n),
+                'kind': 'movie',
+                'title': f'{long_name}{n}',
+                'original_title': f'{long_name}{n}',
+                'year': 2001,
+                'poster_url': f'https://image.tmdb.org/t/p/w185/{"b" * 27}{n}.jpg',
+                'rating': 7.4,
+            }
+            for n in range(12)
+        ],
+        collection={
+            'id': 999_999,
+            'name': long_name,
+            'poster_url': f'https://image.tmdb.org/t/p/w185/{"c" * 27}.jpg',
+        },
+    )
+
+
 @pytest.mark.parametrize('language', [None, 'en', 'ru'])
 def test_the_heaviest_responses_stay_under_the_raw_budget(
     client, portal_headers, alice, today, language
@@ -449,3 +501,22 @@ def test_the_heaviest_responses_stay_under_the_raw_budget(
         ).content
     )
     assert max(sizes.values()) < PAGE_LIMIT, sizes
+
+
+def test_the_title_details_add_a_bounded_amount_to_the_heaviest_page(
+    client, portal_headers, alice
+):
+    """Ten people, eight trailers, twelve similar titles and a collection add 30 KB.
+
+    On top of the worst case above that is over ``PAGE_LIMIT`` (measured with
+    Cyrillic names: 162 KB without names in the metadata language, 169 KB in
+    English and 176 KB in Russian for the page of a fully watched show), so the
+    budget of the episodes and the budget of the details are kept apart.
+    """
+    alice.profile.metadata_language = 'ru'
+    alice.profile.save()
+    title, _ = make_long_show(names='ru')
+    plain = len(page(client, portal_headers, title).encode())
+    add_maximum_details(title)
+    enriched = len(page(client, portal_headers, title).encode())
+    assert enriched - plain < DETAILS_LIMIT, (plain, enriched)

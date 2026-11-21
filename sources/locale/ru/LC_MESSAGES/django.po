@@ -332,6 +332,9 @@ msgstr "Снять отметку о просмотре"
 msgid "Type a title above to search shows, anime and movies."
 msgstr "Введите название выше, чтобы искать сериалы, аниме и фильмы."
 
+msgid "Or browse by genre, country and year"
+msgstr "Или посмотрите по жанру, стране и году"
+
 msgid "Type at least 2 characters"
 msgstr "Введите не менее 2 символов"
 
@@ -720,6 +723,229 @@ msgstr "Позже"
 
 msgid "No date yet"
 msgstr "Даты пока нет"
+
+msgid "Action"
+msgstr "Боевик"
+
+msgid "Adventure"
+msgstr "Приключения"
+
+msgid "Animation"
+msgstr "Анимация"
+
+msgid "Comedy"
+msgstr "Комедия"
+
+msgid "Crime"
+msgstr "Криминал"
+
+msgid "Documentary"
+msgstr "Документальный"
+
+msgid "Drama"
+msgstr "Драма"
+
+msgid "Family"
+msgstr "Семейный"
+
+msgid "Fantasy"
+msgstr "Фэнтези"
+
+msgid "History"
+msgstr "История"
+
+msgid "Horror"
+msgstr "Ужасы"
+
+msgid "Kids"
+msgstr "Детский"
+
+msgid "Magical girl"
+msgstr "Махо-сёдзё"
+
+msgid "Mecha"
+msgstr "Меха"
+
+msgid "Music"
+msgstr "Музыка"
+
+msgid "Mystery"
+msgstr "Детектив"
+
+msgid "News"
+msgstr "Новости"
+
+msgid "Psychological"
+msgstr "Психологический"
+
+msgid "Reality"
+msgstr "Реалити-шоу"
+
+msgid "Romance"
+msgstr "Романтика"
+
+msgid "Science fiction"
+msgstr "Научная фантастика"
+
+msgid "Slice of life"
+msgstr "Повседневность"
+
+msgid "Soap"
+msgstr "Мыльная опера"
+
+msgid "Sports"
+msgstr "Спорт"
+
+msgid "Supernatural"
+msgstr "Сверхъестественное"
+
+msgid "Talk show"
+msgstr "Ток-шоу"
+
+msgid "Thriller"
+msgstr "Триллер"
+
+msgid "War"
+msgstr "Военный"
+
+msgid "Western"
+msgstr "Вестерн"
+
+msgid "Opening…"
+msgstr "Открываем…"
+
+msgid "Opening this title…"
+msgstr "Открываем тайтл…"
+
+msgid "We couldn't open this title"
+msgstr "Не удалось открыть тайтл"
+
+msgid "The metadata provider didn't answer. Nothing was lost."
+msgstr "Источник метаданных не ответил. Ничего не потеряно."
+
+msgid "Browse"
+msgstr "Обзор"
+
+msgid "Add filter"
+msgstr "Добавить фильтр"
+
+msgid "Any"
+msgstr "Не важно"
+
+msgid "Clear all"
+msgstr "Сбросить всё"
+
+msgid "Genre"
+msgstr "Жанр"
+
+msgid "Country"
+msgstr "Страна"
+
+msgid "Year"
+msgstr "Год"
+
+msgid "Popularity"
+msgstr "Популярность"
+
+msgid "Release date"
+msgstr "Дата выхода"
+
+#, python-format
+msgid "Remove filter %(facet)s: %(value)s"
+msgstr "Убрать фильтр %(facet)s: %(value)s"
+
+msgid "Load more"
+msgstr "Показать ещё"
+
+msgid "Couldn't load titles"
+msgstr "Не удалось загрузить тайтлы"
+
+msgid "Couldn't load more titles"
+msgstr "Не удалось загрузить ещё тайтлы"
+
+msgid "Loading titles…"
+msgstr "Загружаем тайтлы…"
+
+msgid "No titles match these filters"
+msgstr "Нет тайтлов с такими фильтрами"
+
+msgid "Remove a filter, or start over."
+msgstr "Уберите фильтр или начните заново."
+
+#, python-format
+msgid "%(failed_names)s didn't respond. Your filters are kept."
+msgstr "Нет ответа от: %(failed_names)s. Ваши фильтры сохранены."
+
+#, python-format
+msgid "Showing %(shown)s of %(total)s"
+msgstr "Показано %(shown)s из %(total)s"
+
+#, python-format
+msgid "Showing %(shown)s"
+msgstr "Показано %(shown)s"
+
+msgid "Rating sort only lists titles with at least 100 votes."
+msgstr "Сортировка по рейтингу показывает только тайтлы, у которых не менее 100 голосов."
+
+msgid "Collection"
+msgstr "Коллекция"
+
+#, python-format
+msgid "%(count)s film"
+msgid_plural "%(count)s films"
+msgstr[0] "%(count)s фильм"
+msgstr[1] "%(count)s фильма"
+msgstr[2] "%(count)s фильмов"
+
+#, python-format
+msgid "%(completed)s of %(total)s completed"
+msgstr "%(completed)s из %(total)s просмотрено"
+
+msgid "Collection progress"
+msgstr "Прогресс по коллекции"
+
+msgid "Couldn't load this collection"
+msgstr "Не удалось загрузить коллекцию"
+
+msgid "This collection is empty"
+msgstr "Эта коллекция пуста"
+
+msgid "Titles appear here when TMDB adds them to the collection."
+msgstr "Тайтлы появятся здесь, когда TMDB добавит их в коллекцию."
+
+msgid "See also"
+msgstr "Смотрите также"
+
+msgid "Cast"
+msgstr "В ролях"
+
+msgid "Voice cast"
+msgstr "Роли озвучивали"
+
+msgid "Trailers"
+msgstr "Трейлеры"
+
+msgid "Trailer"
+msgstr "Трейлер"
+
+#, python-format
+msgid "Play %(name)s"
+msgstr "Смотреть: %(name)s"
+
+msgid "Play"
+msgstr "Смотреть"
+
+msgid "Stop"
+msgstr "Остановить"
+
+msgid "Collections"
+msgstr "Коллекции"
+
+msgid "Similar"
+msgstr "Похожие"
+
+msgid "and"
+msgstr "и"
 
 #~ msgid "D, M j"
 #~ msgstr "D, j E"

@@ -8,11 +8,12 @@ from catalog.translations import (
     localized_episode,
     localized_title,
 )
+from catalog.vocab import country_name, genre_label
 from django import template
 from django.contrib.auth.models import AbstractUser
 from django.template.context import Context
 from django.utils import dateformat, timezone
-from django.utils.translation import gettext, pgettext, pgettext_lazy
+from django.utils.translation import get_language, gettext, pgettext, pgettext_lazy
 from django.utils.translation import gettext_lazy as _
 from tracking.models import LibraryEntry
 
@@ -205,6 +206,20 @@ def score_choices() -> list[int]:
 def kind_label(kind: str) -> str:
     """Return the translated label of a ``Title.Kind`` value."""
     return str(KIND_LABELS.get(kind, kind))
+
+
+register.filter('genre_label', genre_label)
+
+
+def interface_language() -> str:
+    """Return the interface language code, such as ``ru``."""
+    return (get_language() or 'en').split('-')[0]
+
+
+@register.filter
+def country_label(code: str) -> str:
+    """Return the name of a country (ISO code) in the interface language."""
+    return country_name(code, interface_language())
 
 
 @register.filter

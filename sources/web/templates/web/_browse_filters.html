@@ -1,0 +1,34 @@
+{% comment %}
+The filter bar inside the form: a chip (a plain link) per active filter, the
+hidden inputs that keep them when the form is sent, the "Add filter" disclosure
+with a select for each facet still free, and "Clear all". It lays out as part of
+the form (display: contents). As an HTMX answer (oob) it replaces the one on the page.
+Context: query, chips, facets, clear_url, oob.
+{% endcomment %}{% load i18n %}
+<div id="browse-filters" class="mt-br-filters"{% if oob %} hx-swap-oob="true"{% endif %}>
+  {% for chip in chips %}
+  {% blocktrans trimmed asvar remove_label with facet=chip.facet value=chip.value %}Remove filter {{ facet }}: {{ value }}{% endblocktrans %}
+  <a class="mt-br-chip" href="{{ chip.remove_url }}" hx-get="{{ chip.remove_url }}" aria-label="{{ remove_label }}" title="{{ remove_label }}"><span class="mt-br-chip-k">{{ chip.facet }}:</span> {{ chip.value }}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></a>
+  {% endfor %}
+  {% if query.kind %}<input type="hidden" name="type" value="{{ query.kind }}">{% endif %}
+  {% if query.genre %}<input type="hidden" name="genre" value="{{ query.genre }}">{% endif %}
+  {% if query.country %}<input type="hidden" name="country" value="{{ query.country }}">{% endif %}
+  {% if query.year %}<input type="hidden" name="year" value="{{ query.year }}">{% endif %}
+  {% if facets %}
+  <details class="mt-br-add">
+    <summary class="mt-br-add-btn mt-touch"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg>{% trans 'Add filter' %}</summary>
+    <div class="mt-br-panel">
+      {% for facet in facets %}
+      <div class="field">
+        <label for="br-f-{{ facet.name }}">{{ facet.label }}</label>
+        <select id="br-f-{{ facet.name }}" name="{{ facet.name }}" class="input mt-touch">
+          <option value="">{% trans 'Any' %}</option>
+          {% for value, label in facet.options %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      {% endfor %}
+    </div>
+  </details>
+  {% endif %}
+  {% if chips %}<a class="mt-br-clear mt-touch" href="{{ clear_url }}" hx-get="{{ clear_url }}">{% trans 'Clear all' %}</a>{% endif %}
+</div>

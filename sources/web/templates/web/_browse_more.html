@@ -1,0 +1,2 @@
+{% comment %}"Load more": the last item of the grid; it replaces itself with the next cards. Context: more_url.{% endcomment %}{% load i18n %}
+<li class="mt-br-more"><a class="btn btn-secondary mt-touch" href="{{ more_url }}" hx-get="{{ more_url }}" hx-target="closest li" hx-swap="outerHTML">{% trans 'Load more' %}</a></li>

@@ -1,15 +1,31 @@
 """Web URLs."""
 
 from django.urls import path
-from web.views import actions, library, search, settings, shell, titles, upcoming
+from web.views import (
+    actions,
+    browse,
+    collections,
+    library,
+    opening,
+    search,
+    settings,
+    shell,
+    titles,
+    upcoming,
+)
 
 urlpatterns = [
     path('', shell.index, name='index'),
     path('library/', library.library, name='library'),
+    path('browse/', browse.browse_page, name='browse'),
+    path('collections/<int:tmdb_id>/', collections.collection_page, name='collection'),
     path('upcoming/', upcoming.upcoming, name='upcoming'),
     path('search/', search.search_page, name='search'),
     path('search/add/', search.search_add, name='search_add'),
     path('add/<int:pk>/', search.add_status, name='add_status'),
+    path(
+        'open/<str:provider>/<int:external_id>/', opening.open_title, name='open_title'
+    ),
     path('titles/<int:pk>/', titles.title_page, name='title'),
     path('titles/<int:pk>/refresh/', titles.title_refresh, name='title_refresh'),
     path('titles/<int:pk>/status/', titles.title_status, name='title_status'),

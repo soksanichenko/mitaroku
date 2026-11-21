@@ -1,0 +1,23 @@
+{% comment %}
+Similar titles in a scroller. A card links to the title page when the title is in the
+catalog, else to the page that opens it. Context: similar (href, name, original, poster;
+hidden when empty).
+{% endcomment %}{% load i18n %}
+{% if similar %}
+<section id="similar" class="mt-section" aria-labelledby="similar-heading">
+  <h2 id="similar-heading" class="mt-section-title">{% trans 'Similar' %}</h2>
+  <ul class="mt-sim">
+    {% for s in similar %}
+    <li class="mt-lcard mt-sim-item">
+      <a class="mt-lcard-link" href="{{ s.href }}">
+        <span class="mt-lcard-img">{% include 'web/components/_poster.html' with title=s.poster %}</span>
+        <span class="mt-lcard-text">
+          <span class="mt-lcard-name">{{ s.name }}</span>
+          {% if s.original %}<span class="mt-lcard-meta">{{ s.original }}</span>{% endif %}
+        </span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
