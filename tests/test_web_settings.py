@@ -53,8 +53,9 @@ def test_settings_shows_the_account_and_language_sections(
     assert 'kira@example.com' in html
     assert 'Signed in through the portal' in html
     assert 'Local account' not in html
-    # Plans 4 and 5 add these; nothing is reserved for them now.
-    assert 'Notifications' not in html
+    # Plans 4 and 5 add these; nothing is reserved for them now. (The header's
+    # bell is called Notifications, so look for the section.)
+    assert 'aria-labelledby="set-notifications"' not in html
     assert 'Your data' not in html
 
 

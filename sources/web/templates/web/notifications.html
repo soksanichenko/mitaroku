@@ -1,0 +1,48 @@
+{% extends 'web/base.html' %}{% load i18n %}
+{% block title %}{% trans 'Notifications' %}{% endblock %}
+{% block content %}
+{% comment %}
+The notifications (web.views.notifications). The first page is a plain, fully
+rendered GET. "Load more" is the only request after it: it appends the next groups
+to #notifications-list while its loading block shows, and a failed one shows the
+error block (the Alpine scope only tells a failed request from a good one) with a
+retry that clicks the same link again. Without JavaScript the link is a plain page.
+{% endcomment %}
+<div class="mt-notifications" x-data="{ failed: false }"
+     @htmx:response-error="if ($event.detail.requestConfig.verb === 'get') failed = true"
+     @htmx:send-error="if ($event.detail.requestConfig.verb === 'get') failed = true"
+     @htmx:timeout="failed = true"
+     @htmx:after-swap="failed = false">
+  <div class="mt-nt-head">
+    <div class="mt-nt-headline">
+      <h1 class="mt-page-title">{% trans 'Notifications' %}</h1>
+      <p class="mt-muted">{% if unread_total %}{% blocktrans trimmed count count=unread_total %}{{ count }} unread{% plural %}{{ count }} unread{% endblocktrans %}{% else %}{% trans 'No unread notifications' %}{% endif %}</p>
+    </div>
+    <a class="mt-nt-filter mt-touch" href="{% url 'notifications' %}{% if not unread_only %}?unread=1{% endif %}" aria-pressed="{% if unread_only %}true{% else %}false{% endif %}">
+      <span class="mt-nt-switch" aria-hidden="true"></span>{% trans 'Unread only' %}
+    </a>
+  </div>
+  {% if groups %}
+  <div id="notifications-list">
+    {% for group in groups %}{% include 'web/_notification_group.html' %}{% endfor %}
+  </div>
+  {% elif hidden_by_filter %}
+    {% trans 'No unread notifications' as empty_heading %}
+    {% trans 'Turn off “Unread only” to see earlier notifications.' as empty_text %}
+    {% include 'web/components/_state_empty.html' with heading=empty_heading text=empty_text %}
+  {% else %}
+    {% trans 'You’re all caught up' as empty_heading %}
+    {% trans 'You’ll get a notification when an episode airs, a season or movie premieres, or a release date is announced or changes.' as empty_text %}
+    {% include 'web/components/_state_empty.html' with heading=empty_heading text=empty_text %}
+  {% endif %}
+  <div id="notifications-error" x-show="failed" x-cloak>
+    {% trans 'Couldn’t load notifications' as error_heading %}
+    {% trans 'Check your connection and try again.' as error_text %}
+    {% include 'web/components/_state_error.html' with heading=error_heading text=error_text retry_click="failed = false; htmx.trigger('#notifications-more a', 'click')" %}
+  </div>
+  <div id="notifications-loading" class="mt-nt-loading">
+    {% trans 'Loading notifications…' as loading_label %}{% include 'web/components/_state_loading.html' with label=loading_label variant='rows' %}
+  </div>
+  <div id="notifications-more" class="mt-nt-more" x-show="!failed">{% if more_url %}{% include 'web/_notification_more_link.html' %}{% endif %}</div>
+</div>
+{% endblock %}

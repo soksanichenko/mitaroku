@@ -19,6 +19,16 @@
       <input id="mt-search-q" class="input" type="search" name="q" value="{% if current_nav == 'search' %}{{ request.GET.q }}{% endif %}" placeholder="{% trans 'Search shows, anime, movies' %}" autocomplete="off">
     </form>
     {% endif %}
+    {% if user.is_authenticated %}
+    {% unread_notifications as bell_count %}
+    {% blocktrans trimmed count count=bell_count asvar bell_unread %}Notifications, {{ count }} unread{% plural %}Notifications, {{ count }} unread{% endblocktrans %}
+    {% trans 'Notifications' as bell_label %}
+    <a class="btn btn-secondary mt-icon-btn mt-bell" href="{% url 'notifications' %}"{% if current_nav == 'notifications' %} aria-current="page"{% endif %}
+       aria-label="{% if bell_count %}{{ bell_unread }}{% else %}{{ bell_label }}{% endif %}" title="{{ bell_label }}">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
+      {% if bell_count %}<span class="mt-bell-badge" aria-hidden="true">{% if bell_count > 99 %}99+{% else %}{{ bell_count }}{% endif %}</span>{% endif %}
+    </a>
+    {% endif %}
     {% include 'web/_theme_toggle.html' %}
     {% if user.is_authenticated %}
     <div class="mt-user" x-data="{ open: false }" @keydown.escape="if (open) { open = false; $refs.btn.focus() }" @click.outside="open = false" @focusin.window="if (open && !$el.contains($event.target)) open = false">
