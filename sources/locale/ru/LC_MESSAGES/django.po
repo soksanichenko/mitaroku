@@ -1015,6 +1015,30 @@ msgstr "Отметить как прочитанное"
 msgid "Mark all as read"
 msgstr "Отметить все как прочитанные"
 
+#: sources/web/templates/web/settings.html
+msgid "On site: always on. The bell in the header shows unread items."
+msgstr "На сайте: всегда включены. Колокольчик в шапке показывает непрочитанное."
+
+#: sources/web/templates/web/settings.html
+msgid "Notifications arrive at 09:00 in your time zone."
+msgstr "Уведомления приходят в 09:00 по вашему часовому поясу."
+
+#: sources/web/templates/web/settings.html
+msgid "Detected from your browser"
+msgstr "Определён по вашему браузеру"
+
+#: sources/web/templates/web/settings.html
+msgid "Email and Telegram notifications are coming later."
+msgstr "Уведомления по почте и в Telegram появятся позже."
+
+#: sources/web/views/settings.py
+msgid "Time zone"
+msgstr "Часовой пояс"
+
+#: sources/web/views/settings.py
+msgid "Other"
+msgstr "Прочие"
+
 #~ msgid "D, M j"
 #~ msgstr "D, j E"
 

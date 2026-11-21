@@ -41,3 +41,11 @@ def test_zone_names_start_with_utc_and_are_valid():
     assert 'Europe/Kyiv' in names
     assert not [n for n in names if n.startswith(('Etc/', 'posix/', 'right/'))]
     assert all(user_zone(n).key == n for n in names)
+
+
+def test_zone_names_drop_factory_and_are_cached():
+    zone_names.cache_clear()
+    names = zone_names()
+    assert 'Factory' not in names
+    assert zone_names() is names
+    zone_names.cache_clear()

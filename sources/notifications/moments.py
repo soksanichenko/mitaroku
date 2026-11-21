@@ -1,10 +1,13 @@
 """The 09:00-in-the-user's-zone moments at which releases become due."""
 
 from datetime import date, datetime, time
+from functools import cache
 from zoneinfo import ZoneInfo, available_timezones
 
 NOTIFY_HOUR = 9
 _HIDDEN_PREFIXES = ('Etc/', 'posix/', 'right/', 'SystemV/')
+# Not a place anyone lives in: a test placeholder shipped with the tz database.
+_HIDDEN_NAMES = ('UTC', 'Factory')
 
 
 def user_zone(name: str) -> ZoneInfo:
@@ -52,12 +55,17 @@ def local_day(moment: datetime, zone_name: str) -> date:
     return moment.astimezone(user_zone(zone_name)).date()
 
 
+@cache
 def zone_names() -> list[str]:
-    """Return the zone names offered in settings, ``UTC`` first, then sorted."""
+    """Return the zone names offered in settings, ``UTC`` first, then sorted.
+
+    The result is cached (the tz database does not change while the process
+    runs), so callers must not modify the returned list.
+    """
     names = sorted(
         name
         for name in available_timezones()
-        if name != 'UTC'
+        if name not in _HIDDEN_NAMES
         and not name.startswith(_HIDDEN_PREFIXES)
         and user_zone(name).key == name
     )

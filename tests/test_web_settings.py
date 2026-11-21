@@ -5,6 +5,7 @@ from accounts.models import User
 from catalog.models import Title, TitleTranslation
 from django.conf import settings
 from django.test import Client, override_settings
+from django.utils import timezone
 from mitaroku.settings import backends_for, middleware_for
 from tracking.models import LibraryEntry
 
@@ -53,9 +54,8 @@ def test_settings_shows_the_account_and_language_sections(
     assert 'kira@example.com' in html
     assert 'Signed in through the portal' in html
     assert 'Local account' not in html
-    # Plans 4 and 5 add these; nothing is reserved for them now. (The header's
-    # bell is called Notifications, so look for the section.)
-    assert 'aria-labelledby="set-notifications"' not in html
+    # The data section comes with a later plan; nothing is reserved for it now.
+    assert 'aria-labelledby="set-notifications"' in html
     assert 'Your data' not in html
 
 
@@ -296,3 +296,199 @@ def test_other_methods_are_refused(client, portal_headers, alice):
 def test_settings_requires_login(client):
     assert client.get('/settings/').status_code == 401
     assert client.post('/settings/', LANGUAGE).status_code == 401
+
+
+TIMEZONE_URL = '/settings/timezone/'
+
+
+def options(html: str, select_id: str) -> list[str]:
+    """Return the option values of the select ``select_id`` in page order."""
+    block = re.search(
+        rf'<select[^>]*\bid="{select_id}".*?</select>', html, re.DOTALL
+    ).group()
+    return re.findall(r'<option value="([^"]*)"', block)
+
+
+def test_the_settings_page_lists_zones_and_the_current_one_is_selected(
+    client, portal_headers, alice
+):
+    alice.profile.timezone = 'Europe/Kyiv'
+    alice.profile.save()
+    html = page(client, portal_headers)
+    assert 'aria-labelledby="set-notifications"' in html
+    assert '<h2 id="set-notifications" class="mt-set-title">Notifications</h2>' in html
+    control = tag(html, 'id_timezone')
+    assert 'name="timezone"' in control
+    assert 'id_timezone_help' in control
+    assert '<label for="id_timezone">Time zone</label>' in html
+    assert selected(html, 'id_timezone') == 'Europe/Kyiv'
+    values = options(html, 'id_timezone')
+    assert values[0] == 'UTC'
+    assert {'Europe/Kyiv', 'Asia/Kolkata', 'Pacific/Auckland'} <= set(values)
+    assert 'Factory' not in values
+    assert 'On site: always on. The bell in the header shows unread items.' in html
+    assert 'Notifications arrive at 09:00 in your time zone.' in html
+    assert 'Email and Telegram notifications are coming later.' in html
+
+
+def test_the_zones_are_grouped_by_region_with_utc_alone_first(
+    client, portal_headers, alice
+):
+    html = page(client, portal_headers)
+    block = re.search(
+        r'<select[^>]*\bid="id_timezone".*?</select>', html, re.DOTALL
+    ).group()
+    assert block.index('value="UTC"') < block.index('<optgroup')
+    groups = dict(
+        re.findall(r'<optgroup label="([^"]*)">(.*?)</optgroup>', block, re.DOTALL)
+    )
+    assert 'Europe' in groups and 'Asia' in groups
+    assert 'value="Europe/Kyiv"' in groups['Europe']
+    assert 'value="Asia/Kolkata"' not in groups['Europe']
+    assert 'value="UTC"' not in ''.join(groups.values())
+
+
+def test_a_valid_zone_is_saved_and_notify_since_moves(client, portal_headers, alice):
+    before = alice.profile.notify_since
+    response = client.post(TIMEZONE_URL, {'timezone': 'Asia/Tokyo'}, **portal_headers)
+    assert response.status_code == 302
+    assert response['Location'] == '/settings/'
+    alice.profile.refresh_from_db()
+    assert alice.profile.timezone == 'Asia/Tokyo'
+    assert before < alice.profile.notify_since <= timezone.now()
+    html = client.get('/settings/', **portal_headers).content.decode()
+    assert 'Settings saved' in html
+    assert selected(html, 'id_timezone') == 'Asia/Tokyo'
+    assert 'Settings saved' not in page(client, portal_headers)
+
+
+def test_saving_the_same_zone_keeps_notify_since(client, portal_headers, alice):
+    alice.profile.timezone = 'Asia/Tokyo'
+    alice.profile.save()
+    alice.profile.refresh_from_db()
+    before = alice.profile.notify_since
+    response = client.post(TIMEZONE_URL, {'timezone': 'Asia/Tokyo'}, **portal_headers)
+    assert response.status_code == 302
+    alice.profile.refresh_from_db()
+    assert alice.profile.timezone == 'Asia/Tokyo'
+    assert alice.profile.notify_since == before
+
+
+@pytest.mark.parametrize('value', ['Mars/Base', '', '../x', 'Factory', 'Etc/GMT+5'])
+def test_an_invalid_zone_is_rejected_and_nothing_changes(
+    client, portal_headers, alice, value
+):
+    alice.profile.timezone = 'Europe/Kyiv'
+    alice.profile.save()
+    alice.profile.refresh_from_db()
+    before = alice.profile.notify_since
+    response = client.post(TIMEZONE_URL, {'timezone': value}, **portal_headers)
+    assert response.status_code == 200
+    html = response.content.decode()
+    assert 'Select a valid choice' in html or 'This field is required' in html
+    assert 'id_timezone_error' in tag(html, 'id_timezone')
+    assert 'Settings saved' not in html
+    alice.profile.refresh_from_db()
+    assert alice.profile.timezone == 'Europe/Kyiv'
+    assert alice.profile.notify_since == before
+
+
+def test_a_missing_zone_is_rejected(client, portal_headers, alice):
+    assert client.post(TIMEZONE_URL, {}, **portal_headers).status_code == 200
+    alice.profile.refresh_from_db()
+    assert alice.profile.timezone == 'UTC'
+
+
+def test_the_timezone_form_edits_only_the_requesters_profile(
+    client, portal_headers, alice, bob
+):
+    bob_since = bob.profile.notify_since
+    data = {'timezone': 'Asia/Tokyo', 'user': bob.pk, 'profile': bob.profile.pk}
+    assert client.post(TIMEZONE_URL, data, **portal_headers).status_code == 302
+    bob.profile.refresh_from_db()
+    alice.profile.refresh_from_db()
+    assert alice.profile.timezone == 'Asia/Tokyo'
+    assert bob.profile.timezone == 'UTC'
+    assert bob.profile.notify_since == bob_since
+
+
+def test_get_on_the_timezone_url_is_405(client, portal_headers, alice):
+    assert client.get(TIMEZONE_URL, **portal_headers).status_code == 405
+    assert client.put(TIMEZONE_URL, **portal_headers).status_code == 405
+
+
+def test_the_timezone_post_needs_a_csrf_token_and_a_login(portal_headers, alice):
+    strict = Client(enforce_csrf_checks=True)
+    data = {'timezone': 'Asia/Tokyo'}
+    assert strict.post(TIMEZONE_URL, data, **portal_headers).status_code == 403
+    assert Client().post(TIMEZONE_URL, data).status_code == 401
+    alice.profile.refresh_from_db()
+    assert alice.profile.timezone == 'UTC'
+
+
+def test_the_timezone_form_is_a_csrf_protected_post_form(client, portal_headers, alice):
+    html = page(client, portal_headers)
+    form = re.search(
+        r'<form[^>]*action="/settings/timezone/"[^>]*>.*?</form>', html, re.DOTALL
+    )
+    assert form is not None
+    assert 'method="post"' in form.group()
+    assert 'csrfmiddlewaretoken' in form.group()
+    assert 'type="submit"' in form.group()
+    assert 'id_timezone' in form.group()
+
+
+def test_the_section_has_no_email_or_telegram_controls(client, portal_headers, alice):
+    html = page(client, portal_headers)
+    section = re.search(
+        r'<section[^>]*aria-labelledby="set-notifications".*?</section>',
+        html,
+        re.DOTALL,
+    ).group()
+    assert 'type="checkbox"' not in section
+    assert 'role="switch"' not in section
+    assert section.count('<select') == 1
+    assert section.count('<form') == 1
+    assert section.count('<input') == 1  # the CSRF token only
+    assert 'coming later' in section
+    for word in ('Connect', 'Telegram bot', 'Use portal email'):
+        assert word not in section
+
+
+def test_the_page_renders_in_russian(client, portal_headers, alice):
+    alice.profile.interface_language = 'ru'
+    alice.profile.save()
+    html = page(client, portal_headers)
+    section = re.search(
+        r'<section[^>]*aria-labelledby="set-notifications".*?</section>',
+        html,
+        re.DOTALL,
+    ).group()
+    assert '<h2 id="set-notifications" class="mt-set-title">Уведомления</h2>' in section
+    for text in (
+        'Часовой пояс',
+        'На сайте: всегда включены. Колокольчик в шапке показывает непрочитанное.',
+        'Уведомления приходят в 09:00 по вашему часовому поясу.',
+        'Уведомления по почте и в Telegram появятся позже.',
+        'Определён по вашему браузеру',
+    ):
+        assert text in section
+    assert 'Time zone' not in section
+    assert 'Detected from your browser' not in section
+
+
+def test_the_browser_hint_markup_is_present_only_for_the_default_zone(
+    client, portal_headers, alice
+):
+    html = page(client, portal_headers)
+    assert 'Detected from your browser' in html
+    assert 'resolvedOptions().timeZone' in html
+    # Nothing is preselected on the server, and the hint starts hidden.
+    assert selected(html, 'id_timezone') == 'UTC'
+    hint = re.search(r'<[^>]*>[^<]*Detected from your browser', html).group()
+    assert 'hidden' in hint
+    alice.profile.timezone = 'Europe/Kyiv'
+    alice.profile.save()
+    html = page(client, portal_headers)
+    assert 'Detected from your browser' not in html
+    assert 'resolvedOptions' not in html

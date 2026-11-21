@@ -56,5 +56,6 @@ urlpatterns = [
     path('seasons/<int:pk>/rows/', titles.season_rows, name='season_rows'),
     path('seasons/<int:pk>/watch/', actions.season_watch, name='season_watch'),
     path('settings/', settings.settings_page, name='settings'),
+    path('settings/timezone/', settings.settings_timezone, name='settings_timezone'),
     path('healthz/', shell.healthz, name='healthz'),
 ]

@@ -2615,6 +2615,10 @@ a:focus-visible .mt-poster-img,
   color: var(--color-text);
 }
 
+.mt-set-zone {
+  max-width: 360px;
+}
+
 .mt-set-help {
   font-size: 12px;
   line-height: 1.45;
