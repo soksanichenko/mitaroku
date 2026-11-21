@@ -12,8 +12,7 @@ released, or that a release date was announced or moved. The user sets a time zo
 every notification arrives at a sensible local moment.
 
 Success: with a Watching series whose next episode airs today, the bell in the header
-shows an unread count at 09:00 in the user's zone (or at the exact airing moment for
-anime), the Notifications screen lists it, and nothing is ever notified twice.
+shows an unread count at 09:00 in the user's zone, the Notifications screen lists it, and nothing is ever notified twice.
 
 ## 2. Goals, non-goals, anti-goals
 
@@ -58,12 +57,11 @@ of one pass into a digest for email and Telegram.
 
 - `Profile.timezone`: an IANA name, default `UTC`. An unknown or removed name falls back
   to UTC at use time.
-- A release known only as a date (all TMDB data, movies, premieres) is due at **09:00 in
-  the user's zone on that date**. The hour is a constant.
-- Anime episodes carry a real moment: AniList `airingAt` is stored in the new
-  `Episode.aired_at` (UTC datetime, null for TMDB episodes). The anime sync already reads
-  it and reduces it to `air_date`; it now keeps both. A migration marks synced anime
-  titles due for resync so the field fills in. The episode is due at `aired_at`.
+- A release is due at **09:00 in the user's zone on its date**. The hour is a constant.
+- Every release is due at that 09:00, anime included. Providers give dates, not times;
+  AniList's exact `airingAt` is read only on the sync's fallback path (most anime take
+  their episodes from TMDB), so 4a does not store it. An exact-time field is a possible
+  later refinement, not part of this plan.
 - A notification's `day` is its due moment's date in the user's zone (used for grouping
   and for the day headings on the screen).
 
@@ -161,11 +159,11 @@ days.
 - Work in the existing apps' style: Django 6.1, Huey, HTMX, Alpine, pytest; new app
   `notifications` as spec section 2 lists it.
 - After implementation the spec is amended: section 3 (`Profile.timezone`,
-  `Episode.aired_at`, `Notification`) and section 7 (the rules above, 09:00, grouping).
+  `Notification`) and section 7 (the rules above, 09:00, grouping).
 
 ## 6. Left to the builder
 
 Names of functions and templates, the exact payload layout, the Notifications row
 markup (follow the design file), how the zone list is presented (searchable select or
-plain), the migration's data step details, how to freeze time in tests, and the exact
+plain), the migration's data step (`notify_since` for existing profiles), how to freeze time in tests, and the exact
 indexes beyond the one named.
