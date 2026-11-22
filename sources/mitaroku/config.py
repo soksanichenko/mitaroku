@@ -3,9 +3,9 @@
 import ipaddress
 import os
 from functools import lru_cache
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, SecretStr, field_validator
+from pydantic import BaseModel, SecretStr, field_validator, model_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -88,6 +88,56 @@ class AuthConfig(BaseModel):
         return value
 
 
+class EmailConfig(BaseModel):
+    """Outgoing SMTP settings for the email notification channel.
+
+    Attributes:
+        host: SMTP server. Empty turns the email channel off.
+        port: SMTP port.
+        user: SMTP login. Empty sends without authentication.
+        password: SMTP password; a blank value counts as not set.
+        starttls: Upgrade the connection with STARTTLS (usually port 587).
+        ssl: Use implicit TLS from the first byte (usually port 465). It takes
+            precedence over a ``starttls`` left at its default, which is then
+            ignored; setting both to true explicitly is rejected.
+        from_address: The sender address; required once ``host`` is set.
+    """
+
+    host: str = ''
+    port: int = 587
+    user: str = ''
+    password: SecretStr | None = None
+    starttls: bool = True
+    ssl: bool = False
+    from_address: str = ''
+
+    @field_validator('password', mode='before')
+    @classmethod
+    def _blank_password_is_none(cls, value: object) -> object:
+        """Treat an empty password (such as an unset ``${VAR}``) as not set."""
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    @model_validator(mode='after')
+    def _host_needs_a_sender(self) -> 'EmailConfig':
+        """Refuse a configured server that has no sender address."""
+        if self.host and not self.from_address:
+            raise ValueError('email.from_address is required when email.host is set')
+        return self
+
+    @model_validator(mode='after')
+    def _ssl_and_starttls_are_exclusive(self) -> 'EmailConfig':
+        """Refuse an explicit ``starttls`` next to ``ssl``.
+
+        ``starttls`` defaults to true, so only a value that was actually given
+        counts as a conflict.
+        """
+        if self.ssl and self.starttls and 'starttls' in self.model_fields_set:
+            raise ValueError('email.ssl and email.starttls cannot both be true')
+        return self
+
+
 class Settings(BaseSettings):
     """All runtime settings.
 
@@ -109,6 +159,17 @@ class Settings(BaseSettings):
     database: DatabaseConfig
     redis: RedisConfig = RedisConfig()
     providers: ProvidersConfig = ProvidersConfig()
+    email: EmailConfig = EmailConfig()
+    public_url: str = ''
+
+    @field_validator('public_url')
+    @classmethod
+    def _http_without_trailing_slash(cls, value: str) -> str:
+        """Accept an empty value or an http(s) URL, and drop trailing slashes."""
+        value = value.strip().rstrip('/')
+        if value and not value.startswith(('http://', 'https://')):
+            raise ValueError('public_url must start with http:// or https://')
+        return value
 
     @classmethod
     def settings_customise_sources(
@@ -124,6 +185,34 @@ class Settings(BaseSettings):
             settings_cls, yaml_file=os.environ.get('MITAROKU_CONFIG', 'config.yaml')
         )
         return init_settings, env_settings, yaml_source
+
+
+def mailers_setting(email: EmailConfig) -> dict[str, dict[str, Any]]:
+    """Return Django's ``MAILERS`` setting for the given SMTP block.
+
+    The ``default`` mailer always exists so code and tests that send mail find
+    one; with no host configured it points at localhost and nothing sends it.
+
+    Args:
+        email: The ``email`` block of the settings.
+
+    Returns:
+        A mapping with the ``default`` SMTP mailer.
+    """
+    return {
+        'default': {
+            'BACKEND': 'django.core.mail.backends.smtp.EmailBackend',
+            'OPTIONS': {
+                'host': email.host or 'localhost',
+                'port': email.port,
+                'username': email.user,
+                'password': email.password.get_secret_value() if email.password else '',
+                'use_tls': email.starttls and not email.ssl,
+                'use_ssl': email.ssl,
+                'timeout': 15,
+            },
+        }
+    }
 
 
 @lru_cache

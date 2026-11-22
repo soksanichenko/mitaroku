@@ -1026,16 +1026,12 @@ msgid "On site: always on. The bell in the header shows unread items."
 msgstr "На сайте: всегда включены. Колокольчик в шапке показывает непрочитанное."
 
 #: sources/web/templates/web/settings.html
-msgid "Notifications arrive at 09:00 in your time zone."
-msgstr "Уведомления приходят в 09:00 по вашему часовому поясу."
+msgid "Episodes and releases arrive at 09:00 in your time zone. Date changes arrive as soon as they are found."
+msgstr "Серии и выходы приходят в 09:00 по вашему часовому поясу. Изменения дат приходят, как только их находят."
 
 #: sources/web/templates/web/settings.html
 msgid "Detected from your browser"
 msgstr "Определён по вашему браузеру"
-
-#: sources/web/templates/web/settings.html
-msgid "Email and Telegram notifications are coming later."
-msgstr "Уведомления по почте и в Telegram появятся позже."
 
 #: sources/web/views/settings.py
 msgid "Time zone"
@@ -1044,6 +1040,162 @@ msgstr "Часовой пояс"
 #: sources/web/views/settings.py
 msgid "Other"
 msgstr "Прочие"
+
+#: sources/web/templates/web/email_unsubscribe.html
+msgid "Unsubscribe from email"
+msgstr "Отписаться от почты"
+
+#: sources/web/templates/web/email_unsubscribe.html
+msgid "You are unsubscribed"
+msgstr "Вы отписались"
+
+#: sources/web/templates/web/email_unsubscribe.html
+msgid "You will not get email from mitaroku any more."
+msgstr "Вы больше не будете получать письма от mitaroku."
+
+#: sources/web/templates/web/email_unsubscribe.html
+msgid "You can turn email back on in the settings."
+msgstr "Почту можно снова включить в настройках."
+
+#: sources/web/templates/web/email_unsubscribe.html
+msgid "Open settings"
+msgstr "Открыть настройки"
+
+#: sources/web/templates/web/email_unsubscribe.html
+msgid "Stop notification email from mitaroku. Notifications stay in the app."
+msgstr "Прекратить письма с уведомлениями от mitaroku. Уведомления останутся в приложении."
+
+#: sources/web/templates/web/email_unsubscribe.html
+msgid "Unsubscribe"
+msgstr "Отписаться"
+
+#: sources/web/templates/web/email_confirm.html
+msgid "Confirm your email address"
+msgstr "Подтвердите адрес почты"
+
+#: sources/web/templates/web/email_confirm.html
+msgid "Address confirmed"
+msgstr "Адрес подтверждён"
+
+#: sources/web/templates/web/email_confirm.html
+msgid "Confirm address"
+msgstr "Подтвердить адрес"
+
+#: sources/web/templates/web/email_invalid.html
+msgid "This link is not valid"
+msgstr "Эта ссылка недействительна"
+
+#: sources/web/templates/web/email_invalid.html
+msgid "It may have expired or been replaced by a newer one. You can ask for a new one in the settings."
+msgstr "Возможно, срок её действия истёк или её заменила новая. Новую можно запросить в настройках."
+
+#: sources/web/templates/web/email_confirm.html
+#, python-format
+msgid "Email from mitaroku will go to %(address)s."
+msgstr "Письма от mitaroku будут приходить на %(address)s."
+
+#: sources/web/templates/web/email_confirm.html
+#, python-format
+msgid "Send email from mitaroku to %(address)s?"
+msgstr "Отправлять письма от mitaroku на %(address)s?"
+
+#: sources/notifications/digest.py
+#, python-format
+msgid "%(count)s new notification"
+msgid_plural "%(count)s new notifications"
+msgstr[0] "%(count)s новое уведомление"
+msgstr[1] "%(count)s новых уведомления"
+msgstr[2] "%(count)s новых уведомлений"
+
+#: sources/notifications/digest.py
+#, python-format
+msgid "and %(count)s more"
+msgid_plural "and %(count)s more"
+msgstr[0] "и ещё %(count)s"
+msgstr[1] "и ещё %(count)s"
+msgstr[2] "и ещё %(count)s"
+
+#: sources/notifications/templates/notifications/email/digest.html
+msgid "All notifications"
+msgstr "Все уведомления"
+
+#: sources/web/templates/web/settings.html
+msgid "Telegram notifications are coming later."
+msgstr "Уведомления в Telegram появятся позже."
+
+#: sources/web/templates/web/settings.html
+msgid "Address"
+msgstr "Адрес"
+
+#: sources/web/templates/web/settings.html
+msgid "Source"
+msgstr "Источник"
+
+#: sources/web/templates/web/settings.html
+msgid "The address you entered"
+msgstr "Адрес, который вы указали"
+
+#: sources/web/templates/web/settings.html
+msgid "Portal address"
+msgstr "Адрес с портала"
+
+#: sources/web/templates/web/settings.html
+msgid "Account address"
+msgstr "Адрес аккаунта"
+
+#: sources/web/templates/web/settings.html
+#, python-format
+msgid "Waiting for confirmation of %(address)s"
+msgstr "Ожидает подтверждения: %(address)s"
+
+#: sources/web/templates/web/settings.html
+msgid "Send me new notifications by email"
+msgstr "Присылать новые уведомления на почту"
+
+#: sources/web/templates/web/settings.html
+msgid "Send to another address"
+msgstr "Отправлять на другой адрес"
+
+#: sources/web/templates/web/settings.html
+msgid "We send a link to this address. It is used once you open the link and confirm it."
+msgstr "Мы отправим ссылку на этот адрес. Он начнёт действовать, когда вы откроете ссылку и подтвердите его."
+
+#: sources/web/templates/web/settings.html
+msgid "Send confirmation"
+msgstr "Отправить подтверждение"
+
+#: sources/web/templates/web/settings.html
+msgid "Use the portal address"
+msgstr "Использовать адрес с портала"
+
+#: sources/web/views/settings.py
+msgid "Email address"
+msgstr "Адрес почты"
+
+#: sources/web/views/settings.py
+msgid "Add an email address first"
+msgstr "Сначала добавьте адрес почты"
+
+#: sources/web/views/settings.py
+msgid "That is already your address."
+msgstr "Это уже ваш адрес."
+
+#: sources/web/views/settings.py
+msgid "We could not send the confirmation. Try again later."
+msgstr "Не удалось отправить подтверждение. Попробуйте позже."
+
+#: sources/notifications/confirmation.py
+msgid "Confirm your address for mitaroku"
+msgstr "Подтвердите адрес для mitaroku"
+
+#: sources/notifications/templates/notifications/email/confirm.html
+#, python-format
+msgid "Confirm that mitaroku may send email to %(address)s. Open the link and press the button:"
+msgstr "Подтвердите, что mitaroku может писать на %(address)s. Откройте ссылку и нажмите кнопку:"
+
+#: sources/notifications/templates/notifications/email/confirm.html
+msgid "The link works for 3 days. If you did not ask for this, ignore this message."
+msgstr "Ссылка действует 3 дня. Если вы этого не просили, проигнорируйте письмо."
 
 #~ msgid "D, M j"
 #~ msgstr "D, j E"
@@ -1062,3 +1214,9 @@ msgstr "Прочие"
 
 #~ msgid "Partly watched"
 #~ msgstr "Просмотрено частично"
+
+#~ msgid "Email and Telegram notifications are coming later."
+#~ msgstr "Уведомления по почте и в Telegram появятся позже."
+
+#~ msgid "Notifications arrive at 09:00 in your time zone."
+#~ msgstr "Уведомления приходят в 09:00 по вашему часовому поясу."

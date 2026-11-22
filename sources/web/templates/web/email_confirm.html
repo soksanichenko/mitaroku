@@ -1,0 +1,19 @@
+{% extends 'web/base.html' %}{% load i18n %}
+{% block title %}{% trans 'Confirm your email address' %}{% endblock %}
+{% block bottom %}{% endblock %}
+{% block content %}
+<div class="mt-login">
+  {% if done %}
+  <h1 class="mt-page-title">{% trans 'Address confirmed' %}</h1>
+  <p>{% blocktrans trimmed %}Email from mitaroku will go to {{ address }}.{% endblocktrans %}</p>
+  <a class="btn btn-secondary" href="{% url 'settings' %}" style="min-height:44px">{% trans 'Open settings' %}</a>
+  {% else %}
+  <h1 class="mt-page-title">{% trans 'Confirm your email address' %}</h1>
+  <p>{% blocktrans trimmed %}Send email from mitaroku to {{ address }}?{% endblocktrans %}</p>
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-primary" style="min-height:44px">{% trans 'Confirm address' %}</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

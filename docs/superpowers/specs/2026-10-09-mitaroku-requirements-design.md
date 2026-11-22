@@ -59,9 +59,19 @@ for secrets, Docker, Ansible (repo created from `service-repo-template`).
   `notify_since` (nothing earlier than this moment is notified; it guards against
   events from before the feature or the profile existed, and a zone change does not
   touch it).
+  The email channel adds four fields: `email_enabled` (the opt-in, off by default),
+  `email_since` (set each time the channel is switched on and cleared when it is
+  switched off; nothing created at or before it is ever mailed, so it is the opt-in
+  guard), `notify_email` (the address the user entered and confirmed) and
+  `pending_email` (an entered address that waits for its confirmation link).
 - `Notification`: one row per user, kind, title and local day (unique `dedupe_key`),
   with a data-only `payload`, `created_at` and `read_at`. It is user data: read through
   the user-scoped manager and not registered in the admin.
+- `Delivery`: one row per notification and channel (unique per pair; only `email`
+  exists so far), with a `status` of pending, sent, failed, expired or skipped, the
+  number of `attempts`, `next_attempt_at`, `sent_at` and a data-only `last_error`
+  text (the exception class and a cut message, never the recipient address). It is
+  user data: read through the user-scoped manager.
 
 All user-data queries go through a model manager that scopes them to the user.
 
@@ -130,7 +140,8 @@ Mechanics: dedupe through a unique key, grouping per title per day, one `Deliver
 row per channel with retries. The first sync records a baseline only. A removed
 date produces no notification. Providers give dates, not times.
 
-As built for the on-site channel (plan 4a; email and Telegram are plan 4b):
+As built for the on-site channel (plan 4a; the email channel is plan 4b below, Telegram
+is plan 4c):
 
 - A release is due at 09:00 in the user's time zone on its date, anime included
   (AniList's exact airing time is not stored). The zone is set in Settings.
@@ -157,7 +168,36 @@ As built for the on-site channel (plan 4a; email and Telegram are plan 4b):
   date that moves and returns to its original value on the same day leaves no
   notification: the row is deleted.
 - Read notifications are deleted after 90 days and all notifications after 180 days.
-- The digest of one scan pass for email and Telegram is decided in plan 4b.
+- The digest of one scan pass is decided and built for email in plan 4b (below);
+  Telegram is plan 4c.
+
+As built for the email channel (plan 4b; Telegram is plan 4c):
+
+- Email is available only when the operator sets both `email.host` and `public_url`;
+  otherwise the Email block is absent from Settings and nothing is sent. A host
+  needs `email.from_address`.
+- Opt-in in Settings, off by default. The address is the account address (from the
+  portal's `X-Discord-Email` or the local account) or one the user enters. An entered
+  address is held as pending and mailed a confirmation link (valid for 3 days; a GET
+  only shows the page, a POST confirms); until then the previous address stays in use.
+  "Use the portal address" drops the entered and the pending one.
+- The sender runs every 15 minutes (minutes 2, 17, 32 and 47, after the scanner) and
+  sends one digest mail per user per pass, in the user's interface language, with
+  title names in the metadata language and at most 50 items, newest first, plus an
+  "and N more" line.
+- Nothing from before opting in is mailed: only notifications created after
+  `email_since` count, and only those younger than 48 hours. A user without an
+  address gets no delivery until one appears.
+- Retries after a failed send: 15 minutes, 1 hour, 6 hours, 6 hours; the delivery is
+  `failed` at the fifth failure. A pending delivery is `expired` once its notification
+  is older than 48 hours, and `skipped` when the notification was already read on the
+  site (expiry is checked first).
+- Every mail carries `List-Unsubscribe` and `List-Unsubscribe-Post`
+  (`List-Unsubscribe=One-Click`); the link is a signed token that never expires. A GET
+  of the page only shows a confirmation, a POST switches email off and clears
+  `email_since`, and neither needs a session. Unsubscribing also stops what is queued.
+- A notification that merges a later event after it was mailed is not mailed again:
+  its `Delivery` is already `sent` and the pair is unique.
 
 ## 8. Import and export
 
@@ -218,6 +258,9 @@ role from the `new-service-repo` and `new-nginx-service` skills.
   can load more shows "Showing N".
 - Opening a title nobody has added yet (`/open/<provider>/<id>/`) has no per-user cap,
   unlike the add flow, which caps pending requests at 5. Known follow-up.
+- Portal mode: nginx must let `/email/` through without the SSO check. The one-click
+  unsubscribe is posted by the recipient's mail provider, which has no session; the
+  confirmation page lives under the same prefix.
 - Telegram: webhook or polling.
 - Subdomain or subpath.
 - Verify the exact export format of each supported service.

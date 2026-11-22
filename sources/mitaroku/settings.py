@@ -3,7 +3,7 @@
 import ipaddress
 from pathlib import Path
 
-from mitaroku.config import load_settings
+from mitaroku.config import load_settings, mailers_setting
 
 config = load_settings()
 
@@ -38,6 +38,13 @@ PORTAL_TRUSTED_NETWORKS = [
     ipaddress.ip_network(item, strict=False) for item in config.auth.trusted_proxies
 ]
 PORTAL_LOGOUT_URL = config.auth.portal_logout_url
+
+MAILERS = mailers_setting(config.email)
+if config.email.from_address:
+    DEFAULT_FROM_EMAIL = config.email.from_address
+PUBLIC_URL = config.public_url
+# Mail is only offered when both the server and the links' base are known.
+EMAIL_ENABLED = bool(config.email.host and config.public_url)
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = LOGIN_URL

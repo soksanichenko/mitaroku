@@ -8,6 +8,9 @@ allowed_hosts: [localhost, 127.0.0.1]
 # Behind a TLS proxy list the https origin(s), or every POST gets 403.
 csrf_trusted_origins: []  # e.g. ['https://mitaroku.example.com']
 huey_immediate: false
+# Public address of the site, used for the links in e-mails. Email stays off unless
+# both this and email.host are set.
+public_url: ''  # e.g. 'https://mitaroku.example.com'
 
 auth:
   mode: local  # local = Django accounts; portal = trust the SSO headers from nginx
@@ -29,6 +32,17 @@ redis:
   port: 56379
   db: 0
   password: null  # set when Redis requires AUTH
+
+# Outgoing mail for the email notification channel. An empty host turns it off.
+# In portal mode nginx must let /email/ through without the SSO check.
+email:
+  host: ''  # SMTP server; empty = email off
+  port: 587
+  user: ''  # empty = send without authentication
+  password: null  # SMTP password
+  starttls: true
+  ssl: false  # true = implicit TLS (port 465); then starttls is ignored
+  from_address: ''  # required once host is set, e.g. 'mitaroku@example.com'
 
 providers:
   tmdb_token: null  # TMDB API read access token; required to search or sync TMDB titles

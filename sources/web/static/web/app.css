@@ -2637,6 +2637,45 @@ a:focus-visible .mt-poster-img,
   border-width: 2px;
 }
 
+.mt-set-form {
+  display: grid;
+  gap: 12px;
+}
+
+.mt-set-check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.mt-set-check input {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--color-text);
+}
+
+.mt-set-check input[aria-invalid='true'] {
+  outline: 2px solid var(--color-accent-700);
+}
+
+.mt-set-pending {
+  margin: 0;
+  padding: 10px 12px;
+  border: 2px solid var(--color-divider);
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.mt-set-field input[aria-invalid='true'] {
+  border-color: var(--color-accent-700);
+  border-width: 2px;
+}
+
 /* Browse. */
 .mt-br-head {
   display: grid;

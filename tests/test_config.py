@@ -94,3 +94,74 @@ def test_an_empty_token_degrades_the_default_clients(monkeypatch):
         assert default_clients().tmdb is None
     finally:
         load_settings.cache_clear()
+
+
+def test_the_email_block_is_off_by_default():
+    settings = Settings()
+    assert settings.email.host == ''
+    assert settings.email.port == 587
+    assert settings.email.starttls is True
+    assert settings.email.ssl is False
+    assert settings.email.password is None
+    assert settings.public_url == ''
+
+
+def test_a_host_without_a_from_address_is_rejected(monkeypatch):
+    monkeypatch.setenv('MITAROKU_EMAIL__HOST', 'smtp.example')
+    with pytest.raises(ValidationError):
+        Settings()
+
+
+def test_a_host_with_a_from_address_is_accepted(monkeypatch):
+    monkeypatch.setenv('MITAROKU_EMAIL__HOST', 'smtp.example')
+    monkeypatch.setenv('MITAROKU_EMAIL__FROM_ADDRESS', 'mitaroku@example.com')
+    assert Settings().email.host == 'smtp.example'
+
+
+def test_the_ssl_flag_comes_from_the_environment(monkeypatch):
+    monkeypatch.setenv('MITAROKU_EMAIL__SSL', 'true')
+    assert Settings().email.ssl is True
+
+
+def test_ssl_with_the_default_starttls_is_accepted(monkeypatch):
+    monkeypatch.setenv('MITAROKU_EMAIL__SSL', 'true')
+    monkeypatch.setenv('MITAROKU_EMAIL__PORT', '465')
+    email = Settings().email
+    assert email.ssl is True
+    assert email.starttls is True
+
+
+def test_ssl_with_an_explicit_starttls_is_rejected(monkeypatch):
+    monkeypatch.setenv('MITAROKU_EMAIL__SSL', 'true')
+    monkeypatch.setenv('MITAROKU_EMAIL__STARTTLS', 'true')
+    with pytest.raises(ValidationError, match='ssl'):
+        Settings()
+
+
+def test_ssl_with_starttls_explicitly_off_is_accepted(monkeypatch):
+    monkeypatch.setenv('MITAROKU_EMAIL__SSL', 'true')
+    monkeypatch.setenv('MITAROKU_EMAIL__STARTTLS', 'false')
+    assert Settings().email.starttls is False
+
+
+def test_public_url_loses_its_trailing_slash_and_must_be_http(monkeypatch):
+    monkeypatch.setenv('MITAROKU_PUBLIC_URL', 'https://m.example/')
+    assert Settings().public_url == 'https://m.example'
+    monkeypatch.setenv('MITAROKU_PUBLIC_URL', 'ftp://x')
+    with pytest.raises(ValidationError):
+        Settings()
+    monkeypatch.setenv('MITAROKU_PUBLIC_URL', '')
+    assert Settings().public_url == ''
+
+
+@pytest.mark.parametrize('value', ['', '   '])
+def test_a_blank_email_password_is_none(monkeypatch, value):
+    monkeypatch.setenv('MITAROKU_EMAIL__PASSWORD', value)
+    assert Settings().email.password is None
+
+
+def test_the_email_password_is_not_in_the_repr(monkeypatch):
+    monkeypatch.setenv('MITAROKU_EMAIL__PASSWORD', 'smtp-secret')
+    email = Settings().email
+    assert email.password.get_secret_value() == 'smtp-secret'
+    assert 'smtp-secret' not in repr(email)

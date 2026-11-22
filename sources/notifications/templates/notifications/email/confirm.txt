@@ -1,0 +1,8 @@
+{% load i18n %}{% autoescape off %}{{ subject }}
+
+{% blocktrans trimmed %}Confirm that mitaroku may send email to {{ address }}. Open the link and press the button:{% endblocktrans %}
+
+{{ confirm_url }}
+
+{% trans 'The link works for 3 days. If you did not ask for this, ignore this message.' %}
+{% endautoescape %}

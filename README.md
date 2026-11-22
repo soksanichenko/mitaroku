@@ -42,6 +42,18 @@ environment variables prefixed `MITAROKU_`, with `__` between nested keys, for e
   `MITAROKU_ALLOWED_HOSTS='["mitaroku.example.com"]'`.
 - Behind a TLS proxy, `csrf_trusted_origins` must list the https origin (for example
   `['https://mitaroku.example.com']`), or every POST gets 403.
+- Email (optional) uses `email.host`, `email.port` (587), `email.user`, `email.password`,
+  `email.starttls` (true), `email.ssl` (false) and `email.from_address`, or
+  `MITAROKU_EMAIL__HOST`, `MITAROKU_EMAIL__PORT`, `MITAROKU_EMAIL__USER`,
+  `MITAROKU_EMAIL__PASSWORD`, `MITAROKU_EMAIL__STARTTLS`, `MITAROKU_EMAIL__SSL` and
+  `MITAROKU_EMAIL__FROM_ADDRESS`. For a provider that offers only implicit TLS
+  (port 465) set `ssl: true` and `port: 465`; `starttls` is then ignored, and setting
+  both to true explicitly is rejected. `public_url`
+  (`MITAROKU_PUBLIC_URL`, for example `https://mitaroku.example.com`) is the address
+  used in the links inside the mail. Email is off unless both `email.host` and
+  `public_url` are set, and a host needs `from_address`. The worker (`run_huey`) must be
+  running for mail to go out. In portal mode nginx must let `/email/` through without
+  the SSO check: the one-click unsubscribe is posted by the recipient's mail provider.
 - `python sources/manage.py collectstatic` writes to `staticfiles/` (git-ignored).
   Serving `/static/` in production is deferred to plan 6.
 
@@ -121,7 +133,27 @@ and dropped titles are silent, and so are episodes you have already checked off.
   or changed counts only when it is later than today, judged against the UTC date at
   sync time (the other kinds are judged in your zone).
 - Read notifications are deleted after 90 days and all of them after 180 days.
-- Email and Telegram are not built yet (plan 4b).
+- Telegram is not built yet (plan 4c).
+
+### Email
+
+Email is a second channel next to the site, available once the operator has configured
+outgoing mail (see Configuration). The Email block in Settings appears only then.
+
+- It is off until you switch it on in Settings. Only notifications created after that
+  moment are mailed, so switching on never sends a backlog.
+- The address is your account address (from the portal, or your local account). To use
+  another one, enter it in Settings: it is held as pending and a confirmation link is
+  mailed to it (valid for 3 days); the previous address stays in use until you confirm.
+  "Use the portal address" goes back.
+- The worker sends one digest per user every 15 minutes (minutes 2, 17, 32 and 47), in
+  your interface language, with at most 50 items.
+- A failed send is retried after 15 minutes, 1 hour, 6 hours and 6 hours; the fifth
+  failure marks the delivery `failed`. A notification older than 48 hours is no longer
+  mailed (`expired`), and one you have already read on the site is skipped.
+- Every mail has a one-click unsubscribe (`List-Unsubscribe` and `List-Unsubscribe-Post`)
+  and a link at the bottom. Unsubscribing switches email off and stops what is queued.
+- A notification that is updated after it was mailed is not mailed again.
 
 ## Browse and title facts
 
