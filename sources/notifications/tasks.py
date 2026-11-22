@@ -7,6 +7,7 @@ from django.db.models import Q
 from django.utils import timezone
 from huey import crontab
 from huey.contrib.djhuey import db_periodic_task
+from notifications.deliver import send_deliveries
 from notifications.models import Notification
 from notifications.scan import scan_due
 
@@ -25,6 +26,18 @@ def notify_due() -> int:
     """
     count = scan_due(timezone.now())
     logger.info('Notification scan wrote %d rows', count)
+    return count
+
+
+@db_periodic_task(crontab(minute='2,17,32,47'))
+def send_deliveries_task() -> int:
+    """Send the e-mail digests that are due, after the scanner has run.
+
+    Returns:
+        The number of messages sent.
+    """
+    count = send_deliveries(timezone.now())
+    logger.info('Email delivery sent %d messages', count)
     return count
 
 
