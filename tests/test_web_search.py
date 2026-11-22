@@ -18,8 +18,8 @@ pytestmark = pytest.mark.django_db
 
 # 5 queries are the session, the user, the admin group check and the profile; the
 # lookups of library entries and of the running add requests add 3 however many
-# hits there are.
-NUM_SEARCH_QUERIES = 8
+# hits there are, and the header bell counts the unread notifications (1).
+NUM_SEARCH_QUERIES = 9
 NUM_POLL_QUERIES = 7  # 5 for the sign-in, then the expiry update and the read
 ADD = {'provider': 'tmdb_tv', 'external_id': '1396', 'status': 'planned'}
 

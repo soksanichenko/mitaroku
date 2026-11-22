@@ -8,12 +8,12 @@ SOURCES = Path(__file__).resolve().parents[1] / 'sources'
 # Through the default manager only these may skip for_user: they write, never read.
 WRITES = r'(?:create|get_or_create|bulk_create|for_user)'
 MANAGER = (
-    r'\b(?:LibraryEntry|WatchEvent|AddRequest)\s*\.\s*objects\b'
+    r'\b(?:LibraryEntry|WatchEvent|AddRequest|Notification)\s*\.\s*objects\b'
     rf'(?!\s*\.\s*{WRITES}\b)'
 )
 # Related managers use the default manager, so they must be scoped the same way.
 RELATED = (
-    r'\.\s*(?:library_entries|watch_events|add_requests)\b'
+    r'\.\s*(?:library_entries|watch_events|add_requests|notifications)\b'
     r'(?!\s*\.\s*for_user\s*\()'
 )
 UNSCOPED = re.compile(f'{MANAGER}|{RELATED}')
@@ -68,6 +68,8 @@ def test_reads_and_writes_go_through_for_user():
         'title.library_entries.count()',
         'user.library_entries',
         'user.add_requests.filter(a=1)',
+        'Notification.objects.filter(a=1)',
+        'user.notifications.count()',
     ],
 )
 def test_the_guard_reports_unscoped_use(line):
@@ -82,6 +84,7 @@ def test_the_guard_reports_unscoped_use(line):
         'WatchEvent.objects.bulk_create(rows)',
         'WatchEvent.objects.for_user(u).filter(a=1)',
         'title.watch_events.for_user(u)',
+        'Notification.objects.for_user(u).filter(a=1)',
         "prefetch_related('watch_events')",
     ],
 )

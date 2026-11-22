@@ -1,0 +1,10 @@
+{% comment %}
+One day of notifications: a heading ("Today", "Yesterday" or the date) and a row for
+each. Context: group (web.views.notifications.Group).
+{% endcomment %}{% load i18n web_extras %}
+<section class="mt-nt-group" aria-labelledby="nd-{{ group.key }}">
+  <h2 id="nd-{{ group.key }}" class="mt-nt-heading">{% if group.label %}{{ group.label }}{% else %}{{ group.day|short_date:'weekday' }}{% endif %}</h2>
+  <ul id="nl-{{ group.key }}" class="mt-nt-list">
+    {% for row in group.rows %}{% include 'web/_notification_row.html' %}{% endfor %}
+  </ul>
+</section>

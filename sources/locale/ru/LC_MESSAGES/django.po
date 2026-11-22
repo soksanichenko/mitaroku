@@ -947,6 +947,104 @@ msgstr "Похожие"
 msgid "and"
 msgstr "и"
 
+msgid "Notifications"
+msgstr "Уведомления"
+
+#, python-format
+msgid "Notifications, %(count)s unread"
+msgid_plural "Notifications, %(count)s unread"
+msgstr[0] "Уведомления, %(count)s непрочитанное"
+msgstr[1] "Уведомления, %(count)s непрочитанных"
+msgstr[2] "Уведомления, %(count)s непрочитанных"
+
+#, python-format
+msgid "%(count)s unread"
+msgid_plural "%(count)s unread"
+msgstr[0] "%(count)s непрочитанное"
+msgstr[1] "%(count)s непрочитанных"
+msgstr[2] "%(count)s непрочитанных"
+
+msgid "unread"
+msgstr "не прочитано"
+
+msgid "No unread notifications"
+msgstr "Нет непрочитанных уведомлений"
+
+msgid "Unread only"
+msgstr "Только непрочитанные"
+
+msgid "(on)"
+msgstr "(вкл.)"
+
+msgid "(off)"
+msgstr "(выкл.)"
+
+msgid "Turn off “Unread only” to see earlier notifications."
+msgstr "Отключите «Только непрочитанные», чтобы увидеть более ранние уведомления."
+
+msgid "You’re all caught up"
+msgstr "Вы всё прочитали"
+
+msgid "You’ll get a notification when an episode airs, a season or movie premieres, or a release date is announced or changes."
+msgstr "Мы сообщим, когда выйдет серия, появится премьера сезона или фильма либо объявят или изменят дату выхода."
+
+msgid "Couldn’t load notifications"
+msgstr "Не удалось загрузить уведомления"
+
+msgid "Check your connection and try again."
+msgstr "Проверьте соединение и повторите попытку."
+
+msgid "Loading notifications…"
+msgstr "Загружаем уведомления…"
+
+msgid "Yesterday"
+msgstr "Вчера"
+
+msgid "New episode"
+msgstr "Новая серия"
+
+msgid "Premiere"
+msgstr "Премьера"
+
+msgid "Date announced"
+msgstr "Дата объявлена"
+
+msgid "Date changed"
+msgstr "Дата изменена"
+
+msgid "The movie was released."
+msgstr "Фильм вышел."
+
+msgid "Mark as read"
+msgstr "Отметить как прочитанное"
+
+msgid "Mark all as read"
+msgstr "Отметить все как прочитанные"
+
+#: sources/web/templates/web/settings.html
+msgid "On site: always on. The bell in the header shows unread items."
+msgstr "На сайте: всегда включены. Колокольчик в шапке показывает непрочитанное."
+
+#: sources/web/templates/web/settings.html
+msgid "Notifications arrive at 09:00 in your time zone."
+msgstr "Уведомления приходят в 09:00 по вашему часовому поясу."
+
+#: sources/web/templates/web/settings.html
+msgid "Detected from your browser"
+msgstr "Определён по вашему браузеру"
+
+#: sources/web/templates/web/settings.html
+msgid "Email and Telegram notifications are coming later."
+msgstr "Уведомления по почте и в Telegram появятся позже."
+
+#: sources/web/views/settings.py
+msgid "Time zone"
+msgstr "Часовой пояс"
+
+#: sources/web/views/settings.py
+msgid "Other"
+msgstr "Прочие"
+
 #~ msgid "D, M j"
 #~ msgstr "D, j E"
 

@@ -15,6 +15,7 @@ from django.template.context import Context
 from django.utils import dateformat, timezone
 from django.utils.translation import get_language, gettext, pgettext, pgettext_lazy
 from django.utils.translation import gettext_lazy as _
+from notifications.models import Notification
 from tracking.models import LibraryEntry
 
 register = template.Library()
@@ -164,6 +165,19 @@ def title_overview(context: Context, title: Title) -> str:
 def episode_name(context: Context, episode: Episode) -> str:
     """Return the name of an episode in the user's metadata language."""
     return localized_episode(episode, _metadata_language(context))[0]
+
+
+@register.simple_tag(takes_context=True)
+def unread_notifications(context: Context) -> int:
+    """Return how many notifications of the signed-in user are unread.
+
+    A tag, not a context processor, so a page that does not show the bell pays
+    no query. An anonymous visitor has none and costs nothing.
+    """
+    user = context.get('user')
+    if user is None or not user.is_authenticated:
+        return 0
+    return Notification.objects.for_user(user).filter(read_at__isnull=True).count()
 
 
 @register.filter

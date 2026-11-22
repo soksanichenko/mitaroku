@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'huey.contrib.djhuey',
     'accounts',
     'tracking',
+    'notifications',
     'catalog',
     'providers',
     'web',

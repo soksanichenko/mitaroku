@@ -1,0 +1,2 @@
+{% comment %}"Load more": appends the next groups to #notifications-list. Context: more_url.{% endcomment %}{% load i18n %}
+<a class="btn btn-secondary mt-touch" href="{{ more_url }}" hx-get="{{ more_url }}" hx-target="#notifications-list" hx-swap="beforeend" hx-indicator="#notifications-loading" hx-sync="this:drop">{% trans 'Load more' %}</a>

@@ -6,6 +6,7 @@ from web.views import (
     browse,
     collections,
     library,
+    notifications,
     opening,
     search,
     settings,
@@ -19,6 +20,22 @@ urlpatterns = [
     path('library/', library.library, name='library'),
     path('browse/', browse.browse_page, name='browse'),
     path('collections/<int:tmdb_id>/', collections.collection_page, name='collection'),
+    path('notifications/', notifications.notifications_page, name='notifications'),
+    path(
+        'notifications/read-all/',
+        notifications.notifications_read_all,
+        name='notifications_read_all',
+    ),
+    path(
+        'notifications/<int:pk>/open/',
+        notifications.notification_open,
+        name='notification_open',
+    ),
+    path(
+        'notifications/<int:pk>/read/',
+        notifications.notification_read,
+        name='notification_read',
+    ),
     path('upcoming/', upcoming.upcoming, name='upcoming'),
     path('search/', search.search_page, name='search'),
     path('search/add/', search.search_add, name='search_add'),
@@ -39,5 +56,6 @@ urlpatterns = [
     path('seasons/<int:pk>/rows/', titles.season_rows, name='season_rows'),
     path('seasons/<int:pk>/watch/', actions.season_watch, name='season_watch'),
     path('settings/', settings.settings_page, name='settings'),
+    path('settings/timezone/', settings.settings_timezone, name='settings_timezone'),
     path('healthz/', shell.healthz, name='healthz'),
 ]

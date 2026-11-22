@@ -2,9 +2,9 @@
 {% block title %}{% trans 'Settings' %}{% endblock %}
 {% block content %}
 {% comment %}
-Account (read only) and Language (web.views.settings). A plain form: a normal POST,
-then a redirect back here, so it works without JavaScript and has no loading state
-of its own. Notifications and data come with later plans.
+Account (read only), Language and Notifications (web.views.settings). Plain forms: a
+normal POST, then a redirect back here, so they work without JavaScript and have no
+loading state of their own. The data section comes with a later plan.
 {% endcomment %}
 <div class="mt-settings">
   <div class="mt-set-head">
@@ -43,6 +43,38 @@ of its own. Notifications and data come with later plans.
         {% trans 'A title is translated when you open it, so titles you added earlier may need a moment.' as metadata_more %}
         {% include 'web/_settings_select.html' with field=form.metadata_language help=metadata_help more=metadata_more %}
       </div>
+      <div class="mt-set-actions">
+        <button type="submit" class="btn btn-primary mt-touch">{% trans 'Save' %}</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="mt-set-section" aria-labelledby="set-notifications">
+    <h2 id="set-notifications" class="mt-set-title">{% trans 'Notifications' %}</h2>
+    <form class="mt-set-body" method="post" action="{% url 'settings_timezone' %}" novalidate>
+      {% csrf_token %}
+      {% with field=timezone_form.timezone %}
+      <p class="mt-set-note">{% trans 'On site: always on. The bell in the header shows unread items.' %}</p>
+      {# The browser zone is only a suggestion: it preselects the option and nothing is saved until Save. #}
+      <div class="field mt-set-field mt-set-zone"{% if detect_zone %} x-data="{ detected: false, init() { const zone = Intl.DateTimeFormat().resolvedOptions().timeZone; const select = this.$refs.zone; if (zone && zone !== 'UTC' && [...select.options].some(o => o.value === zone)) { select.value = zone; this.detected = true } } }"{% endif %}>
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        <select id="{{ field.id_for_label }}" name="{{ field.html_name }}" class="input mt-touch"{% if detect_zone %} x-ref="zone" @change="detected = false"{% endif %}
+                aria-describedby="{{ field.id_for_label }}_help{% if field.errors %} {{ field.id_for_label }}_error{% endif %}"
+                {% if field.errors %}aria-invalid="true"{% endif %}>
+          {% for label, names in zone_groups %}
+          {% if label %}<optgroup label="{{ label }}">{% endif %}
+          {% for name in names %}<option value="{{ name }}"{% if name == field.value %} selected{% endif %}>{{ name }}</option>{% endfor %}
+          {% if label %}</optgroup>{% endif %}
+          {% endfor %}
+        </select>
+        <span id="{{ field.id_for_label }}_help" class="mt-set-help">{% trans 'Notifications arrive at 09:00 in your time zone.' %}</span>
+        {% if detect_zone %}<span class="mt-set-help" hidden :hidden="!detected">{% trans 'Detected from your browser' %}</span>{% endif %}
+        {% if field.errors %}
+        <span id="{{ field.id_for_label }}_error" class="mt-set-error" role="alert">{{ field.errors|join:' ' }}</span>
+        {% endif %}
+      </div>
+      {% endwith %}
+      <p class="mt-set-note">{% trans 'Email and Telegram notifications are coming later.' %}</p>
       <div class="mt-set-actions">
         <button type="submit" class="btn btn-primary mt-touch">{% trans 'Save' %}</button>
       </div>

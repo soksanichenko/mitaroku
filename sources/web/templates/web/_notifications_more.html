@@ -1,0 +1,15 @@
+{% comment %}
+The answer to "Load more": the groups to append to #notifications-list. The first
+group may continue the day the list ends with; then its rows go into that day's
+list out of band instead of starting a second heading. The "Load more" link is
+replaced (or removed with the last page) out of band too.
+Context: groups, more_url.
+{% endcomment %}{% load i18n %}
+{% for group in groups %}
+{% if group.continued %}
+<ul id="nl-{{ group.key }}" hx-swap-oob="beforeend">{% for row in group.rows %}{% include 'web/_notification_row.html' %}{% endfor %}</ul>
+{% else %}
+{% include 'web/_notification_group.html' %}
+{% endif %}
+{% endfor %}
+<div id="notifications-more" hx-swap-oob="innerHTML">{% if more_url %}{% include 'web/_notification_more_link.html' %}{% endif %}</div>

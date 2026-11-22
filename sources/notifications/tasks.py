@@ -1,0 +1,47 @@
+"""Background tasks of the notifications app."""
+
+import logging
+from datetime import datetime, timedelta
+
+from django.db.models import Q
+from django.utils import timezone
+from huey import crontab
+from huey.contrib.djhuey import db_periodic_task
+from notifications.models import Notification
+from notifications.scan import scan_due
+
+logger = logging.getLogger(__name__)
+
+READ_RETENTION = timedelta(days=90)
+MAX_AGE = timedelta(days=180)
+
+
+@db_periodic_task(crontab(minute='*/15'))
+def notify_due() -> int:
+    """Write the notifications for the releases that became due.
+
+    Returns:
+        The number of notification rows created or changed.
+    """
+    count = scan_due(timezone.now())
+    logger.info('Notification scan wrote %d rows', count)
+    return count
+
+
+@db_periodic_task(crontab(day_of_week='0', hour='5', minute='0'))
+def gc_notifications(now: datetime | None = None) -> int:
+    """Delete read notifications after 90 days and every notification after 180.
+
+    A system job: it spans all users, so it does not go through ``for_user``.
+
+    Args:
+        now: The moment to measure the ages from; the clock when omitted.
+
+    Returns:
+        The number of rows deleted.
+    """
+    now = now or timezone.now()
+    old = Q(read_at__lt=now - READ_RETENTION) | Q(created_at__lt=now - MAX_AGE)
+    count = Notification.objects.filter(old).delete()[0]
+    logger.info('Deleted %d old notifications', count)
+    return count
