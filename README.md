@@ -142,7 +142,7 @@ outgoing mail (see Configuration). The Email block in Settings appears only then
 - The address is your account address (from the portal, or your local account). To use
   another one, enter it in Settings: it is held as pending and a confirmation link is
   mailed to it (valid for 3 days); the previous address stays in use until you confirm.
-  "Use the account address" goes back.
+  "Use the portal address" goes back.
 - The worker sends one digest per user every 15 minutes (minutes 2, 17, 32 and 47), in
   your interface language, with at most 50 items.
 - A failed send is retried after 15 minutes, 1 hour, 6 hours and 6 hours; the fifth

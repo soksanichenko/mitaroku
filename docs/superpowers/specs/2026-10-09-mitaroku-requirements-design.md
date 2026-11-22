@@ -180,7 +180,7 @@ As built for the email channel (plan 4b; Telegram is plan 4c):
   portal's `X-Discord-Email` or the local account) or one the user enters. An entered
   address is held as pending and mailed a confirmation link (valid for 3 days; a GET
   only shows the page, a POST confirms); until then the previous address stays in use.
-  "Use the account address" drops the entered and the pending one.
+  "Use the portal address" drops the entered and the pending one.
 - The sender runs every 15 minutes (minutes 2, 17, 32 and 47, after the scanner) and
   sends one digest mail per user per pass, in the user's interface language, with
   title names in the metadata language and at most 50 items, newest first, plus an
