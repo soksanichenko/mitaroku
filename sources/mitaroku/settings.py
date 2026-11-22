@@ -38,6 +38,20 @@ PORTAL_TRUSTED_NETWORKS = [
     ipaddress.ip_network(item, strict=False) for item in config.auth.trusted_proxies
 ]
 PORTAL_LOGOUT_URL = config.auth.portal_logout_url
+
+EMAIL_HOST = config.email.host
+EMAIL_PORT = config.email.port
+EMAIL_HOST_USER = config.email.user
+EMAIL_HOST_PASSWORD = (
+    config.email.password.get_secret_value() if config.email.password else ''
+)
+EMAIL_USE_TLS = config.email.starttls
+EMAIL_TIMEOUT = 15
+if config.email.from_address:
+    DEFAULT_FROM_EMAIL = config.email.from_address
+PUBLIC_URL = config.public_url
+# Mail is only offered when both the server and the links' base are known.
+EMAIL_ENABLED = bool(config.email.host and config.public_url)
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = LOGIN_URL

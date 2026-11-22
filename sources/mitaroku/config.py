@@ -5,7 +5,7 @@ import os
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import BaseModel, SecretStr, field_validator
+from pydantic import BaseModel, SecretStr, field_validator, model_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -88,6 +88,41 @@ class AuthConfig(BaseModel):
         return value
 
 
+class EmailConfig(BaseModel):
+    """Outgoing SMTP settings for the email notification channel.
+
+    Attributes:
+        host: SMTP server. Empty turns the email channel off.
+        port: SMTP port.
+        user: SMTP login. Empty sends without authentication.
+        password: SMTP password; a blank value counts as not set.
+        starttls: Upgrade the connection with STARTTLS.
+        from_address: The sender address; required once ``host`` is set.
+    """
+
+    host: str = ''
+    port: int = 587
+    user: str = ''
+    password: SecretStr | None = None
+    starttls: bool = True
+    from_address: str = ''
+
+    @field_validator('password', mode='before')
+    @classmethod
+    def _blank_password_is_none(cls, value: object) -> object:
+        """Treat an empty password (such as an unset ``${VAR}``) as not set."""
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    @model_validator(mode='after')
+    def _host_needs_a_sender(self) -> 'EmailConfig':
+        """Refuse a configured server that has no sender address."""
+        if self.host and not self.from_address:
+            raise ValueError('email.from_address is required when email.host is set')
+        return self
+
+
 class Settings(BaseSettings):
     """All runtime settings.
 
@@ -109,6 +144,17 @@ class Settings(BaseSettings):
     database: DatabaseConfig
     redis: RedisConfig = RedisConfig()
     providers: ProvidersConfig = ProvidersConfig()
+    email: EmailConfig = EmailConfig()
+    public_url: str = ''
+
+    @field_validator('public_url')
+    @classmethod
+    def _http_without_trailing_slash(cls, value: str) -> str:
+        """Accept an empty value or an http(s) URL, and drop trailing slashes."""
+        value = value.strip().rstrip('/')
+        if value and not value.startswith(('http://', 'https://')):
+            raise ValueError('public_url must start with http:// or https://')
+        return value
 
     @classmethod
     def settings_customise_sources(

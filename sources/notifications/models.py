@@ -73,3 +73,50 @@ class Notification(models.Model):
     def __str__(self) -> str:
         """Return a readable label."""
         return f'{self.dedupe_key} for {self.user}'
+
+
+class Delivery(models.Model):
+    """One attempt series to send a notification through one channel."""
+
+    class Channel(models.TextChoices):
+        EMAIL = 'email'
+
+    class Status(models.TextChoices):
+        PENDING = 'pending'
+        SENT = 'sent'
+        FAILED = 'failed'
+        EXPIRED = 'expired'
+        SKIPPED = 'skipped'
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='deliveries'
+    )
+    notification = models.ForeignKey(
+        Notification, on_delete=models.CASCADE, related_name='deliveries'
+    )
+    channel = models.CharField(max_length=10, choices=Channel)
+    status = models.CharField(max_length=10, choices=Status, default=Status.PENDING)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    next_attempt_at = models.DateTimeField(null=True, blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    objects = UserScopedManager()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['notification', 'channel'], name='unique_delivery_per_channel'
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=['channel', 'status', 'next_attempt_at'],
+                name='delivery_due_idx',
+            )
+        ]
+
+    def __str__(self) -> str:
+        """Return a readable label."""
+        return f'{self.channel} {self.status} for {self.notification_id}'

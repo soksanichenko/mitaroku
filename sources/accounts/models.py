@@ -33,6 +33,10 @@ class Profile(models.Model):
     )
     timezone = models.CharField(max_length=64, default='UTC')
     notify_since = models.DateTimeField(default=dj_timezone.now)
+    email_enabled = models.BooleanField(default=False)
+    email_since = models.DateTimeField(null=True, blank=True)
+    notify_email = models.EmailField(blank=True)
+    pending_email = models.EmailField(blank=True)
 
     def __str__(self) -> str:
         """Return a readable label for the admin."""
