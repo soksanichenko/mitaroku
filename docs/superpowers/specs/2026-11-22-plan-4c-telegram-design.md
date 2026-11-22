@@ -87,7 +87,8 @@ not change.
 - The poll reads `/start <token>` from a private chat. A valid token connects that chat
   to the token's user, switches the channel on (`telegram_since` is set to that moment,
   so nothing earlier is ever sent) and the bot answers "connected to <account>" in the
-  user's interface language. The token is used up.
+  user's interface language ("Connected", without an account name: mitaroku users have
+no display name). The token is used up.
 - A `/start` without a token, an unknown, used or expired token, and every other message
   get a short reply that says to connect from mitaroku Settings (in Russian when the
   Telegram `language_code` is `ru`, else English). They change nothing. Groups, channels
@@ -100,8 +101,7 @@ not change.
 
 ### The message
 
-- One message per user per pass (at most one more when the text does not fit, see below),
-  in `Profile.interface_language`; titles in `Profile.metadata_language`, as on the
+- One message per user per pass, in `Profile.interface_language`; titles in `Profile.metadata_language`, as on the
   Notifications screen and in the mail.
 - Telegram HTML: items grouped by local day, each a line with the kind label, the title as
   a link to its page, and the short text (and `from -> to` for date kinds), the same words
