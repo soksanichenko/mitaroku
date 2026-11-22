@@ -1,0 +1,10 @@
+{% extends 'web/base.html' %}{% load i18n %}
+{% block title %}{% trans 'This link is not valid' %}{% endblock %}
+{% block bottom %}{% endblock %}
+{% block content %}
+<div class="mt-login">
+  <h1 class="mt-page-title">{% trans 'This link is not valid' %}</h1>
+  <p class="mt-muted">{% trans 'It may have expired or been replaced by a newer one. You can ask for a new one in the settings.' %}</p>
+  <a class="btn btn-secondary" href="{% url 'settings' %}" style="min-height:44px">{% trans 'Open settings' %}</a>
+</div>
+{% endblock %}

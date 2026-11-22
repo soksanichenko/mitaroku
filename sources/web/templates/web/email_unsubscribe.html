@@ -1,0 +1,19 @@
+{% extends 'web/base.html' %}{% load i18n %}
+{% block title %}{% trans 'Unsubscribe from email' %}{% endblock %}
+{% block bottom %}{% endblock %}
+{% block content %}
+<div class="mt-login">
+  {% if done %}
+  <h1 class="mt-page-title">{% trans 'You are unsubscribed' %}</h1>
+  <p>{% trans 'You will not get email from mitaroku any more.' %}</p>
+  <p class="mt-muted">{% trans 'You can turn email back on in the settings.' %}</p>
+  <a class="btn btn-secondary" href="{% url 'settings' %}" style="min-height:44px">{% trans 'Open settings' %}</a>
+  {% else %}
+  <h1 class="mt-page-title">{% trans 'Unsubscribe from email' %}</h1>
+  <p class="mt-muted">{% trans 'Stop notification email from mitaroku. Notifications stay in the app.' %}</p>
+  <form method="post">
+    <button type="submit" class="btn btn-primary" style="min-height:44px">{% trans 'Unsubscribe' %}</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

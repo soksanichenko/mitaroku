@@ -1045,6 +1045,64 @@ msgstr "Часовой пояс"
 msgid "Other"
 msgstr "Прочие"
 
+#: sources/web/templates/web/email_unsubscribe.html
+msgid "Unsubscribe from email"
+msgstr "Отписаться от почты"
+
+#: sources/web/templates/web/email_unsubscribe.html
+msgid "You are unsubscribed"
+msgstr "Вы отписались"
+
+#: sources/web/templates/web/email_unsubscribe.html
+msgid "You will not get email from mitaroku any more."
+msgstr "Вы больше не будете получать письма от mitaroku."
+
+#: sources/web/templates/web/email_unsubscribe.html
+msgid "You can turn email back on in the settings."
+msgstr "Почту можно снова включить в настройках."
+
+#: sources/web/templates/web/email_unsubscribe.html
+msgid "Open settings"
+msgstr "Открыть настройки"
+
+#: sources/web/templates/web/email_unsubscribe.html
+msgid "Stop notification email from mitaroku. Notifications stay in the app."
+msgstr "Прекратить письма с уведомлениями от mitaroku. Уведомления останутся в приложении."
+
+#: sources/web/templates/web/email_unsubscribe.html
+msgid "Unsubscribe"
+msgstr "Отписаться"
+
+#: sources/web/templates/web/email_confirm.html
+msgid "Confirm your email address"
+msgstr "Подтвердите адрес почты"
+
+#: sources/web/templates/web/email_confirm.html
+msgid "Address confirmed"
+msgstr "Адрес подтверждён"
+
+#: sources/web/templates/web/email_confirm.html
+msgid "Confirm address"
+msgstr "Подтвердить адрес"
+
+#: sources/web/templates/web/email_invalid.html
+msgid "This link is not valid"
+msgstr "Эта ссылка недействительна"
+
+#: sources/web/templates/web/email_invalid.html
+msgid "It may have expired or been replaced by a newer one. You can ask for a new one in the settings."
+msgstr "Возможно, срок её действия истёк или её заменила новая. Новую можно запросить в настройках."
+
+#: sources/web/templates/web/email_confirm.html
+#, python-format
+msgid "Email from mitaroku will go to %(address)s."
+msgstr "Письма от mitaroku будут приходить на %(address)s."
+
+#: sources/web/templates/web/email_confirm.html
+#, python-format
+msgid "Send email from mitaroku to %(address)s?"
+msgstr "Отправлять письма от mitaroku на %(address)s?"
+
 #~ msgid "D, M j"
 #~ msgstr "D, j E"
 

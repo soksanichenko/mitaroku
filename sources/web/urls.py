@@ -5,6 +5,7 @@ from web.views import (
     actions,
     browse,
     collections,
+    email,
     library,
     notifications,
     opening,
@@ -57,5 +58,11 @@ urlpatterns = [
     path('seasons/<int:pk>/watch/', actions.season_watch, name='season_watch'),
     path('settings/', settings.settings_page, name='settings'),
     path('settings/timezone/', settings.settings_timezone, name='settings_timezone'),
+    path(
+        'email/unsubscribe/<str:token>/',
+        email.email_unsubscribe,
+        name='email_unsubscribe',
+    ),
+    path('email/confirm/<str:token>/', email.email_confirm, name='email_confirm'),
     path('healthz/', shell.healthz, name='healthz'),
 ]
