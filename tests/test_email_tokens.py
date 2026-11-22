@@ -3,6 +3,7 @@ from datetime import timedelta
 
 import pytest
 from accounts.models import User
+from django.core import signing
 from notifications import tokens
 
 pytestmark = pytest.mark.django_db
@@ -57,3 +58,17 @@ def test_a_token_of_a_deleted_user_reads_as_none(alice):
     User.objects.filter(pk=alice.pk).delete()
     assert tokens.unsubscribe_user(unsubscribe) is None
     assert tokens.confirmation_target(confirmation) is None
+
+
+def test_the_unsubscribe_token_uses_the_mitaroku_salt(alice):
+    token = tokens.unsubscribe_token(alice)
+    payload = signing.loads(token, salt='mitaroku.email.unsubscribe')
+    assert payload == {'u': alice.pk}
+
+
+def test_the_confirmation_token_uses_the_mitaroku_salt(alice):
+    token = tokens.confirmation_token(alice, 'kira@example.com')
+    payload = signing.loads(
+        token, salt='mitaroku.email.confirm', max_age=tokens.MAX_AGE_CONFIRM
+    )
+    assert payload == {'u': alice.pk, 'a': 'kira@example.com'}

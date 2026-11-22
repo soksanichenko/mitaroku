@@ -8,8 +8,8 @@ from django.core import signing
 MAX_AGE_CONFIRM = timedelta(days=3)
 
 # Separate salts keep a token of one kind from being read as the other.
-_UNSUBSCRIBE_SALT = 'notifications.email.unsubscribe'
-_CONFIRM_SALT = 'notifications.email.confirm'
+_UNSUBSCRIBE_SALT = 'mitaroku.email.unsubscribe'
+_CONFIRM_SALT = 'mitaroku.email.confirm'
 
 
 def unsubscribe_token(user: User) -> str:
