@@ -1,0 +1,13 @@
+{% load i18n web_extras %}{% autoescape off %}{{ subject }}
+{% for group in groups %}
+{{ group.heading }}
+{% for item in group.items %}
+* {{ item.row.label }}: {{ item.name }}{% if item.row.text or item.row.new %}
+  {{ item.row.text }}{% if item.row.old and item.row.new %}{{ item.row.old|short_date }} → {% endif %}{% if item.row.new %}{{ item.row.new|short_date }}{% endif %}{% endif %}
+  {{ item.url }}
+{% endfor %}{% endfor %}
+{% if more %}{{ more }}
+{% endif %}{% trans 'All notifications' %}: {{ screen_url }}
+
+{% trans 'Unsubscribe' %}: {{ unsubscribe_url }}
+{% endautoescape %}

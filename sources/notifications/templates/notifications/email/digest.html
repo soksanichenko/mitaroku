@@ -1,0 +1,18 @@
+{% load i18n web_extras %}<!doctype html>
+<html lang="{{ language }}">
+<head><meta charset="utf-8"><title>{{ subject }}</title></head>
+<body style="margin:0;padding:16px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.4;color:#1c1b1f;">
+<h1 style="font-size:20px;margin:0 0 16px;">{{ subject }}</h1>
+{% for group in groups %}<h2 style="font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#625b71;margin:20px 0 8px;">{{ group.heading }}</h2>
+<ul style="list-style:none;margin:0;padding:0;">
+{% for item in group.items %}<li style="margin:0 0 12px;">
+<div style="font-size:12px;text-transform:uppercase;color:#625b71;">{{ item.row.label }}</div>
+<div><a href="{{ item.url }}" style="color:#3b5bdb;font-weight:bold;">{{ item.name }}</a></div>
+{% if item.row.text or item.row.new %}<div>{{ item.row.text }}{% if item.row.old and item.row.new %}<s>{{ item.row.old|short_date }}</s> → {% endif %}{% if item.row.new %}<strong>{{ item.row.new|short_date }}</strong>{% endif %}</div>
+{% endif %}</li>
+{% endfor %}</ul>
+{% endfor %}{% if more %}<p>{{ more }}</p>
+{% endif %}<p><a href="{{ screen_url }}" style="color:#3b5bdb;">{% trans 'All notifications' %}</a></p>
+<p style="font-size:12px;color:#625b71;margin-top:24px;"><a href="{{ unsubscribe_url }}" style="color:#625b71;">{% trans 'Unsubscribe' %}</a></p>
+</body>
+</html>

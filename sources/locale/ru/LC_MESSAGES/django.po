@@ -1103,6 +1103,26 @@ msgstr "Письма от mitaroku будут приходить на %(address)
 msgid "Send email from mitaroku to %(address)s?"
 msgstr "Отправлять письма от mitaroku на %(address)s?"
 
+#: sources/notifications/digest.py
+#, python-format
+msgid "%(count)s new notification"
+msgid_plural "%(count)s new notifications"
+msgstr[0] "%(count)s новое уведомление"
+msgstr[1] "%(count)s новых уведомления"
+msgstr[2] "%(count)s новых уведомлений"
+
+#: sources/notifications/digest.py
+#, python-format
+msgid "and %(count)s more"
+msgid_plural "and %(count)s more"
+msgstr[0] "и ещё %(count)s"
+msgstr[1] "и ещё %(count)s"
+msgstr[2] "и ещё %(count)s"
+
+#: sources/notifications/templates/notifications/email/digest.html
+msgid "All notifications"
+msgstr "Все уведомления"
+
 #~ msgid "D, M j"
 #~ msgstr "D, j E"
 
