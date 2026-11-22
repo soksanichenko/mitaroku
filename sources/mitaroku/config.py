@@ -3,7 +3,7 @@
 import ipaddress
 import os
 from functools import lru_cache
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, SecretStr, field_validator, model_validator
 from pydantic_settings import (
@@ -170,6 +170,33 @@ class Settings(BaseSettings):
             settings_cls, yaml_file=os.environ.get('MITAROKU_CONFIG', 'config.yaml')
         )
         return init_settings, env_settings, yaml_source
+
+
+def mailers_setting(email: EmailConfig) -> dict[str, dict[str, Any]]:
+    """Return Django's ``MAILERS`` setting for the given SMTP block.
+
+    The ``default`` mailer always exists so code and tests that send mail find
+    one; with no host configured it points at localhost and nothing sends it.
+
+    Args:
+        email: The ``email`` block of the settings.
+
+    Returns:
+        A mapping with the ``default`` SMTP mailer.
+    """
+    return {
+        'default': {
+            'BACKEND': 'django.core.mail.backends.smtp.EmailBackend',
+            'OPTIONS': {
+                'host': email.host or 'localhost',
+                'port': email.port,
+                'username': email.user,
+                'password': email.password.get_secret_value() if email.password else '',
+                'use_tls': email.starttls,
+                'timeout': 15,
+            },
+        }
+    }
 
 
 @lru_cache

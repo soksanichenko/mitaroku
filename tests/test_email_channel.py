@@ -1,5 +1,8 @@
 import pytest
+from django.conf import settings
+from django.core import mail
 from django.test import override_settings
+from mitaroku.config import EmailConfig, mailers_setting
 from notifications.channel import absolute_url, effective_address, email_configured
 
 
@@ -45,3 +48,45 @@ def test_effective_address_is_stripped(alice):
 def test_absolute_url_joins_the_public_url():
     with override_settings(PUBLIC_URL='https://m.example'):
         assert absolute_url('/title/7/') == 'https://m.example/title/7/'
+
+
+def test_the_default_mailer_carries_the_smtp_options():
+    email = EmailConfig(
+        host='smtp.example',
+        port=2525,
+        user='robot',
+        password='smtp-secret',
+        starttls=False,
+        from_address='mitaroku@example.com',
+    )
+    mailers = mailers_setting(email)
+    assert (
+        mailers['default']['BACKEND'] == 'django.core.mail.backends.smtp.EmailBackend'
+    )
+    assert mailers['default']['OPTIONS'] == {
+        'host': 'smtp.example',
+        'port': 2525,
+        'username': 'robot',
+        'password': 'smtp-secret',
+        'use_tls': False,
+        'timeout': 15,
+    }
+    assert 'smtp-secret' not in repr(email)
+
+
+def test_an_unconfigured_mailer_points_at_localhost():
+    options = mailers_setting(EmailConfig())['default']['OPTIONS']
+    assert options['host'] == 'localhost'
+    assert options['password'] == ''
+
+
+def test_the_settings_define_a_default_mailer_and_no_deprecated_options():
+    assert 'default' in settings.MAILERS
+    assert not hasattr(settings, 'EMAIL_HOST')
+
+
+def test_a_message_sent_in_a_test_lands_in_the_outbox():
+    mail.mailers.default.send_messages(
+        [mail.EmailMessage('Hi', 'Body', 'a@example.com', ['b@example.com'])]
+    )
+    assert [message.subject for message in mail.outbox] == ['Hi']

@@ -3,7 +3,7 @@
 import ipaddress
 from pathlib import Path
 
-from mitaroku.config import load_settings
+from mitaroku.config import load_settings, mailers_setting
 
 config = load_settings()
 
@@ -39,14 +39,7 @@ PORTAL_TRUSTED_NETWORKS = [
 ]
 PORTAL_LOGOUT_URL = config.auth.portal_logout_url
 
-EMAIL_HOST = config.email.host
-EMAIL_PORT = config.email.port
-EMAIL_HOST_USER = config.email.user
-EMAIL_HOST_PASSWORD = (
-    config.email.password.get_secret_value() if config.email.password else ''
-)
-EMAIL_USE_TLS = config.email.starttls
-EMAIL_TIMEOUT = 15
+MAILERS = mailers_setting(config.email)
 if config.email.from_address:
     DEFAULT_FROM_EMAIL = config.email.from_address
 PUBLIC_URL = config.public_url
