@@ -25,6 +25,7 @@ RETRY_PAUSES = (
 )
 MAX_ATTEMPTS = 5
 ERROR_LENGTH = 150
+ERROR_FIELD_LENGTH = Delivery._meta.get_field('last_error').max_length
 
 EMAIL = Delivery.Channel.EMAIL
 PENDING = Delivery.Status.PENDING
@@ -65,13 +66,26 @@ def _settle(now: datetime) -> None:
 
     Expiry goes first, so a delivery that is both old and read is ``expired``.
     """
+    # ``Exists`` keeps each update on the delivery table alone. With a join in
+    # the filter Django turns the update into ``id IN (subquery)``, so the
+    # ``pending`` check would not be repeated on the row once it has waited for
+    # another run's lock, and a delivery that run just marked ``sent`` would be
+    # overwritten. This way the database re-checks ``status`` after the wait.
     pending = Delivery.objects.filter(channel=EMAIL, status=PENDING)
-    pending.filter(notification__created_at__lt=now - EXPIRY).update(
-        status=Delivery.Status.EXPIRED
-    )
-    pending.filter(notification__read_at__isnull=False).update(
-        status=Delivery.Status.SKIPPED
-    )
+    pending.filter(
+        Exists(
+            Notification.objects.filter(
+                pk=OuterRef('notification_id'), created_at__lt=now - EXPIRY
+            )
+        )
+    ).update(status=Delivery.Status.EXPIRED)
+    pending.filter(
+        Exists(
+            Notification.objects.filter(
+                pk=OuterRef('notification_id'), read_at__isnull=False
+            )
+        )
+    ).update(status=Delivery.Status.SKIPPED)
 
 
 def _due(now: datetime) -> QuerySet[Delivery]:
@@ -96,10 +110,11 @@ def _error_text(exc: Exception, address: str) -> str:
     """Describe ``exc`` for ``Delivery.last_error`` without the recipient.
 
     The address is replaced before the text is cut, so the cut cannot leave a
-    part of it behind.
+    part of it behind. The whole text is capped to the field, whatever the
+    length of the exception class name.
     """
     message = re.sub(re.escape(address), '<address>', str(exc), flags=re.IGNORECASE)
-    return f'{type(exc).__name__}: {message[:ERROR_LENGTH]}'
+    return f'{type(exc).__name__}: {message[:ERROR_LENGTH]}'[:ERROR_FIELD_LENGTH]
 
 
 def _record_failure(deliveries: list[Delivery], error: str, now: datetime) -> None:

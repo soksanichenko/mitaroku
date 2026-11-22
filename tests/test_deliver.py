@@ -1,5 +1,6 @@
 import itertools
 import threading
+import time
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -449,6 +450,132 @@ def test_overlapping_runs_never_send_twice(alice, monkeypatch):
     assert results == {'first': 1, 'second': 0}
     assert len(mail.outbox) == 1
     assert [row.status for row in deliveries(alice)] == [Status.SENT]
+
+
+def _overlap_with_a_settle_that_matches_the_row(
+    monkeypatch, alice, second_now: datetime, while_held
+) -> dict[str, int]:
+    """Run a send that holds the row lock and, meanwhile, a second full run.
+
+    The first run (at ``NOW``) stops inside ``build_digest`` holding the lock.
+    ``while_held`` then changes the data, the second run (at ``second_now``)
+    starts and is waited for until it is blocked on that lock, and only then
+    is the first run released and allowed to commit ``sent``.
+
+    Returns:
+        What each run returned, by ``first`` and ``second``.
+    """
+    holding = threading.Event()
+    release = threading.Event()
+    real_build = deliver.build_digest
+
+    def slow_build(user, notifications, now):
+        holding.set()
+        assert release.wait(timeout=10)
+        return real_build(user, notifications, now)
+
+    monkeypatch.setattr(deliver, 'build_digest', slow_build)
+    results: dict[str, int] = {}
+    errors: list[BaseException] = []
+
+    def run(name: str, now: datetime) -> None:
+        try:
+            results[name] = send_deliveries(now)
+        except BaseException as exc:  # reported by the main thread
+            errors.append(exc)
+        finally:
+            # Otherwise the test database cannot be dropped.
+            connection.close()
+
+    def blocked_on_a_lock() -> bool:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                'SELECT count(*) FROM pg_stat_activity '
+                "WHERE datname = current_database() AND wait_event_type = 'Lock'"
+            )
+            return cursor.fetchone()[0] > 0
+
+    first = threading.Thread(target=run, args=('first', NOW))
+    second = threading.Thread(target=run, args=('second', second_now))
+    first.start()
+    try:
+        assert holding.wait(timeout=10)
+        while_held()
+        second.start()
+        # The second run's settle waits for the row the first run has locked
+        # (or, if it does not touch the row, simply finishes).
+        deadline = time.monotonic() + 10
+        while second.is_alive() and not blocked_on_a_lock():
+            assert time.monotonic() < deadline
+            second.join(timeout=0.01)
+    finally:
+        release.set()
+        first.join(timeout=10)
+        second.join(timeout=10)
+
+    assert errors == []
+    assert not first.is_alive()
+    assert not second.is_alive()
+    return results
+
+
+@pytest.mark.django_db(transaction=True)
+def test_a_read_on_the_site_during_a_send_does_not_overwrite_sent(alice, monkeypatch):
+    enable(alice)
+    notification = notify(alice)
+
+    def read_it() -> None:
+        Notification.objects.filter(pk=notification.pk).update(read_at=NOW)
+
+    results = _overlap_with_a_settle_that_matches_the_row(
+        monkeypatch, alice, NOW, read_it
+    )
+
+    assert results == {'first': 1, 'second': 0}
+    assert len(mail.outbox) == 1
+    assert [row.status for row in deliveries(alice)] == [Status.SENT]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_a_later_run_that_expires_the_row_does_not_overwrite_sent(alice, monkeypatch):
+    enable(alice)
+    notify(alice)
+
+    results = _overlap_with_a_settle_that_matches_the_row(
+        monkeypatch, alice, NOW + 48 * HOUR, lambda: None
+    )
+
+    assert results == {'first': 1, 'second': 0}
+    assert len(mail.outbox) == 1
+    assert [row.status for row in deliveries(alice)] == [Status.SENT]
+
+
+def test_the_error_text_fits_the_field_even_with_a_long_class_name():
+    error = type('E' * 300, (Exception,), {})('z' * 300)
+
+    text = deliver._error_text(error, 'a@example.com')
+
+    assert len(text) == Delivery._meta.get_field('last_error').max_length
+    assert text.startswith('EEE')
+
+
+@pytest.mark.django_db
+def test_last_error_never_exceeds_the_field_even_with_a_long_class_name(
+    alice, failing_send
+):
+    enable(alice)
+    failing_send.failing = {'1001@example.com'}
+    failing_send.error = staticmethod(
+        lambda address: type('E' * 300, (Exception,), {})('z' * 300)
+    )
+    notify(alice)
+
+    send_deliveries(NOW)
+
+    (row,) = deliveries(alice)
+    limit = Delivery._meta.get_field('last_error').max_length
+    assert len(row.last_error) == limit
+    assert row.last_error.startswith('EEE')
 
 
 @pytest.mark.django_db
