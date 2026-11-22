@@ -216,7 +216,7 @@ def _toggle(request: HttpRequest, profile: Profile) -> HttpResponse:
                 request,
                 EmailFeedback(toggle_error=gettext('Add an email address first')),
             )
-        # Only the first switch-on sets the moment; nothing older is ever mailed.
+        # Each switch-on from off sets the moment; nothing older is ever mailed.
         if not profile.email_enabled:
             profile.email_enabled = True
             profile.email_since = timezone.now()

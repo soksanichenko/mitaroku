@@ -67,7 +67,7 @@ loading state of their own. The data section comes with a later plan.
           {% if label %}</optgroup>{% endif %}
           {% endfor %}
         </select>
-        <span id="{{ field.id_for_label }}_help" class="mt-set-help">{% trans 'Notifications arrive at 09:00 in your time zone.' %}</span>
+        <span id="{{ field.id_for_label }}_help" class="mt-set-help">{% trans 'Episodes and releases arrive at 09:00 in your time zone. Date changes arrive as soon as they are found.' %}</span>
         {% if detect_zone %}<span class="mt-set-help" hidden :hidden="!detected">{% trans 'Detected from your browser' %}</span>{% endif %}
         {% if field.errors %}
         <span id="{{ field.id_for_label }}_error" class="mt-set-error" role="alert">{{ field.errors|join:' ' }}</span>

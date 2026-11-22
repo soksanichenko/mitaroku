@@ -3,7 +3,7 @@ One notification: kind icon, uppercase kind label, title name, a text line and a
 unread dot. The row is a form button that marks it read and opens the title, so it
 works without JavaScript; an unread row has a second small form that only marks it
 read and returns to the list. The two forms are siblings (a form never nests in a
-form or a button). Context: row (web.views.notifications.Row), next_url.
+form or a button). Context: row (notifications.display.Row), next_url.
 {% endcomment %}{% load i18n web_extras %}
 <li class="mt-nt-item{% if row.unread %} mt-nt-item--unread{% endif %}">
   <form class="mt-nt-open" method="post" action="{% url 'notification_open' row.pk %}">

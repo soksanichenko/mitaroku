@@ -96,7 +96,10 @@ class EmailConfig(BaseModel):
         port: SMTP port.
         user: SMTP login. Empty sends without authentication.
         password: SMTP password; a blank value counts as not set.
-        starttls: Upgrade the connection with STARTTLS.
+        starttls: Upgrade the connection with STARTTLS (usually port 587).
+        ssl: Use implicit TLS from the first byte (usually port 465). It takes
+            precedence over a ``starttls`` left at its default, which is then
+            ignored; setting both to true explicitly is rejected.
         from_address: The sender address; required once ``host`` is set.
     """
 
@@ -105,6 +108,7 @@ class EmailConfig(BaseModel):
     user: str = ''
     password: SecretStr | None = None
     starttls: bool = True
+    ssl: bool = False
     from_address: str = ''
 
     @field_validator('password', mode='before')
@@ -120,6 +124,17 @@ class EmailConfig(BaseModel):
         """Refuse a configured server that has no sender address."""
         if self.host and not self.from_address:
             raise ValueError('email.from_address is required when email.host is set')
+        return self
+
+    @model_validator(mode='after')
+    def _ssl_and_starttls_are_exclusive(self) -> 'EmailConfig':
+        """Refuse an explicit ``starttls`` next to ``ssl``.
+
+        ``starttls`` defaults to true, so only a value that was actually given
+        counts as a conflict.
+        """
+        if self.ssl and self.starttls and 'starttls' in self.model_fields_set:
+            raise ValueError('email.ssl and email.starttls cannot both be true')
         return self
 
 
@@ -192,7 +207,8 @@ def mailers_setting(email: EmailConfig) -> dict[str, dict[str, Any]]:
                 'port': email.port,
                 'username': email.user,
                 'password': email.password.get_secret_value() if email.password else '',
-                'use_tls': email.starttls,
+                'use_tls': email.starttls and not email.ssl,
+                'use_ssl': email.ssl,
                 'timeout': 15,
             },
         }

@@ -60,7 +60,7 @@ for secrets, Docker, Ansible (repo created from `service-repo-template`).
   events from before the feature or the profile existed, and a zone change does not
   touch it).
   The email channel adds four fields: `email_enabled` (the opt-in, off by default),
-  `email_since` (set when the channel is first switched on and cleared when it is
+  `email_since` (set each time the channel is switched on and cleared when it is
   switched off; nothing created at or before it is ever mailed, so it is the opt-in
   guard), `notify_email` (the address the user entered and confirmed) and
   `pending_email` (an entered address that waits for its confirmation link).

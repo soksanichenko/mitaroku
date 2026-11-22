@@ -43,9 +43,12 @@ environment variables prefixed `MITAROKU_`, with `__` between nested keys, for e
 - Behind a TLS proxy, `csrf_trusted_origins` must list the https origin (for example
   `['https://mitaroku.example.com']`), or every POST gets 403.
 - Email (optional) uses `email.host`, `email.port` (587), `email.user`, `email.password`,
-  `email.starttls` (true) and `email.from_address`, or `MITAROKU_EMAIL__HOST`,
-  `MITAROKU_EMAIL__PORT`, `MITAROKU_EMAIL__USER`, `MITAROKU_EMAIL__PASSWORD`,
-  `MITAROKU_EMAIL__STARTTLS` and `MITAROKU_EMAIL__FROM_ADDRESS`. `public_url`
+  `email.starttls` (true), `email.ssl` (false) and `email.from_address`, or
+  `MITAROKU_EMAIL__HOST`, `MITAROKU_EMAIL__PORT`, `MITAROKU_EMAIL__USER`,
+  `MITAROKU_EMAIL__PASSWORD`, `MITAROKU_EMAIL__STARTTLS`, `MITAROKU_EMAIL__SSL` and
+  `MITAROKU_EMAIL__FROM_ADDRESS`. For a provider that offers only implicit TLS
+  (port 465) set `ssl: true` and `port: 465`; `starttls` is then ignored, and setting
+  both to true explicitly is rejected. `public_url`
   (`MITAROKU_PUBLIC_URL`, for example `https://mitaroku.example.com`) is the address
   used in the links inside the mail. Email is off unless both `email.host` and
   `public_url` are set, and a host needs `from_address`. The worker (`run_huey`) must be

@@ -55,6 +55,11 @@ def gc_notifications(now: datetime | None = None) -> int:
     """
     now = now or timezone.now()
     old = Q(read_at__lt=now - READ_RETENTION) | Q(created_at__lt=now - MAX_AGE)
-    count = Notification.objects.filter(old).delete()[0]
+    # delete() totals every cascaded model; only the notifications are reported.
+    count = (
+        Notification.objects.filter(old)
+        .delete()[1]
+        .get('notifications.Notification', 0)
+    )
     logger.info('Deleted %d old notifications', count)
     return count

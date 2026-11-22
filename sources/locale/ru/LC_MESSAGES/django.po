@@ -1026,8 +1026,8 @@ msgid "On site: always on. The bell in the header shows unread items."
 msgstr "На сайте: всегда включены. Колокольчик в шапке показывает непрочитанное."
 
 #: sources/web/templates/web/settings.html
-msgid "Notifications arrive at 09:00 in your time zone."
-msgstr "Уведомления приходят в 09:00 по вашему часовому поясу."
+msgid "Episodes and releases arrive at 09:00 in your time zone. Date changes arrive as soon as they are found."
+msgstr "Серии и выходы приходят в 09:00 по вашему часовому поясу. Изменения дат приходят, как только их находят."
 
 #: sources/web/templates/web/settings.html
 msgid "Detected from your browser"
@@ -1217,3 +1217,6 @@ msgstr "Ссылка действует 3 дня. Если вы этого не 
 
 #~ msgid "Email and Telegram notifications are coming later."
 #~ msgstr "Уведомления по почте и в Telegram появятся позже."
+
+#~ msgid "Notifications arrive at 09:00 in your time zone."
+#~ msgstr "Уведомления приходят в 09:00 по вашему часовому поясу."

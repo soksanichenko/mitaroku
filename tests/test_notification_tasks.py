@@ -4,7 +4,7 @@ import pytest
 from django.utils import timezone
 from huey.contrib.djhuey import HUEY
 from notifications import tasks
-from notifications.models import Notification
+from notifications.models import Delivery, Notification
 from tracking_helpers import make_movie
 
 NOW = datetime(2026, 11, 21, 12, 0, tzinfo=UTC)
@@ -106,6 +106,18 @@ def test_gc_returns_the_count(alice, bob):
 
     assert tasks.gc_notifications.call_local(NOW) == 2
     assert Notification.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_gc_counts_notifications_not_their_cascaded_deliveries(alice):
+    title = make_movie()
+    old = _notification(alice, title, 'a', NOW - 200 * DAY)
+    Delivery.objects.create(
+        user=alice, notification=old, channel=Delivery.Channel.EMAIL
+    )
+
+    assert tasks.gc_notifications.call_local(NOW) == 1
+    assert not Delivery.objects.exists()
 
 
 @pytest.mark.django_db
