@@ -1,0 +1,10 @@
+{% load i18n %}<!doctype html>
+<html lang="{{ language }}">
+<head><meta charset="utf-8"><title>{{ subject }}</title></head>
+<body style="margin:0;padding:16px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.4;color:#1c1b1f;">
+<h1 style="font-size:20px;margin:0 0 16px;">{{ subject }}</h1>
+<p>{% blocktrans trimmed %}Confirm that mitaroku may send email to {{ address }}. Open the link and press the button:{% endblocktrans %}</p>
+<p><a href="{{ confirm_url }}" style="color:#3b5bdb;font-weight:bold;">{% trans 'Confirm address' %}</a></p>
+<p style="font-size:12px;color:#625b71;margin-top:24px;">{% trans 'The link works for 3 days. If you did not ask for this, ignore this message.' %}</p>
+</body>
+</html>

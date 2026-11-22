@@ -327,7 +327,7 @@ def test_the_settings_page_lists_zones_and_the_current_one_is_selected(
     assert 'Factory' not in values
     assert 'On site: always on. The bell in the header shows unread items.' in html
     assert 'Notifications arrive at 09:00 in your time zone.' in html
-    assert 'Email and Telegram notifications are coming later.' in html
+    assert 'Telegram notifications are coming later.' in html
 
 
 def test_the_zones_are_grouped_by_region_with_utc_alone_first(
@@ -470,7 +470,7 @@ def test_the_page_renders_in_russian(client, portal_headers, alice):
         'Часовой пояс',
         'На сайте: всегда включены. Колокольчик в шапке показывает непрочитанное.',
         'Уведомления приходят в 09:00 по вашему часовому поясу.',
-        'Уведомления по почте и в Telegram появятся позже.',
+        'Уведомления в Telegram появятся позже.',
         'Определён по вашему браузеру',
     ):
         assert text in section

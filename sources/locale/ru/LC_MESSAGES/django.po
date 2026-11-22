@@ -1033,10 +1033,6 @@ msgstr "Уведомления приходят в 09:00 по вашему ча�
 msgid "Detected from your browser"
 msgstr "Определён по вашему браузеру"
 
-#: sources/web/templates/web/settings.html
-msgid "Email and Telegram notifications are coming later."
-msgstr "Уведомления по почте и в Telegram появятся позже."
-
 #: sources/web/views/settings.py
 msgid "Time zone"
 msgstr "Часовой пояс"
@@ -1123,6 +1119,84 @@ msgstr[2] "и ещё %(count)s"
 msgid "All notifications"
 msgstr "Все уведомления"
 
+#: sources/web/templates/web/settings.html
+msgid "Telegram notifications are coming later."
+msgstr "Уведомления в Telegram появятся позже."
+
+#: sources/web/templates/web/settings.html
+msgid "Address"
+msgstr "Адрес"
+
+#: sources/web/templates/web/settings.html
+msgid "Source"
+msgstr "Источник"
+
+#: sources/web/templates/web/settings.html
+msgid "The address you entered"
+msgstr "Адрес, который вы указали"
+
+#: sources/web/templates/web/settings.html
+msgid "Portal address"
+msgstr "Адрес с портала"
+
+#: sources/web/templates/web/settings.html
+msgid "Account address"
+msgstr "Адрес аккаунта"
+
+#: sources/web/templates/web/settings.html
+#, python-format
+msgid "Waiting for confirmation of %(address)s"
+msgstr "Ожидает подтверждения: %(address)s"
+
+#: sources/web/templates/web/settings.html
+msgid "Send me new notifications by email"
+msgstr "Присылать новые уведомления на почту"
+
+#: sources/web/templates/web/settings.html
+msgid "Send to another address"
+msgstr "Отправлять на другой адрес"
+
+#: sources/web/templates/web/settings.html
+msgid "We send a link to this address. It is used once you open the link and confirm it."
+msgstr "Мы отправим ссылку на этот адрес. Он начнёт действовать, когда вы откроете ссылку и подтвердите его."
+
+#: sources/web/templates/web/settings.html
+msgid "Send confirmation"
+msgstr "Отправить подтверждение"
+
+#: sources/web/templates/web/settings.html
+msgid "Use the portal address"
+msgstr "Использовать адрес с портала"
+
+#: sources/web/views/settings.py
+msgid "Email address"
+msgstr "Адрес почты"
+
+#: sources/web/views/settings.py
+msgid "Add an email address first"
+msgstr "Сначала добавьте адрес почты"
+
+#: sources/web/views/settings.py
+msgid "That is already your address."
+msgstr "Это уже ваш адрес."
+
+#: sources/web/views/settings.py
+msgid "We could not send the confirmation. Try again later."
+msgstr "Не удалось отправить подтверждение. Попробуйте позже."
+
+#: sources/notifications/confirmation.py
+msgid "Confirm your address for mitaroku"
+msgstr "Подтвердите адрес для mitaroku"
+
+#: sources/notifications/templates/notifications/email/confirm.html
+#, python-format
+msgid "Confirm that mitaroku may send email to %(address)s. Open the link and press the button:"
+msgstr "Подтвердите, что mitaroku может писать на %(address)s. Откройте ссылку и нажмите кнопку:"
+
+#: sources/notifications/templates/notifications/email/confirm.html
+msgid "The link works for 3 days. If you did not ask for this, ignore this message."
+msgstr "Ссылка действует 3 дня. Если вы этого не просили, проигнорируйте письмо."
+
 #~ msgid "D, M j"
 #~ msgstr "D, j E"
 
@@ -1140,3 +1214,6 @@ msgstr "Все уведомления"
 
 #~ msgid "Partly watched"
 #~ msgstr "Просмотрено частично"
+
+#~ msgid "Email and Telegram notifications are coming later."
+#~ msgstr "Уведомления по почте и в Telegram появятся позже."

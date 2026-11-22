@@ -2,7 +2,7 @@
 {% block title %}{% trans 'Settings' %}{% endblock %}
 {% block content %}
 {% comment %}
-Account (read only), Language and Notifications (web.views.settings). Plain forms: a
+Account (read only), Language, Notifications and Email (web.views.settings). Plain forms: a
 normal POST, then a redirect back here, so they work without JavaScript and have no
 loading state of their own. The data section comes with a later plan.
 {% endcomment %}
@@ -74,11 +74,76 @@ loading state of their own. The data section comes with a later plan.
         {% endif %}
       </div>
       {% endwith %}
-      <p class="mt-set-note">{% trans 'Email and Telegram notifications are coming later.' %}</p>
+      <p class="mt-set-note">{% trans 'Telegram notifications are coming later.' %}</p>
       <div class="mt-set-actions">
         <button type="submit" class="btn btn-primary mt-touch">{% trans 'Save' %}</button>
       </div>
     </form>
   </section>
+
+  {% if email_shown %}
+  <section class="mt-set-section" aria-labelledby="set-email">
+    <h2 id="set-email" class="mt-set-title">{% trans 'Email' %}</h2>
+    <div class="mt-set-body">
+      <dl class="mt-set-facts">
+        <dt>{% trans 'Address' %}</dt>
+        <dd>{{ email_address|default:'—' }}</dd>
+        {% if email_address %}
+        <dt>{% trans 'Source' %}</dt>
+        <dd>{% if email_source == 'entered' %}{% trans 'The address you entered' %}{% elif email_source == 'portal' %}{% trans 'Portal address' %}{% else %}{% trans 'Account address' %}{% endif %}</dd>
+        {% endif %}
+      </dl>
+      {% if email_pending %}
+      <p class="mt-set-pending" role="status">{% blocktrans trimmed with address=email_pending %}Waiting for confirmation of {{ address }}{% endblocktrans %}</p>
+      {% endif %}
+      {% if email_note %}<p class="mt-set-note" role="status">{{ email_note }}</p>{% endif %}
+
+      <form class="mt-set-form" method="post" action="{% url 'settings_email' %}" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="action" value="toggle">
+        <label class="mt-set-check mt-touch">
+          <input type="checkbox" name="enabled" value="on"{% if email_enabled %} checked{% endif %}{% if email_toggle_error %} aria-invalid="true" aria-describedby="email_toggle_error"{% endif %}>
+          <span>{% trans 'Send me new notifications by email' %}</span>
+        </label>
+        {% if email_toggle_error %}
+        <span id="email_toggle_error" class="mt-set-error" role="alert">{{ email_toggle_error }}</span>
+        {% endif %}
+        <div class="mt-set-actions">
+          <button type="submit" class="btn btn-primary mt-touch">{% trans 'Save' %}</button>
+        </div>
+      </form>
+
+      <form class="mt-set-form" method="post" action="{% url 'settings_email' %}" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="action" value="address">
+        {% with field=email_form.email %}
+        <div class="field mt-set-field mt-set-zone">
+          <label for="email_address">{% trans 'Send to another address' %}</label>
+          <input type="email" id="email_address" name="email" class="input mt-touch" maxlength="254" autocomplete="email" value="{{ field.value|default:'' }}"
+                 aria-describedby="email_address_help{% if field.errors %} email_address_error{% endif %}"
+                 {% if field.errors %}aria-invalid="true"{% endif %}>
+          <span id="email_address_help" class="mt-set-help">{% trans 'We send a link to this address. It is used once you open the link and confirm it.' %}</span>
+          {% if field.errors %}
+          <span id="email_address_error" class="mt-set-error" role="alert">{{ field.errors|join:' ' }}</span>
+          {% endif %}
+        </div>
+        {% endwith %}
+        <div class="mt-set-actions">
+          <button type="submit" class="btn btn-secondary mt-touch">{% trans 'Send confirmation' %}</button>
+        </div>
+      </form>
+
+      {% if email_custom %}
+      <form class="mt-set-form" method="post" action="{% url 'settings_email' %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="use_portal">
+        <div class="mt-set-actions">
+          <button type="submit" class="btn btn-secondary mt-touch">{% trans 'Use the portal address' %}</button>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
 </div>
 {% endblock %}

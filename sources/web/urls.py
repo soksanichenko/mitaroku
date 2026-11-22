@@ -58,6 +58,7 @@ urlpatterns = [
     path('seasons/<int:pk>/watch/', actions.season_watch, name='season_watch'),
     path('settings/', settings.settings_page, name='settings'),
     path('settings/timezone/', settings.settings_timezone, name='settings_timezone'),
+    path('settings/email/', settings.settings_email, name='settings_email'),
     path(
         'email/unsubscribe/<str:token>/',
         email.email_unsubscribe,
