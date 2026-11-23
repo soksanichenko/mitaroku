@@ -76,15 +76,15 @@ not change.
 
 ### Connecting
 
-- Settings > Notifications gets a "Telegram" block next to "Email". It has five states,
+- Settings gets a "Telegram" section next to "Email" (Settings > Telegram). It has five states,
   checked in this order: connected and paused (a chat, the switch on or off, with a
   "Disconnect" button), waiting for Start (a live link token, no chat), stopped because
   the bot was blocked, and not connected.
 - "Connect Telegram" is a POST. On an account that already has a chat it does nothing.
   Otherwise it issues a one-time token for that user (a new token replaces an
   older one, 30 minutes of life) and shows an "Open in Telegram" link
-  `https://t.me/<bot_username>?start=<token>` in that response only (a reload hides it;
-  "Get a new link" issues another). The token fits Telegram's `start` payload
+  `https://t.me/<bot_username>?start=<token>` in that response only (leave the page
+  and the link is gone; "Get a new link" issues another). The token fits Telegram's `start` payload
   (letters, digits, `_`, `-`, up to 64 characters). While the state is "waiting", the block
   asks a status URL every 3 seconds (HTMX); the answer is 204 until a chat exists, then
   200 with `HX-Redirect` to Settings, so a reload never re-sends the POST.

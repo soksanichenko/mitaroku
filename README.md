@@ -128,10 +128,11 @@ you can check off). Settings has the interface and metadata languages.
 ## Notifications
 
 The bell in the header and the Notifications screen (`/notifications/`) tell you when
-something you follow changes. Email and Telegram can carry the same news. There are five kinds: a new episode of a
-title you are watching, the premiere of a planned series, the release of a movie you
-plan or watch, and a release date announced or changed for a planned title. Completed
-and dropped titles are silent, and so are episodes you have already checked off.
+something you follow changes. Email and Telegram can carry the same news. There are
+five kinds: a new episode of a title you are watching, the premiere of a planned
+series, the release of a movie you plan or watch, and a release date announced or
+changed for a planned title. Completed and dropped titles are silent, and so are
+episodes you have already checked off.
 
 - A release is due at 09:00 in your time zone on its date, for anime too. Choose the
   time zone in Settings (default UTC). Changing it does not move any earlier cut-off: a
@@ -188,9 +189,9 @@ Setting up the bot (operator):
 
 Connecting (user):
 
-- Settings > Notifications > Telegram > "Connect Telegram" shows an "Open in Telegram"
-  link, `t.me/<bot>?start=<token>`. It works once and for 30 minutes. It is shown only
-  in the response to the button: reload the page and it is gone, press "Get a new
+- Settings > Telegram > "Connect Telegram" shows an "Open in Telegram" link,
+  `t.me/<bot>?start=<token>`. It works once and for 30 minutes. It is shown only in
+  the response to the button: leave the page and the link is gone, press "Get a new
   link" for another one.
 - Press Start in the private chat with the bot. The worker polls the bot once a
   minute, so the chat is connected within about a minute, and the Settings page moves
