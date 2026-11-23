@@ -1197,6 +1197,24 @@ msgstr "Подтвердите, что mitaroku может писать на %(a
 msgid "The link works for 3 days. If you did not ask for this, ignore this message."
 msgstr "Ссылка действует 3 дня. Если вы этого не просили, проигнорируйте письмо."
 
+#: sources/notifications/telegram_bot.py
+msgid "Connected. New mitaroku notifications will arrive in this chat."
+msgstr "Подключено. Новые уведомления mitaroku будут приходить в этот чат."
+
+#: sources/notifications/telegram_bot.py
+#, python-format
+msgid "To connect Telegram, open mitaroku Settings and press \"Connect Telegram\": %(url)s"
+msgstr "Чтобы подключить Telegram, откройте «Настройки» в mitaroku и нажмите «Подключить Telegram»: %(url)s"
+
+#: sources/notifications/telegram_bot.py
+#, python-format
+msgid "That link has expired or was already used. Press \"Connect Telegram\" in mitaroku Settings to get a new one: %(url)s"
+msgstr "Ссылка устарела или уже использована. Нажмите «Подключить Telegram» в настройках mitaroku, чтобы получить новую: %(url)s"
+
+#: sources/notifications/telegram_bot.py
+msgid "This Telegram account is already connected to another mitaroku account. Disconnect it there first, then try again."
+msgstr "Этот аккаунт Telegram уже подключён к другой учётной записи mitaroku. Сначала отключите его там, затем попробуйте снова."
+
 #~ msgid "D, M j"
 #~ msgstr "D, j E"
 
