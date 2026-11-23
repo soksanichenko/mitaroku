@@ -1,4 +1,6 @@
+import dataclasses
 import itertools
+import smtplib
 import threading
 import time
 from datetime import UTC, datetime, timedelta
@@ -10,8 +12,9 @@ from django.core.mail import EmailMultiAlternatives
 from django.db import connection
 from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
-from notifications import deliver
+from notifications import channels, deliver
 from notifications.deliver import MAX_ATTEMPTS, RETRY_PAUSES, send_deliveries
+from notifications.errors import PermanentFailure, RetryAfter
 from notifications.models import Delivery, Notification
 
 NOW = datetime(2026, 11, 21, 12, 0, tzinfo=UTC)
@@ -413,7 +416,7 @@ def test_overlapping_runs_never_send_twice(alice, monkeypatch):
     notify(alice)
     holding = threading.Event()
     release = threading.Event()
-    real_build = deliver.build_digest
+    real_build = channels.build_digest
 
     def slow_build(user, notifications, now):
         # The first run holds the row lock here until the second run is done.
@@ -421,7 +424,7 @@ def test_overlapping_runs_never_send_twice(alice, monkeypatch):
         assert release.wait(timeout=10)
         return real_build(user, notifications, now)
 
-    monkeypatch.setattr(deliver, 'build_digest', slow_build)
+    monkeypatch.setattr(channels, 'build_digest', slow_build)
     results: dict[str, int] = {}
     errors: list[BaseException] = []
 
@@ -467,14 +470,14 @@ def _overlap_with_a_settle_that_matches_the_row(
     """
     holding = threading.Event()
     release = threading.Event()
-    real_build = deliver.build_digest
+    real_build = channels.build_digest
 
     def slow_build(user, notifications, now):
         holding.set()
         assert release.wait(timeout=10)
         return real_build(user, notifications, now)
 
-    monkeypatch.setattr(deliver, 'build_digest', slow_build)
+    monkeypatch.setattr(channels, 'build_digest', slow_build)
     results: dict[str, int] = {}
     errors: list[BaseException] = []
 
@@ -588,18 +591,24 @@ def test_materialise_and_settle_cost_the_same_for_one_user_and_four(
 
     def count(step) -> int:
         with CaptureQueriesContext(connection) as queries:
-            step(NOW)
+            step()
         return len(queries)
 
+    def materialise() -> None:
+        deliver._materialise(NOW, channels.EMAIL)
+
+    def settle() -> None:
+        deliver._settle(NOW, channels.EMAIL)
+
     make(1)
-    materialise_one = count(deliver._materialise)
+    materialise_one = count(materialise)
     assert Delivery.objects.count() == 1
-    settle_one = count(deliver._settle)
+    settle_one = count(settle)
     for number in (2, 3, 4):
         make(number)
-    materialise_four = count(deliver._materialise)
+    materialise_four = count(materialise)
     assert Delivery.objects.count() == 4
-    settle_four = count(deliver._settle)
+    settle_four = count(settle)
 
     assert materialise_four == materialise_one
     assert settle_four == settle_one
@@ -628,3 +637,156 @@ def test_a_user_costs_a_fixed_number_of_queries(django_user_model):
     # Each user adds the same fixed cost, and more items add nothing.
     assert four - two == 2 * (two - one)
     assert many_items == one
+
+
+@pytest.mark.django_db
+def test_a_connection_failure_stops_the_pass_for_the_other_users(
+    alice, bob, failing_send
+):
+    enable(alice)
+    enable(bob)
+    notify(alice)
+    notify(bob)
+    failing_send.failing = {'1001@example.com'}
+    failing_send.error = staticmethod(lambda address: ConnectionRefusedError('refused'))
+
+    assert send_deliveries(NOW) == 0
+
+    assert failing_send.calls_made == [['1001@example.com']]
+    (first,) = deliveries(alice)
+    assert (first.status, first.attempts) == (Status.PENDING, 1)
+    assert first.next_attempt_at == NOW + RETRY_PAUSES[0]
+    assert first.last_error.startswith('Unreachable: ConnectionRefusedError')
+    (second,) = deliveries(bob)
+    assert (second.status, second.attempts, second.next_attempt_at) == (
+        Status.PENDING,
+        0,
+        None,
+    )
+
+
+@pytest.mark.django_db
+def test_a_server_that_disconnects_counts_as_unreachable(alice, bob, failing_send):
+    enable(alice)
+    enable(bob)
+    notify(alice)
+    notify(bob)
+    failing_send.failing = {'1001@example.com'}
+    failing_send.error = staticmethod(
+        lambda address: smtplib.SMTPServerDisconnected('gone')
+    )
+
+    assert send_deliveries(NOW) == 0
+
+    assert failing_send.calls_made == [['1001@example.com']]
+    (first,) = deliveries(alice)
+    assert first.last_error.startswith('Unreachable: SMTPServerDisconnected')
+    (second,) = deliveries(bob)
+    assert (second.status, second.attempts) == (Status.PENDING, 0)
+
+
+@pytest.mark.django_db
+def test_an_authentication_error_does_not_stop_the_pass(alice, bob, failing_send):
+    enable(alice)
+    enable(bob)
+    notify(alice)
+    notify(bob)
+    failing_send.failing = {'1001@example.com'}
+    failing_send.error = staticmethod(
+        lambda address: smtplib.SMTPAuthenticationError(535, b'bad credentials')
+    )
+
+    assert send_deliveries(NOW) == 1
+
+    assert failing_send.calls_made == [['1001@example.com'], ['1002@example.com']]
+    (first,) = deliveries(alice)
+    assert (first.status, first.attempts) == (Status.PENDING, 1)
+    assert first.last_error.startswith('SMTPAuthenticationError')
+    assert [row.status for row in deliveries(bob)] == [Status.SENT]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ('seconds', 'expected'), [(7200, 2 * HOUR), (60, RETRY_PAUSES[0])]
+)
+def test_retry_after_pushes_the_next_attempt_out_but_never_in(
+    alice, failing_send, seconds, expected
+):
+    enable(alice)
+    notify(alice)
+    failing_send.failing = {'1001@example.com'}
+    failing_send.error = staticmethod(lambda address: RetryAfter(seconds))
+
+    assert send_deliveries(NOW) == 0
+
+    (row,) = deliveries(alice)
+    assert (row.status, row.attempts) == (Status.PENDING, 1)
+    assert row.next_attempt_at == NOW + expected
+
+
+@pytest.mark.django_db
+def test_a_permanent_failure_skips_the_queue_and_switches_the_channel_off(
+    alice, failing_send
+):
+    enable(alice)
+    notify(alice, 'One')
+    notify(alice, 'Two')
+    failing_send.failing = {'1001@example.com'}
+    failing_send.error = staticmethod(lambda address: PermanentFailure('blocked'))
+
+    assert send_deliveries(NOW) == 0
+
+    rows = deliveries(alice)
+    assert len(rows) == 2
+    assert {row.status for row in rows} == {Status.SKIPPED}
+    assert {row.attempts for row in rows} == {0}
+    assert {row.last_error for row in rows} == {'PermanentFailure: blocked'}
+    alice.profile.refresh_from_db()
+    assert alice.profile.email_enabled is False
+    assert alice.profile.email_since is None
+
+    assert send_deliveries(NOW + 16 * timedelta(minutes=1)) == 0
+    assert len(failing_send.calls_made) == 1
+
+
+@pytest.mark.django_db
+def test_the_email_pass_leaves_other_channels_alone(alice):
+    enable(alice)
+    notification = notify(alice, read=True)
+    Delivery.objects.create(
+        user=alice, notification=notification, channel=Delivery.Channel.TELEGRAM
+    )
+
+    send_deliveries(NOW)
+
+    telegram = [
+        row for row in deliveries(alice) if row.channel == Delivery.Channel.TELEGRAM
+    ]
+    assert [(row.status, row.attempts) for row in telegram] == [(Status.PENDING, 0)]
+
+
+@pytest.mark.django_db
+def test_an_unconfigured_channel_is_skipped(alice, monkeypatch):
+    monkeypatch.setattr(
+        deliver,
+        'CHANNELS',
+        (dataclasses.replace(channels.EMAIL, configured=lambda: False),),
+    )
+    enable(alice)
+    notify(alice)
+
+    assert send_deliveries(NOW) == 0
+
+    assert mail.outbox == []
+    assert Delivery.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_disable_email_switches_email_off(alice):
+    enable(alice)
+
+    channels.disable_email(alice)
+
+    alice.profile.refresh_from_db()
+    assert alice.profile.email_enabled is False
+    assert alice.profile.email_since is None
