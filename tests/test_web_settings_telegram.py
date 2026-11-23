@@ -344,6 +344,9 @@ def test_the_block_is_in_russian_for_a_russian_profile(
     assert 'Открыть в Telegram' in html
     assert 'Получить новую ссылку' in html
     assert 'Open in Telegram' not in html
+    waiting = block(page(client, portal_headers))
+    assert 'нажмёте «Запустить» в Telegram' in waiting
+    assert 'Старт' not in waiting
     connect_chat(alice)
     html = block(page(client, portal_headers))
     assert 'Отключить' in html

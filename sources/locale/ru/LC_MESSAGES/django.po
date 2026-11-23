@@ -1133,7 +1133,7 @@ msgstr "Отключить"
 
 #: sources/web/templates/web/_telegram_block.html
 msgid "Waiting for you to press Start in Telegram."
-msgstr "Ждём, когда вы нажмёте «Старт» в Telegram."
+msgstr "Ждём, когда вы нажмёте «Запустить» в Telegram."
 
 #: sources/web/templates/web/_telegram_block.html
 msgid "Open in Telegram"

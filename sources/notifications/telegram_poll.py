@@ -87,7 +87,9 @@ def _poll(redis, now: datetime) -> int:
     with telegram.bot_api() as api:
         try:
             updates = api.get_updates(offset)
-        except (TelegramError, Unreachable) as exc:
+        # Whatever the call raises (RetryAfter, PermanentFailure, ...), it is a
+        # failed poll: log the class and try again next minute.
+        except Exception as exc:
             if isinstance(exc, TelegramError) and exc.code == CONFLICT:
                 logger.error(
                     'Telegram getUpdates failed: %s; another consumer or a webhook '

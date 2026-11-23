@@ -114,8 +114,14 @@ def send_telegram(user: User, notifications: list[Notification], now: datetime) 
 
 
 def disable_telegram(user: User) -> None:
-    """Switch Telegram off for ``user``, forget the chat and note the block."""
-    Profile.objects.filter(user=user).update(
+    """Switch Telegram off for ``user``, forget the chat and note the block.
+
+    Only the chat the profile carried when it was read is forgotten: a chat the
+    user connected since then is left alone.
+    """
+    Profile.objects.filter(
+        user=user, telegram_chat_id=user.profile.telegram_chat_id
+    ).update(
         telegram_enabled=False,
         telegram_since=None,
         telegram_chat_id=None,

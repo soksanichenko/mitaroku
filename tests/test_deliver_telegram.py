@@ -1,4 +1,5 @@
 import logging
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -193,6 +194,31 @@ def test_a_blocked_bot_switches_the_channel_off(alice, bot):
     assert bot.sent == []
 
 
+def test_a_refusal_for_an_old_chat_leaves_a_newer_chat_alone(alice, bot, monkeypatch):
+    connect(alice, chat_id=41)
+    notify(alice)
+    notify(alice, 'B')
+    bot.fail('sendMessage', 403, FORBIDDEN)
+
+    def switched_meanwhile(user):
+        # The user disconnects and connects chat 42 after the sender read chat 41.
+        Profile.objects.filter(user=alice).update(telegram_chat_id=42)
+        channels.disable_telegram(user)
+
+    racing = replace(channels.TELEGRAM, disable=switched_meanwhile)
+    monkeypatch.setattr(deliver, 'CHANNELS', (racing,))
+
+    assert send_deliveries(NOW) == 0
+
+    profile = Profile.objects.get(user=alice)
+    assert (
+        profile.telegram_chat_id,
+        profile.telegram_enabled,
+        profile.telegram_blocked,
+    ) == (42, True, False)
+    assert {row.status for row in deliveries(alice)} == {Status.SKIPPED}
+
+
 def test_a_blocked_bot_leaves_the_pending_email_alone(alice, bot):
     enable_email(alice)
     connect(alice)
@@ -230,7 +256,7 @@ def test_a_429_is_honoured(alice, bot):
     assert row.next_attempt_at == NOW + HOUR
 
 
-@pytest.mark.parametrize('body', ['not json', '', '{"ok": false}'])
+@pytest.mark.parametrize('body', ['not json', '', '{"ok": false}', '{"ok": true}'])
 def test_an_answer_that_is_not_a_clean_success_is_retried_not_sent(alice, bot, body):
     connect(alice)
     notify(alice)

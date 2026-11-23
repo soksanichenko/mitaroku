@@ -10,6 +10,7 @@ import logging
 from datetime import datetime
 from html import escape
 
+from accounts.models import Profile
 from django.urls import reverse
 from django.utils import translation
 from django.utils.translation import gettext
@@ -148,6 +149,13 @@ def handle_update(update: dict, api: BotApi, now: datetime) -> None:
     if outcome is Outcome.CONNECTED:
         _reply(api, chat_id, user.profile.interface_language, _connected_text)
     elif outcome is Outcome.INVALID:
-        _reply(api, chat_id, sender_language, _invalid_text)
+        # A replayed /start (its reply timed out, or the offset was lost) must not
+        # tell a connected user that the link is gone. This reveals nothing the
+        # chat does not already know.
+        owner = Profile.objects.filter(telegram_chat_id=chat_id).first()
+        if owner is None:
+            _reply(api, chat_id, sender_language, _invalid_text)
+        else:
+            _reply(api, chat_id, owner.interface_language, _connected_text)
     else:
         _reply(api, chat_id, sender_language, _taken_text)

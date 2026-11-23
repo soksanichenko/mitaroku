@@ -116,16 +116,21 @@ def test_an_error_without_a_json_body_falls_back_to_the_http_status(bot):
 
 
 @pytest.mark.parametrize(
-    'body', ['not json', '', '[]', '{"ok": true}', '{"result": []}']
+    'body',
+    [
+        'not json',
+        '',
+        '[]',
+        '{"ok": true}',
+        '{"ok": true, "result": true}',
+        '{"result": []}',
+    ],
 )
 def test_answers_that_are_not_a_clean_success_are_errors(bot, body):
     bot.garbage = body
 
-    if body == '{"ok": true}':
+    with pytest.raises(TelegramError):
         telegram.bot_api().send_message(1, 'x')
-    else:
-        with pytest.raises(TelegramError):
-            telegram.bot_api().send_message(1, 'x')
     with pytest.raises(TelegramError):
         telegram.bot_api().get_updates(0)
 
@@ -139,6 +144,24 @@ def test_a_transport_error_becomes_unreachable_without_the_url_or_the_token(bot)
     assert bot.token not in str(raised.value)
     assert 'api.telegram.org' not in str(raised.value)
     assert str(raised.value) == 'ConnectError'
+
+
+def test_a_non_transport_request_error_becomes_a_telegram_error_with_only_its_class(
+    bot,
+):
+    def handler(request):
+        raise httpx.DecodingError(f'bad gzip body of {request.url}')
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+
+    with pytest.raises(TelegramError) as raised:
+        BotApi(bot.token, client).get_updates(0)
+
+    assert str(raised.value) == 'DecodingError'
+    assert raised.value.code is None
+    assert bot.token not in repr(raised.value)
+    assert raised.value.__cause__ is None
+    assert raised.value.__context__ is None or raised.value.__suppress_context__
 
 
 def test_a_timeout_is_unreachable(bot):

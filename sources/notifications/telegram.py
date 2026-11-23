@@ -102,9 +102,9 @@ class BotApi:
             PermanentFailure: The chat refuses the bot for good.
             RetryAfter: Telegram asks to wait.
             Unreachable: Telegram cannot be reached.
-            TelegramError: Any other failed answer.
+            TelegramError: Any other failed answer, or one without a message.
         """
-        self._call(
+        result = self._call(
             'sendMessage',
             {
                 'chat_id': chat_id,
@@ -113,6 +113,9 @@ class BotApi:
                 'link_preview_options': {'is_disabled': True},
             },
         )
+        # A sent message is answered with the Message object; nothing else counts.
+        if not isinstance(result, dict):
+            raise TelegramError('sendMessage answered without a message')
 
     def get_updates(self, offset: int | None, timeout: int = 0) -> list[dict]:
         """Fetch the updates the bot has not confirmed yet.
@@ -143,17 +146,24 @@ class BotApi:
             PermanentFailure: 403, or 400 for an unknown chat.
             RetryAfter: 429 with the seconds to wait.
             Unreachable: A transport error; only its class name is kept.
-            TelegramError: Any other answer that is not ``ok``.
+            TelegramError: Any other answer that is not ``ok``, or another httpx
+                request error; only its class name is kept.
         """
         url = f'{API_URL}/bot{self._token}/{method}'
         reason = None
+        unreachable = False
         try:
             response = self._client.post(url, json=payload)
-        except httpx.TransportError as error:
+        except httpx.RequestError as error:
             reason = type(error).__name__
+            unreachable = isinstance(error, httpx.TransportError)
         if reason is not None:
             # Raised outside the handler so the URL-bearing error is not chained.
-            raise Unreachable(reason)
+            # A request error that is not a transport one (a broken gzip body, say)
+            # is an answer we cannot use, not an unreachable server.
+            if unreachable:
+                raise Unreachable(reason)
+            raise TelegramError(reason)
         status = response.status_code
         try:
             body = response.json()

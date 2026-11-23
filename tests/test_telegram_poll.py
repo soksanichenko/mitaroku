@@ -1,10 +1,11 @@
 import logging
 from datetime import UTC, datetime
 
+import httpx
 import pytest
 from accounts.models import Profile
 from django.test import override_settings
-from notifications import telegram_poll
+from notifications import telegram, telegram_poll
 from notifications.errors import Unreachable
 from notifications.telegram_link import issue_link_token
 from notifications.telegram_poll import poll_updates
@@ -64,7 +65,34 @@ def test_a_lost_offset_replays_harmlessly(alice, bot, redis_client):
 
     assert chat_of(alice) == 42
     assert Profile.objects.filter(telegram_chat_id=42).count() == 1
-    assert 'expired' in bot.sent[-1]['text']
+    assert bot.sent[-1]['text'].startswith('Connected.')
+    assert redis_client.get(OFFSET_KEY) == '11'
+
+
+def test_a_connected_reply_that_timed_out_is_answered_on_the_replay(
+    alice, bot, redis_client, monkeypatch
+):
+    token = issue_link_token(alice, NOW)
+    bot.say(42, f'/start {token}', update_id=10)
+    real = telegram.BotApi.send_message
+
+    def timed_out(self, chat_id, text):
+        raise Unreachable('ReadTimeout')
+
+    monkeypatch.setattr(telegram.BotApi, 'send_message', timed_out)
+    assert poll_updates(NOW) == 0
+    monkeypatch.setattr(telegram.BotApi, 'send_message', real)
+    # The connection was committed before the reply failed.
+    assert chat_of(alice) == 42
+    assert redis_client.get(OFFSET_KEY) is None
+
+    assert poll_updates(NOW) == 1
+
+    assert chat_of(alice) == 42
+    assert Profile.objects.get(user=alice).telegram_enabled is True
+    assert [m['chat_id'] for m in bot.sent] == [42]
+    assert bot.sent[0]['text'].startswith('Connected.')
+    assert 'expired' not in bot.sent[0]['text']
     assert redis_client.get(OFFSET_KEY) == '11'
 
 
@@ -172,6 +200,46 @@ def test_another_failed_answer_logs_only_the_class_and_the_code(
     assert '502' in caplog.text
     assert 'secret-link-token' not in caplog.text
     assert 'another consumer' not in caplog.text
+
+
+@pytest.mark.parametrize(
+    ('status', 'retry_after', 'name'),
+    [(429, 30, 'RetryAfter'), (403, None, 'PermanentFailure')],
+)
+def test_a_429_or_a_403_from_getupdates_is_logged_and_returns_zero(
+    bot, redis_client, caplog, status, retry_after, name
+):
+    bot.fail('getUpdates', status, 'echo secret-link-token', retry_after=retry_after)
+
+    assert poll_updates(NOW) == 0
+
+    assert name in caplog.text
+    assert [r.levelno for r in caplog.records] == [logging.ERROR]
+    assert bot.token not in caplog.text
+    assert 'secret-link-token' not in caplog.text
+    assert redis_client.get(OFFSET_KEY) is None
+    assert redis_client.get(LOCK_KEY) is None
+
+
+def test_a_decoding_error_from_getupdates_is_logged_and_returns_zero(
+    bot, redis_client, caplog, monkeypatch
+):
+    def broken_gzip(request):
+        raise httpx.DecodingError(f'bad gzip body of {request.url}')
+
+    monkeypatch.setattr(
+        'notifications.telegram.make_client',
+        lambda: httpx.Client(transport=httpx.MockTransport(broken_gzip)),
+    )
+
+    assert poll_updates(NOW) == 0
+
+    assert 'TelegramError' in caplog.text
+    assert [r.levelno for r in caplog.records] == [logging.ERROR]
+    assert bot.token not in caplog.text
+    assert 'bad gzip' not in caplog.text
+    assert redis_client.get(OFFSET_KEY) is None
+    assert redis_client.get(LOCK_KEY) is None
 
 
 def test_getupdates_unreachable_is_logged_and_returns_zero(bot, redis_client, caplog):

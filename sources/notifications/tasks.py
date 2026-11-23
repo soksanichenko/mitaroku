@@ -32,13 +32,13 @@ def notify_due() -> int:
 
 @db_periodic_task(crontab(minute='2,17,32,47'))
 def send_deliveries_task() -> int:
-    """Send the e-mail digests that are due, after the scanner has run.
+    """Send the digests that are due on every channel, after the scanner has run.
 
     Returns:
         The number of messages sent.
     """
     count = send_deliveries(timezone.now())
-    logger.info('Email delivery sent %d messages', count)
+    logger.info('Delivery pass sent %d messages', count)
     return count
 
 

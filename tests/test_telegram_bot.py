@@ -174,6 +174,35 @@ def test_a_used_token_cannot_connect_a_second_chat(alice, bot, api):
     assert 'expired or was already used' in bot.sent[-1]['text']
 
 
+def test_a_replayed_start_from_a_connected_chat_gets_the_connected_reply(
+    alice, bot, api
+):
+    russian(alice)
+    token = issue_link_token(alice, NOW)
+    handle_update(bot.say(42, f'/start {token}'), api, NOW)
+    bot.sent.clear()
+
+    # The account's language wins over the Telegram language code.
+    handle_update(bot.say(42, f'/start {token}', language_code='en'), api, NOW)
+
+    assert [m['chat_id'] for m in bot.sent] == [42]
+    assert bot.sent[0]['text'] == (
+        'Подключено. Новые уведомления mitaroku будут приходить в этот чат.'
+    )
+    assert profile_of(alice).telegram_chat_id == 42
+
+
+def test_an_unknown_token_from_a_connected_chat_gets_the_connected_reply(
+    alice, bot, api
+):
+    handle_update(bot.say(42, f'/start {issue_link_token(alice, NOW)}'), api, NOW)
+    bot.sent.clear()
+
+    handle_update(bot.say(42, '/start nonsense'), api, NOW)
+
+    assert bot.sent[0]['text'].startswith('Connected.')
+
+
 @pytest.mark.parametrize('chat_type', ['group', 'supergroup', 'channel'])
 def test_a_group_message_is_ignored_and_the_token_stays_valid(
     alice, bot, api, chat_type
