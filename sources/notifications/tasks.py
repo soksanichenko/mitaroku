@@ -10,6 +10,7 @@ from huey.contrib.djhuey import db_periodic_task
 from notifications.deliver import send_deliveries
 from notifications.models import Notification
 from notifications.scan import scan_due
+from notifications.telegram_poll import poll_updates
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,18 @@ def send_deliveries_task() -> int:
     """
     count = send_deliveries(timezone.now())
     logger.info('Email delivery sent %d messages', count)
+    return count
+
+
+@db_periodic_task(crontab(minute='*'))
+def poll_telegram_task() -> int:
+    """Fetch what users wrote to the Telegram bot and handle it.
+
+    Returns:
+        The number of updates handled.
+    """
+    count = poll_updates(timezone.now())
+    logger.info('Telegram poll handled %d updates', count)
     return count
 
 
