@@ -165,3 +165,67 @@ def test_the_email_password_is_not_in_the_repr(monkeypatch):
     email = Settings().email
     assert email.password.get_secret_value() == 'smtp-secret'
     assert 'smtp-secret' not in repr(email)
+
+
+def test_the_telegram_block_is_off_by_default():
+    telegram = Settings().telegram
+    assert telegram.bot_token is None
+    assert telegram.bot_username == ''
+
+
+def test_a_token_without_a_username_is_rejected_and_not_echoed(monkeypatch):
+    monkeypatch.setenv('MITAROKU_TELEGRAM__BOT_TOKEN', '123456:abc-DEF_ghi')
+    with pytest.raises(ValidationError) as error:
+        Settings()
+    assert 'bot_username' in str(error.value)
+    assert 'abc-DEF_ghi' not in str(error.value)
+
+
+def test_a_username_without_a_token_is_rejected(monkeypatch):
+    monkeypatch.setenv('MITAROKU_TELEGRAM__BOT_USERNAME', 'mitaroku_bot')
+    with pytest.raises(ValidationError, match='bot_token'):
+        Settings()
+
+
+def test_a_complete_block_is_accepted_and_the_username_loses_its_at_sign(
+    monkeypatch,
+):
+    monkeypatch.setenv('MITAROKU_TELEGRAM__BOT_TOKEN', '123456:abc-DEF_ghi')
+    monkeypatch.setenv('MITAROKU_TELEGRAM__BOT_USERNAME', '@mitaroku_bot')
+    telegram = Settings().telegram
+    assert telegram.bot_username == 'mitaroku_bot'
+    assert telegram.bot_token.get_secret_value() == '123456:abc-DEF_ghi'
+
+
+@pytest.mark.parametrize('value', ['abc', 'has space', '1abc_bot', 'x' * 33])
+def test_a_malformed_username_is_rejected(monkeypatch, value):
+    monkeypatch.setenv('MITAROKU_TELEGRAM__BOT_TOKEN', '123456:abc-DEF_ghi')
+    monkeypatch.setenv('MITAROKU_TELEGRAM__BOT_USERNAME', value)
+    with pytest.raises(ValidationError, match='bot_username'):
+        Settings()
+
+
+@pytest.mark.parametrize('value', ['nocolon', 'abc:def', '12:'])
+def test_a_malformed_token_is_rejected_without_echoing_it(monkeypatch, value):
+    monkeypatch.setenv('MITAROKU_TELEGRAM__BOT_TOKEN', value)
+    monkeypatch.setenv('MITAROKU_TELEGRAM__BOT_USERNAME', 'mitaroku_bot')
+    with pytest.raises(ValidationError, match='bot_token') as error:
+        Settings()
+    assert value not in str(error.value)
+
+
+@pytest.mark.parametrize('value', ['', '   '])
+def test_a_blank_token_is_none(monkeypatch, value):
+    monkeypatch.setenv('MITAROKU_TELEGRAM__BOT_TOKEN', value)
+    monkeypatch.setenv('MITAROKU_TELEGRAM__BOT_USERNAME', value)
+    telegram = Settings().telegram
+    assert telegram.bot_token is None
+    assert telegram.bot_username == ''
+
+
+def test_the_telegram_token_is_not_in_the_repr(monkeypatch):
+    monkeypatch.setenv('MITAROKU_TELEGRAM__BOT_TOKEN', '123456:abc-DEF_ghi')
+    monkeypatch.setenv('MITAROKU_TELEGRAM__BOT_USERNAME', 'mitaroku_bot')
+    telegram = Settings().telegram
+    assert 'abc-DEF_ghi' not in repr(telegram)
+    assert 'abc-DEF_ghi' not in repr(Settings())

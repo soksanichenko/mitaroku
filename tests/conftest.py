@@ -9,7 +9,9 @@ from accounts.models import User
 from catalog.models import ExternalId, Title
 from catalog.sync.common import Clients
 from django.core.management import call_command
+from django.test import override_settings
 from django.utils import timezone
+from fake_telegram import FakeBot
 from fakes import (
     FailingProvider,
     FakeAniList,
@@ -258,3 +260,20 @@ def queued_language(monkeypatch, redis_client) -> QueuedJobs:
     )
     yield jobs
     clear()
+
+
+@pytest.fixture
+def bot(monkeypatch) -> FakeBot:
+    """Return a fake Telegram bot that the Bot API wrapper talks to.
+
+    The Telegram channel is configured for the test.
+    """
+    fake = FakeBot()
+    monkeypatch.setattr('notifications.telegram.make_client', fake.client)
+    with override_settings(
+        TELEGRAM_BOT_TOKEN=fake.token,
+        TELEGRAM_BOT_USERNAME='mitaroku_bot',
+        TELEGRAM_ENABLED=True,
+        PUBLIC_URL='https://m.example',
+    ):
+        yield fake

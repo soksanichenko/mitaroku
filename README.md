@@ -54,6 +54,17 @@ environment variables prefixed `MITAROKU_`, with `__` between nested keys, for e
   `public_url` are set, and a host needs `from_address`. The worker (`run_huey`) must be
   running for mail to go out. In portal mode nginx must let `/email/` through without
   the SSO check: the one-click unsubscribe is posted by the recipient's mail provider.
+- Telegram (optional) uses `telegram.bot_token` and `telegram.bot_username` (without the
+  `@`), or `MITAROKU_TELEGRAM__BOT_TOKEN` and `MITAROKU_TELEGRAM__BOT_USERNAME`. Set both
+  or neither: one without the other is a startup error, and so is a token that is not
+  `<digits>:<characters>` or a username that is not 5 to 32 letters, digits or
+  underscores starting with a letter. The channel also needs `public_url`, for the links
+  in the messages. Without all three the Telegram block is absent from Settings and
+  nothing is polled or sent. The bot must be dedicated to this service (see the Telegram
+  section). The worker (`run_huey`) and Redis must be running: the worker polls the bot
+  and sends the messages. The poll is outbound HTTPS to `api.telegram.org` only, so no
+  nginx change and no public endpoint are needed. The token is only in the request URL,
+  and the log filter keeps the `httpx` request line out of the logs.
 - `python sources/manage.py collectstatic` writes to `staticfiles/` (git-ignored).
   Serving `/static/` in production is deferred to plan 6.
 
@@ -116,11 +127,12 @@ you can check off). Settings has the interface and metadata languages.
 
 ## Notifications
 
-The bell in the header and the Notifications screen (`/notifications/`) tell you, on the
-site only, when something you follow changes. There are five kinds: a new episode of a
-title you are watching, the premiere of a planned series, the release of a movie you
-plan or watch, and a release date announced or changed for a planned title. Completed
-and dropped titles are silent, and so are episodes you have already checked off.
+The bell in the header and the Notifications screen (`/notifications/`) tell you when
+something you follow changes. Email and Telegram can carry the same news. There are
+five kinds: a new episode of a title you are watching, the premiere of a planned
+series, the release of a movie you plan or watch, and a release date announced or
+changed for a planned title. Completed and dropped titles are silent, and so are
+episodes you have already checked off.
 
 - A release is due at 09:00 in your time zone on its date, for anime too. Choose the
   time zone in Settings (default UTC). Changing it does not move any earlier cut-off: a
@@ -133,7 +145,7 @@ and dropped titles are silent, and so are episodes you have already checked off.
   or changed counts only when it is later than today, judged against the UTC date at
   sync time (the other kinds are judged in your zone).
 - Read notifications are deleted after 90 days and all of them after 180 days.
-- Telegram is not built yet (plan 4c).
+- Email and Telegram are optional second channels, described below.
 
 ### Email
 
@@ -154,6 +166,59 @@ outgoing mail (see Configuration). The Email block in Settings appears only then
 - Every mail has a one-click unsubscribe (`List-Unsubscribe` and `List-Unsubscribe-Post`)
   and a link at the bottom. Unsubscribing switches email off and stops what is queued.
 - A notification that is updated after it was mailed is not mailed again.
+- If the mail server cannot be reached (connection refused, timeout, DNS, SMTP
+  disconnect), the pass ends there: the other users wait for the next pass instead of
+  failing one by one. A refused login or a refused address still fails only that mail.
+
+### Telegram
+
+Telegram is a third channel, available once the operator has configured a bot (see
+Configuration). The Telegram block in Settings appears only then.
+
+Setting up the bot (operator):
+
+1. In Telegram, talk to @BotFather, send `/newbot` and follow the questions. Copy the
+   token and the bot's username.
+2. Put them in `telegram.bot_token` and `telegram.bot_username` (or the two
+   `MITAROKU_TELEGRAM__` variables) next to `public_url`, and restart the web and
+   worker processes.
+3. Use a bot made for this service alone. No webhook may be set on it (while one is
+   set, `getUpdates` answers 409), no other program may read its updates, and only one
+   instance of the service may poll it. The log then says "another consumer or a
+   webhook is set on this bot".
+
+Connecting (user):
+
+- Settings > Telegram > "Connect Telegram" shows an "Open in Telegram" link,
+  `t.me/<bot>?start=<token>`. It works once and for 30 minutes. It is shown only in
+  the response to the button: leave the page and the link is gone, press "Get a new
+  link" for another one.
+- Press Start in the private chat with the bot. The worker polls the bot once a
+  minute, so the chat is connected within about a minute, and the Settings page moves
+  on by itself a few seconds after that. The channel is then on and only notifications
+  created from that moment are sent: nothing older, so there is no backlog.
+- One chat belongs to one account; a chat that is connected to another account is
+  refused. To move to another chat, press "Disconnect" and connect again.
+- The switch in the block pauses and resumes the channel; "Disconnect" forgets the chat.
+- The bot has no commands except `/start` with a link. A bare `/start` and any other
+  message get a short reply that points to Settings and change nothing. Groups and
+  channels are ignored. To stop, use the switch in Settings or block the bot.
+
+What is sent:
+
+- One message per user per 15-minute pass (minutes 2, 17, 32 and 47), in your
+  interface language, with the titles in your metadata language, at most 50 items,
+  newest first. A message is cut to Telegram's 4096 characters: what does not fit
+  becomes an "and N more" line, and the last line links to the Notifications screen.
+- The retries, the 48-hour expiry and the skip of what you have already read are the
+  same as for email. A "too many requests" answer from Telegram is honoured: the next
+  attempt waits for the time Telegram asks.
+- If the bot is blocked or the chat is gone, the channel is switched off, the chat is
+  forgotten and what is queued is marked `skipped`. It is noticed at the next message.
+  The Settings block then says so, and "Connect Telegram" resumes it.
+- If Telegram cannot be reached (connection refused, timeout, DNS), the pass ends for
+  Telegram and the other users wait for the next pass. The same rule now holds for the
+  mail server.
 
 ## Browse and title facts
 

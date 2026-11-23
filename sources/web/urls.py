@@ -12,6 +12,7 @@ from web.views import (
     search,
     settings,
     shell,
+    telegram,
     titles,
     upcoming,
 )
@@ -59,6 +60,12 @@ urlpatterns = [
     path('settings/', settings.settings_page, name='settings'),
     path('settings/timezone/', settings.settings_timezone, name='settings_timezone'),
     path('settings/email/', settings.settings_email, name='settings_email'),
+    path('settings/telegram/', telegram.settings_telegram, name='settings_telegram'),
+    path(
+        'settings/telegram/status/',
+        telegram.settings_telegram_status,
+        name='settings_telegram_status',
+    ),
     path(
         'email/unsubscribe/<str:token>/',
         email.email_unsubscribe,

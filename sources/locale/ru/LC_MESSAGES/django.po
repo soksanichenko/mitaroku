@@ -1119,9 +1119,45 @@ msgstr[2] "и ещё %(count)s"
 msgid "All notifications"
 msgstr "Все уведомления"
 
-#: sources/web/templates/web/settings.html
-msgid "Telegram notifications are coming later."
-msgstr "Уведомления в Telegram появятся позже."
+#: sources/web/templates/web/_telegram_block.html
+msgid "Telegram"
+msgstr "Telegram"
+
+#: sources/web/templates/web/_telegram_block.html
+msgid "Send me new notifications on Telegram"
+msgstr "Присылать новые уведомления в Telegram"
+
+#: sources/web/templates/web/_telegram_block.html
+msgid "Disconnect"
+msgstr "Отключить"
+
+#: sources/web/templates/web/_telegram_block.html
+msgid "Waiting for you to press Start in Telegram."
+msgstr "Ждём, когда вы нажмёте «Запустить» в Telegram."
+
+#: sources/web/templates/web/_telegram_block.html
+msgid "Open in Telegram"
+msgstr "Открыть в Telegram"
+
+#: sources/web/templates/web/_telegram_block.html
+msgid "Telegram was switched off because the bot was blocked. Connect again to resume."
+msgstr "Telegram отключён, потому что бота заблокировали. Подключите его снова, чтобы продолжить."
+
+#: sources/web/templates/web/_telegram_block.html
+msgid "Get new notifications in a chat with the mitaroku bot."
+msgstr "Получайте новые уведомления в чате с ботом mitaroku."
+
+#: sources/web/templates/web/_telegram_block.html
+msgid "Get a new link"
+msgstr "Получить новую ссылку"
+
+#: sources/web/templates/web/_telegram_block.html
+msgid "Connect Telegram"
+msgstr "Подключить Telegram"
+
+#: sources/web/views/telegram.py
+msgid "Connect Telegram first"
+msgstr "Сначала подключите Telegram"
 
 #: sources/web/templates/web/settings.html
 msgid "Address"
@@ -1197,6 +1233,24 @@ msgstr "Подтвердите, что mitaroku может писать на %(a
 msgid "The link works for 3 days. If you did not ask for this, ignore this message."
 msgstr "Ссылка действует 3 дня. Если вы этого не просили, проигнорируйте письмо."
 
+#: sources/notifications/telegram_bot.py
+msgid "Connected. New mitaroku notifications will arrive in this chat."
+msgstr "Подключено. Новые уведомления mitaroku будут приходить в этот чат."
+
+#: sources/notifications/telegram_bot.py
+#, python-format
+msgid "To connect Telegram, open mitaroku Settings and press \"Connect Telegram\": %(url)s"
+msgstr "Чтобы подключить Telegram, откройте «Настройки» в mitaroku и нажмите «Подключить Telegram»: %(url)s"
+
+#: sources/notifications/telegram_bot.py
+#, python-format
+msgid "That link has expired or was already used. Press \"Connect Telegram\" in mitaroku Settings to get a new one: %(url)s"
+msgstr "Ссылка устарела или уже использована. Нажмите «Подключить Telegram» в настройках mitaroku, чтобы получить новую: %(url)s"
+
+#: sources/notifications/telegram_bot.py
+msgid "This Telegram account is already connected to another mitaroku account. Disconnect it there first, then try again."
+msgstr "Этот аккаунт Telegram уже подключён к другой учётной записи mitaroku. Сначала отключите его там, затем попробуйте снова."
+
 #~ msgid "D, M j"
 #~ msgstr "D, j E"
 
@@ -1214,6 +1268,9 @@ msgstr "Ссылка действует 3 дня. Если вы этого не 
 
 #~ msgid "Partly watched"
 #~ msgstr "Просмотрено частично"
+
+#~ msgid "Telegram notifications are coming later."
+#~ msgstr "Уведомления в Telegram появятся позже."
 
 #~ msgid "Email and Telegram notifications are coming later."
 #~ msgstr "Уведомления по почте и в Telegram появятся позже."

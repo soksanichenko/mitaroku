@@ -9,6 +9,11 @@ def email_configured() -> bool:
     return settings.EMAIL_ENABLED
 
 
+def telegram_configured() -> bool:
+    """Return whether the operator configured the Telegram bot."""
+    return settings.TELEGRAM_ENABLED
+
+
 def effective_address(user: User) -> str:
     """Return the address mail for ``user`` goes to, or an empty string.
 

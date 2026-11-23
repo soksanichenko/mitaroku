@@ -21,7 +21,7 @@ MAX_ITEMS = 50
 
 
 @dataclass(frozen=True)
-class _Item:
+class Item:
     """One listed notification, ready for the templates."""
 
     row: Row
@@ -30,11 +30,26 @@ class _Item:
 
 
 @dataclass(frozen=True)
-class _Group:
+class Group:
     """The items of one local day under their heading."""
 
     heading: str
-    items: list[_Item]
+    items: list[Item]
+
+
+@dataclass(frozen=True)
+class Layout:
+    """What a digest lists, whatever channel shows it.
+
+    Attributes:
+        count: How many notifications the digest is about.
+        groups: The listed items, newest first, by local day.
+        hidden: How many notifications the ``MAX_ITEMS`` cut left out.
+    """
+
+    count: int
+    groups: list[Group]
+    hidden: int
 
 
 def _heading(day: date, today: date) -> str:
@@ -48,7 +63,7 @@ def _heading(day: date, today: date) -> str:
 
 def _groups(
     notifications: list[Notification], rows: list[Row], language: str, today: date
-) -> list[_Group]:
+) -> list[Group]:
     """Group the rows by local day, keeping their order.
 
     Args:
@@ -60,7 +75,7 @@ def _groups(
     items = [
         (
             notification.day,
-            _Item(
+            Item(
                 row=row,
                 name=display_name(row.title, language),
                 url=absolute_url(reverse('title', args=[row.title.pk])),
@@ -69,9 +84,50 @@ def _groups(
         for notification, row in zip(notifications, rows, strict=True)
     ]
     return [
-        _Group(_heading(day, today), [item for _, item in pairs])
+        Group(_heading(day, today), [item for _, item in pairs])
         for day, pairs in groupby(items, key=lambda pair: pair[0])
     ]
+
+
+def layout(user: User, notifications: list[Notification], now: datetime) -> Layout:
+    """Order, cut and group ``notifications`` for ``user``'s digest.
+
+    Must be called under the recipient's ``translation.override``: the labels,
+    headings and fallback names are translated into the active language.
+
+    Args:
+        user: The recipient.
+        notifications: Their notifications, with ``title`` loaded.
+        now: The current moment, which decides "Today" and "Yesterday".
+
+    Returns:
+        At most ``MAX_ITEMS`` notifications, newest first, and the count of the
+        ones that did not fit.
+    """
+    profile = user.profile
+    ordered = sorted(
+        notifications, key=lambda n: (n.day, n.created_at, n.pk), reverse=True
+    )
+    shown = ordered[:MAX_ITEMS]
+    rows = prepare_rows(shown, profile.metadata_language)
+    groups = _groups(
+        shown, rows, profile.metadata_language, local_day(now, profile.timezone)
+    )
+    return Layout(count=len(ordered), groups=groups, hidden=len(ordered) - len(shown))
+
+
+def count_line(count: int) -> str:
+    """Return the "N new notifications" line in the active language."""
+    return ngettext(
+        '%(count)s new notification', '%(count)s new notifications', count
+    ) % {'count': count}
+
+
+def more_line(hidden: int) -> str:
+    """Return the "and N more" line in the active language."""
+    return ngettext('and %(count)s more', 'and %(count)s more', hidden) % {
+        'count': hidden
+    }
 
 
 def build_digest(
@@ -93,38 +149,17 @@ def build_digest(
         The message with a plain-text body and an HTML alternative; at most
         ``MAX_ITEMS`` notifications are listed, newest first.
     """
-    profile = user.profile
-    with translation.override(profile.interface_language):
-        ordered = sorted(
-            notifications, key=lambda n: (n.day, n.created_at, n.pk), reverse=True
-        )
-        shown = ordered[:MAX_ITEMS]
-        rows = prepare_rows(shown, profile.metadata_language)
-        hidden = len(ordered) - len(shown)
+    with translation.override(user.profile.interface_language):
+        listed = layout(user, notifications, now)
         unsubscribe_url = absolute_url(
             reverse('email_unsubscribe', args=[unsubscribe_token(user)])
         )
-        more = (
-            ngettext('and %(count)s more', 'and %(count)s more', hidden)
-            % {'count': hidden}
-            if hidden
-            else ''
-        )
-        subject = ngettext(
-            '%(count)s new notification',
-            '%(count)s new notifications',
-            len(ordered),
-        ) % {'count': len(ordered)}
+        subject = count_line(listed.count)
         context = {
             'language': translation.get_language(),
             'subject': subject,
-            'groups': _groups(
-                shown,
-                rows,
-                profile.metadata_language,
-                local_day(now, profile.timezone),
-            ),
-            'more': more,
+            'groups': listed.groups,
+            'more': more_line(listed.hidden) if listed.hidden else '',
             'screen_url': absolute_url(reverse('notifications')),
             'unsubscribe_url': unsubscribe_url,
         }

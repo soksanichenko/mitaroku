@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -26,7 +27,7 @@ def test_notify_due_scans_now_and_returns_the_count(monkeypatch):
 
 
 def test_send_deliveries_task_calls_the_sender_with_now_and_returns_the_count(
-    monkeypatch,
+    monkeypatch, caplog
 ):
     seen = []
 
@@ -36,9 +37,33 @@ def test_send_deliveries_task_calls_the_sender_with_now_and_returns_the_count(
 
     monkeypatch.setattr(tasks, 'send_deliveries', fake_send)
 
-    assert tasks.send_deliveries_task.call_local() == 2
+    with caplog.at_level(logging.INFO):
+        assert tasks.send_deliveries_task.call_local() == 2
     assert len(seen) == 1
     assert seen[0].tzinfo is not None
+    assert 'Delivery pass sent 2 messages' in caplog.text
+    assert 'Email' not in caplog.text
+
+
+def test_poll_telegram_task_polls_with_now_and_returns_the_count(monkeypatch):
+    seen = []
+
+    def fake_poll(now):
+        seen.append(now)
+        return 4
+
+    monkeypatch.setattr(tasks, 'poll_updates', fake_poll)
+
+    assert tasks.poll_telegram_task.call_local() == 4
+    assert len(seen) == 1
+    assert seen[0].tzinfo is not None
+
+
+def test_poll_telegram_task_fires_every_minute():
+    task = tasks.poll_telegram_task.task_class()
+
+    for minute in (0, 1, 29, 59):
+        assert task.validate_datetime(datetime(2026, 11, 22, 12, minute))
 
 
 def _notification(user, title, key, created_at, read_at=None):
@@ -129,9 +154,10 @@ def test_gc_uses_the_clock_when_no_moment_is_given(alice):
     assert not Notification.objects.filter(pk=old.pk).exists()
 
 
-def test_all_three_tasks_are_registered():
+def test_all_four_tasks_are_registered():
     registered = {task.name for task in HUEY._registry.periodic_tasks}
 
     assert tasks.notify_due.task_class.__name__ in registered
     assert tasks.gc_notifications.task_class.__name__ in registered
     assert tasks.send_deliveries_task.task_class.__name__ in registered
+    assert tasks.poll_telegram_task.task_class.__name__ in registered

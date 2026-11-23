@@ -279,16 +279,6 @@ def test_the_timezone_error_page_still_shows_the_email_block(
     assert 'aria-labelledby="set-email"' in response.content.decode()
 
 
-def test_the_coming_later_note_mentions_only_telegram(client, portal_headers, alice):
-    html = page(client, portal_headers)
-    assert 'Telegram notifications are coming later.' in html
-    assert 'Email and Telegram' not in html
-    Profile.objects.filter(user=alice).update(interface_language='ru')
-    html = page(client, portal_headers)
-    assert 'Уведомления в Telegram появятся позже.' in html
-    assert 'по почте' not in html
-
-
 def test_the_russian_block_is_translated(client, portal_headers, alice):
     Profile.objects.filter(user=alice).update(
         interface_language='ru', pending_email=NEW
