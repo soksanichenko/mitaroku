@@ -22,6 +22,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 from notifications.channel import effective_address, email_configured
 from notifications.confirmation import send_confirmation
 from notifications.moments import zone_names
+from web.views.telegram import TelegramFeedback, telegram_context
 
 logger = logging.getLogger(__name__)
 
@@ -93,11 +94,13 @@ def _render_page(
     language_form: LanguageForm,
     timezone_form: TimezoneForm,
     email_feedback: EmailFeedback | None = None,
+    telegram_feedback: TelegramFeedback | None = None,
 ) -> HttpResponse:
     """Render the settings page with the forms in their current state.
 
     This is the only renderer of the page. The Email block is added only while
-    the operator has configured outgoing email.
+    the operator has configured outgoing email, the Telegram block only while
+    the Telegram bot is configured.
     """
     profile = request.user.profile
     feedback = email_feedback or EmailFeedback()
@@ -125,6 +128,7 @@ def _render_page(
             'email_toggle_error': feedback.toggle_error,
             'email_form': feedback.address_form or EmailAddressForm(),
             'email_note': feedback.note,
+            **telegram_context(profile, telegram_feedback),
             'saved': request.session.pop(SAVED_FLAG, False),
         },
     )
@@ -197,14 +201,19 @@ def _saved(request: HttpRequest) -> HttpResponse:
     return HttpResponseRedirect(reverse('settings'))
 
 
-def _page_with(request: HttpRequest, feedback: EmailFeedback) -> HttpResponse:
-    """Render the settings page with the saved forms and ``feedback``."""
+def _page_with(
+    request: HttpRequest,
+    feedback: EmailFeedback | None = None,
+    telegram_feedback: TelegramFeedback | None = None,
+) -> HttpResponse:
+    """Render the settings page with the saved forms and the feedback given."""
     profile = request.user.profile
     return _render_page(
         request,
         LanguageForm(instance=profile),
         TimezoneForm(initial={'timezone': profile.timezone}),
         feedback,
+        telegram_feedback,
     )
 
 

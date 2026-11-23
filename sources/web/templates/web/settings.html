@@ -2,7 +2,7 @@
 {% block title %}{% trans 'Settings' %}{% endblock %}
 {% block content %}
 {% comment %}
-Account (read only), Language, Notifications and Email (web.views.settings). Plain forms: a
+Account (read only), Language, Notifications, Email and Telegram (web.views.settings). Plain forms: a
 normal POST, then a redirect back here, so they work without JavaScript and have no
 loading state of their own. The data section comes with a later plan.
 {% endcomment %}
@@ -74,7 +74,6 @@ loading state of their own. The data section comes with a later plan.
         {% endif %}
       </div>
       {% endwith %}
-      <p class="mt-set-note">{% trans 'Telegram notifications are coming later.' %}</p>
       <div class="mt-set-actions">
         <button type="submit" class="btn btn-primary mt-touch">{% trans 'Save' %}</button>
       </div>
@@ -145,5 +144,7 @@ loading state of their own. The data section comes with a later plan.
     </div>
   </section>
   {% endif %}
+
+  {% include 'web/_telegram_block.html' %}
 </div>
 {% endblock %}

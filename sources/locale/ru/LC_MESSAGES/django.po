@@ -1119,9 +1119,45 @@ msgstr[2] "и ещё %(count)s"
 msgid "All notifications"
 msgstr "Все уведомления"
 
-#: sources/web/templates/web/settings.html
-msgid "Telegram notifications are coming later."
-msgstr "Уведомления в Telegram появятся позже."
+#: sources/web/templates/web/_telegram_block.html
+msgid "Telegram"
+msgstr "Telegram"
+
+#: sources/web/templates/web/_telegram_block.html
+msgid "Send me new notifications on Telegram"
+msgstr "Присылать новые уведомления в Telegram"
+
+#: sources/web/templates/web/_telegram_block.html
+msgid "Disconnect"
+msgstr "Отключить"
+
+#: sources/web/templates/web/_telegram_block.html
+msgid "Waiting for you to press Start in Telegram."
+msgstr "Ждём, когда вы нажмёте «Старт» в Telegram."
+
+#: sources/web/templates/web/_telegram_block.html
+msgid "Open in Telegram"
+msgstr "Открыть в Telegram"
+
+#: sources/web/templates/web/_telegram_block.html
+msgid "Telegram was switched off because the bot was blocked. Connect again to resume."
+msgstr "Telegram отключён, потому что бота заблокировали. Подключите его снова, чтобы продолжить."
+
+#: sources/web/templates/web/_telegram_block.html
+msgid "Get new notifications in a chat with the mitaroku bot."
+msgstr "Получайте новые уведомления в чате с ботом mitaroku."
+
+#: sources/web/templates/web/_telegram_block.html
+msgid "Get a new link"
+msgstr "Получить новую ссылку"
+
+#: sources/web/templates/web/_telegram_block.html
+msgid "Connect Telegram"
+msgstr "Подключить Telegram"
+
+#: sources/web/views/telegram.py
+msgid "Connect Telegram first"
+msgstr "Сначала подключите Telegram"
 
 #: sources/web/templates/web/settings.html
 msgid "Address"
@@ -1232,6 +1268,9 @@ msgstr "Этот аккаунт Telegram уже подключён к друго
 
 #~ msgid "Partly watched"
 #~ msgstr "Просмотрено частично"
+
+#~ msgid "Telegram notifications are coming later."
+#~ msgstr "Уведомления в Telegram появятся позже."
 
 #~ msgid "Email and Telegram notifications are coming later."
 #~ msgstr "Уведомления по почте и в Telegram появятся позже."

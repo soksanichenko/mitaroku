@@ -330,7 +330,7 @@ def test_the_settings_page_lists_zones_and_the_current_one_is_selected(
         'Episodes and releases arrive at 09:00 in your time zone. '
         'Date changes arrive as soon as they are found.'
     ) in html
-    assert 'Telegram notifications are coming later.' in html
+    assert 'coming later' not in html
 
 
 def test_the_zones_are_grouped_by_region_with_utc_alone_first(
@@ -454,7 +454,7 @@ def test_the_section_has_no_email_or_telegram_controls(client, portal_headers, a
     assert section.count('<select') == 1
     assert section.count('<form') == 1
     assert section.count('<input') == 1  # the CSRF token only
-    assert 'coming later' in section
+    assert 'coming later' not in section
     for word in ('Connect', 'Telegram bot', 'Use portal email'):
         assert word not in section
 
@@ -474,7 +474,6 @@ def test_the_page_renders_in_russian(client, portal_headers, alice):
         'На сайте: всегда включены. Колокольчик в шапке показывает непрочитанное.',
         'Серии и выходы приходят в 09:00 по вашему часовому поясу. '
         'Изменения дат приходят, как только их находят.',
-        'Уведомления в Telegram появятся позже.',
         'Определён по вашему браузеру',
     ):
         assert text in section

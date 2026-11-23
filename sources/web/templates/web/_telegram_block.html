@@ -1,0 +1,55 @@
+{% load i18n %}{% comment %}
+The Telegram block of the settings (web.views.telegram), shown only while the operator has
+configured the bot. While the state is "waiting" the body polls the status URL every few
+seconds; the status answers 204 until the chat is connected and then asks HTMX to reload.
+The one-time link is in the context only for the response to the connect POST.
+{% endcomment %}
+{% if telegram_shown %}
+<section class="mt-set-section" aria-labelledby="set-telegram">
+  <h2 id="set-telegram" class="mt-set-title">{% trans 'Telegram' %}</h2>
+  <div class="mt-set-body"{% if telegram_state == 'waiting' %} hx-get="{% url 'settings_telegram_status' %}" hx-trigger="every 3s" hx-swap="none"{% endif %}>
+    {% if telegram_toggle_error %}
+    <p id="telegram_toggle_error" class="mt-set-error" role="alert">{{ telegram_toggle_error }}</p>
+    {% endif %}
+
+    {% if telegram_state == 'connected' or telegram_state == 'paused' %}
+    <form class="mt-set-form" method="post" action="{% url 'settings_telegram' %}" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="action" value="toggle">
+      <label class="mt-set-check mt-touch">
+        <input type="checkbox" name="enabled" value="on"{% if telegram_enabled %} checked{% endif %}>
+        <span>{% trans 'Send me new notifications on Telegram' %}</span>
+      </label>
+      <div class="mt-set-actions">
+        <button type="submit" class="btn btn-primary mt-touch">{% trans 'Save' %}</button>
+      </div>
+    </form>
+    <form class="mt-set-form" method="post" action="{% url 'settings_telegram' %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="disconnect">
+      <div class="mt-set-actions">
+        <button type="submit" class="btn btn-secondary mt-touch">{% trans 'Disconnect' %}</button>
+      </div>
+    </form>
+    {% else %}
+    {% if telegram_state == 'waiting' %}
+    <p class="mt-set-pending" role="status">{% trans 'Waiting for you to press Start in Telegram.' %}</p>
+    {% if telegram_link %}
+    <p class="mt-set-note"><a href="{{ telegram_link }}" target="_blank" rel="noopener">{% trans 'Open in Telegram' %}</a></p>
+    {% endif %}
+    {% elif telegram_state == 'blocked' %}
+    <p class="mt-set-note" role="status">{% trans 'Telegram was switched off because the bot was blocked. Connect again to resume.' %}</p>
+    {% else %}
+    <p class="mt-set-note">{% trans 'Get new notifications in a chat with the mitaroku bot.' %}</p>
+    {% endif %}
+    <form class="mt-set-form" method="post" action="{% url 'settings_telegram' %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="connect">
+      <div class="mt-set-actions">
+        <button type="submit" class="btn {% if telegram_state == 'waiting' %}btn-secondary{% else %}btn-primary{% endif %} mt-touch">{% if telegram_state == 'waiting' %}{% trans 'Get a new link' %}{% else %}{% trans 'Connect Telegram' %}{% endif %}</button>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
