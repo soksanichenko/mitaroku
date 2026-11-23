@@ -1,3 +1,5 @@
+import logging
+
 import httpx
 import pytest
 from notifications import telegram
@@ -194,3 +196,17 @@ def test_a_wrong_token_is_a_401(bot):
 
     assert raised.value.code == 401
     assert bot.sent == []
+
+
+@pytest.mark.parametrize('level', [logging.INFO, logging.DEBUG])
+def test_the_token_never_reaches_the_logs(bot, caplog, level):
+    bot.say(1, 'a')
+
+    with caplog.at_level(level):
+        telegram.bot_api().send_message(1, 'x')
+        telegram.bot_api().get_updates(0)
+        logging.getLogger('httpx').info('HTTP Request: GET https://other.example/x')
+
+    assert bot.token not in caplog.text
+    assert 'api.telegram.org' not in caplog.text
+    assert 'https://other.example/x' in caplog.text

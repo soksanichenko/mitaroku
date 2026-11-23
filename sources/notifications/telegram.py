@@ -1,9 +1,15 @@
 """A thin client of the Telegram Bot API.
 
 The bot token is part of every request URL, so nothing here puts an ``httpx``
-exception, a response URL or ``raise_for_status()`` text into an error, a log
-line or a return value.
+exception, a response URL or ``raise_for_status()`` text into an error or a
+return value. ``httpx`` itself logs every request URL at INFO, so the URL is
+kept out of the logs only by ``_HideTelegramUrls``, installed on the ``httpx``
+logger when this module is imported. ``httpcore`` logs the host and port, never
+the path, and needs no filter.
 """
+
+import logging
+from urllib.parse import urlsplit
 
 import httpx
 from django.conf import settings
@@ -11,6 +17,33 @@ from notifications.errors import PermanentFailure, RetryAfter, Unreachable
 
 API_URL = 'https://api.telegram.org'
 TIMEOUT = 10.0
+
+
+class _HideTelegramUrls(logging.Filter):
+    """Drop the log records that mention the Bot API, whose URLs hold the token."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """Tell whether the record may be logged.
+
+        Args:
+            record: The record about to be handled.
+
+        Returns:
+            False when the formatted message mentions the Bot API's host.
+        """
+        return urlsplit(API_URL).hostname not in record.getMessage()
+
+
+def _hide_telegram_urls() -> None:
+    """Install the filter on the ``httpx`` logger once, even after a reload."""
+    logger = logging.getLogger('httpx')
+    for existing in logger.filters:
+        if type(existing).__name__ == _HideTelegramUrls.__name__:
+            logger.removeFilter(existing)
+    logger.addFilter(_HideTelegramUrls())
+
+
+_hide_telegram_urls()
 
 
 class TelegramError(Exception):
