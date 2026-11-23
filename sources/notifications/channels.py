@@ -7,10 +7,17 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from accounts.models import Profile, User
-from notifications.channel import effective_address, email_configured
+from django.conf import settings
+from notifications import telegram
+from notifications.channel import (
+    effective_address,
+    email_configured,
+    telegram_configured,
+)
 from notifications.digest import build_digest
 from notifications.errors import Unreachable
 from notifications.models import Delivery, Notification
+from notifications.telegram_message import build_message
 
 # Not ``OSError``: ``smtplib.SMTPException`` subclasses it, and an error such as
 # a refused login is about this message, not about the server being down.
@@ -38,6 +45,7 @@ class ChannelSpec:
             specially.
         disable: Switches the channel off for the user.
         secret: The text that must not reach ``Delivery.last_error`` or a log.
+        placeholder: What replaces the secret in ``Delivery.last_error``.
     """
 
     channel: Delivery.Channel
@@ -48,6 +56,7 @@ class ChannelSpec:
     send: Callable[[User, list[Notification], datetime], None]
     disable: Callable[[User], None]
     secret: Callable[[User], str]
+    placeholder: str = '<address>'
 
 
 def send_email(user: User, notifications: list[Notification], now: datetime) -> None:
@@ -76,4 +85,52 @@ EMAIL = ChannelSpec(
     send=send_email,
     disable=disable_email,
     secret=effective_address,
+)
+
+
+def telegram_destination(user: User) -> str:
+    """Return the chat the user's messages go to, or an empty string."""
+    chat_id = user.profile.telegram_chat_id
+    return '' if chat_id is None else str(chat_id)
+
+
+def telegram_token(user: User) -> str:
+    """Return the bot token; it is the same for every user."""
+    return settings.TELEGRAM_BOT_TOKEN
+
+
+def send_telegram(user: User, notifications: list[Notification], now: datetime) -> None:
+    """Send the digest of ``notifications`` to the chat of ``user``.
+
+    Raises:
+        PermanentFailure: The chat refuses the bot for good.
+        RetryAfter: Telegram asks to wait.
+        Unreachable: Telegram cannot be reached.
+        TelegramError: Any other failed answer.
+    """
+    text = build_message(user, notifications, now)
+    with telegram.bot_api() as api:
+        api.send_message(user.profile.telegram_chat_id, text)
+
+
+def disable_telegram(user: User) -> None:
+    """Switch Telegram off for ``user``, forget the chat and note the block."""
+    Profile.objects.filter(user=user).update(
+        telegram_enabled=False,
+        telegram_since=None,
+        telegram_chat_id=None,
+        telegram_blocked=True,
+    )
+
+
+TELEGRAM = ChannelSpec(
+    channel=Delivery.Channel.TELEGRAM,
+    configured=telegram_configured,
+    enabled_field='telegram_enabled',
+    since_field='telegram_since',
+    destination=telegram_destination,
+    send=send_telegram,
+    disable=disable_telegram,
+    secret=telegram_token,
+    placeholder='<token>',
 )

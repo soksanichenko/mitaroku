@@ -11,10 +11,11 @@ class FakeBot:
     Attributes:
         token: The token the fake accepts in the request path.
         sent: The payload of every ``sendMessage`` call.
-        calls: ``(method, payload)`` of every call, in order.
+        calls: ``(method, payload)`` of every call, in order, failed ones too.
         updates: The queued updates ``getUpdates`` serves.
         garbage: When set, every call answers HTTP 200 with this raw body.
         down: When true, every call fails like an unreachable network.
+        clients: Every ``httpx.Client`` handed out by ``client``.
     """
 
     def __init__(self, token: str = '123456:TEST-token') -> None:
@@ -24,6 +25,7 @@ class FakeBot:
         self.updates: list[dict] = []
         self.garbage: str | None = None
         self.down = False
+        self.clients: list[httpx.Client] = []
         self._failures: dict[str, httpx.Response] = {}
 
     def say(
@@ -86,16 +88,18 @@ class FakeBot:
 
     def client(self) -> httpx.Client:
         """Return an ``httpx.Client`` that talks to this fake."""
-        return httpx.Client(transport=httpx.MockTransport(self._handle))
+        client = httpx.Client(transport=httpx.MockTransport(self._handle))
+        self.clients.append(client)
+        return client
 
     def _handle(self, request: httpx.Request) -> httpx.Response:
         """Answer one request the way the Bot API would."""
-        if self.down:
-            # Like a real transport error, the text carries the URL and so the token.
-            raise httpx.ConnectError(f'cannot connect to {request.url}')
         prefix, _, method = request.url.path.rpartition('/')
         payload = json.loads(request.content or b'{}')
         self.calls.append((method, payload))
+        if self.down:
+            # Like a real transport error, the text carries the URL and so the token.
+            raise httpx.ConnectError(f'cannot connect to {request.url}')
         if self.garbage is not None:
             return httpx.Response(200, content=self.garbage.encode())
         if prefix != f'/bot{self.token}':

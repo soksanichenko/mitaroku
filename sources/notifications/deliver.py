@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 
 from django.db import transaction
 from django.db.models import Exists, F, OuterRef, Q, QuerySet
-from notifications.channels import EMAIL, ChannelSpec
+from notifications.channels import EMAIL, TELEGRAM, ChannelSpec
 from notifications.errors import PermanentFailure, RetryAfter, Unreachable
 from notifications.models import Delivery, Notification
 
@@ -29,7 +29,7 @@ MAX_ATTEMPTS = 5
 ERROR_LENGTH = 150
 ERROR_FIELD_LENGTH = Delivery._meta.get_field('last_error').max_length
 
-CHANNELS: tuple[ChannelSpec, ...] = (EMAIL,)
+CHANNELS: tuple[ChannelSpec, ...] = (EMAIL, TELEGRAM)
 
 PENDING = Delivery.Status.PENDING
 
@@ -120,14 +120,17 @@ def _due(now: datetime, spec: ChannelSpec) -> QuerySet[Delivery]:
     )
 
 
-def _error_text(exc: Exception, address: str) -> str:
-    """Describe ``exc`` for ``Delivery.last_error`` without the recipient.
+def _error_text(exc: Exception, secret: str, placeholder: str = '<address>') -> str:
+    """Describe ``exc`` for ``Delivery.last_error`` without the secret.
 
-    The address is replaced before the text is cut, so the cut cannot leave a
-    part of it behind. The whole text is capped to the field, whatever the
-    length of the exception class name.
+    The secret is replaced by ``placeholder`` before the text is cut, so the cut
+    cannot leave a part of it behind. The whole text is capped to the field,
+    whatever the length of the exception class name. An empty secret is not
+    scrubbed: it would match between every two characters.
     """
-    message = re.sub(re.escape(address), '<address>', str(exc), flags=re.IGNORECASE)
+    message = str(exc)
+    if secret:
+        message = re.sub(re.escape(secret), placeholder, message, flags=re.IGNORECASE)
     return f'{type(exc).__name__}: {message[:ERROR_LENGTH]}'[:ERROR_FIELD_LENGTH]
 
 
@@ -191,7 +194,7 @@ def _send_to_user(user_id: int, now: datetime, spec: ChannelSpec) -> Result:
             with transaction.atomic():
                 spec.send(user, [delivery.notification for delivery in deliveries], now)
         except PermanentFailure as exc:
-            error = _error_text(exc, secret)
+            error = _error_text(exc, secret, spec.placeholder)
             logger.error(
                 '%s delivery refused for good for user %s: %s',
                 spec.channel.value,
@@ -204,7 +207,7 @@ def _send_to_user(user_id: int, now: datetime, spec: ChannelSpec) -> Result:
             spec.disable(user)
             return Result.FAILED
         except Exception as exc:
-            error = _error_text(exc, secret)
+            error = _error_text(exc, secret, spec.placeholder)
             # Not ``logger.exception``: the traceback repeats the exception
             # text, which can hold the secret.
             logger.error(

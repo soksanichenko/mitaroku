@@ -9,6 +9,7 @@ the path, and needs no filter.
 """
 
 import logging
+from typing import Self
 from urllib.parse import urlsplit
 
 import httpx
@@ -77,6 +78,18 @@ class BotApi:
         """
         self._token = token
         self._client = client
+
+    def __enter__(self) -> Self:
+        """Return the wrapper; the client is closed when the block ends."""
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        """Close the client."""
+        self.close()
+
+    def close(self) -> None:
+        """Close the HTTP client and its connections."""
+        self._client.close()
 
     def send_message(self, chat_id: int, text: str) -> None:
         """Send an HTML message without a link preview.
