@@ -80,6 +80,7 @@ class Delivery(models.Model):
 
     class Channel(models.TextChoices):
         EMAIL = 'email'
+        TELEGRAM = 'telegram'
 
     class Status(models.TextChoices):
         PENDING = 'pending'

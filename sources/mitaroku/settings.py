@@ -45,6 +45,14 @@ if config.email.from_address:
 PUBLIC_URL = config.public_url
 # Mail is only offered when both the server and the links' base are known.
 EMAIL_ENABLED = bool(config.email.host and config.public_url)
+TELEGRAM_BOT_TOKEN = (
+    config.telegram.bot_token.get_secret_value() if config.telegram.bot_token else ''
+)
+TELEGRAM_BOT_USERNAME = config.telegram.bot_username
+# The channel needs the bot and the links' base, like mail needs its server.
+TELEGRAM_ENABLED = bool(
+    TELEGRAM_BOT_TOKEN and TELEGRAM_BOT_USERNAME and config.public_url
+)
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = LOGIN_URL

@@ -37,6 +37,12 @@ class Profile(models.Model):
     email_since = models.DateTimeField(null=True, blank=True)
     notify_email = models.EmailField(blank=True)
     pending_email = models.EmailField(blank=True)
+    telegram_enabled = models.BooleanField(default=False)
+    telegram_since = models.DateTimeField(null=True, blank=True)
+    telegram_chat_id = models.BigIntegerField(null=True, blank=True, unique=True)
+    telegram_link_hash = models.CharField(max_length=64, blank=True, db_index=True)
+    telegram_link_expires = models.DateTimeField(null=True, blank=True)
+    telegram_blocked = models.BooleanField(default=False)
 
     def __str__(self) -> str:
         """Return a readable label for the admin."""

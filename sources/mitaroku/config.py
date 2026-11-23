@@ -2,10 +2,11 @@
 
 import ipaddress
 import os
+import re
 from functools import lru_cache
 from typing import Any, Literal
 
-from pydantic import BaseModel, SecretStr, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, SecretStr, field_validator, model_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -138,6 +139,60 @@ class EmailConfig(BaseModel):
         return self
 
 
+class TelegramConfig(BaseModel):
+    """Bot settings for the Telegram notification channel.
+
+    Attributes:
+        bot_token: The token BotFather issued; a blank value counts as not set.
+        bot_username: The bot's username, without the leading ``@``; it builds
+            the ``t.me`` deep link users follow to connect their chat.
+    """
+
+    # A validation error must never repeat the token.
+    model_config = ConfigDict(hide_input_in_errors=True)
+
+    bot_token: SecretStr | None = None
+    bot_username: str = ''
+
+    @field_validator('bot_token', mode='before')
+    @classmethod
+    def _blank_token_is_none(cls, value: object) -> object:
+        """Treat an empty token (such as an unset ``${VAR}``) as not set."""
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    @field_validator('bot_username')
+    @classmethod
+    def _plain_username(cls, value: str) -> str:
+        """Drop surrounding whitespace and one ``@``; require a bot username."""
+        value = value.strip().removeprefix('@')
+        if value and not re.fullmatch(r'[A-Za-z][A-Za-z0-9_]{4,31}', value):
+            raise ValueError('telegram.bot_username is not a valid Telegram username')
+        return value
+
+    @model_validator(mode='after')
+    def _token_and_username_go_together(self) -> 'TelegramConfig':
+        """Refuse one of the pair without the other, or a malformed token.
+
+        The token format is checked here, with a fixed message, so that no error
+        carries the secret.
+        """
+        if self.bot_token and not self.bot_username:
+            raise ValueError(
+                'telegram.bot_username is required when telegram.bot_token is set'
+            )
+        if self.bot_username and not self.bot_token:
+            raise ValueError(
+                'telegram.bot_token is required when telegram.bot_username is set'
+            )
+        if self.bot_token and not re.fullmatch(
+            r'\d+:[\w-]+', self.bot_token.get_secret_value()
+        ):
+            raise ValueError('telegram.bot_token is not a valid Telegram bot token')
+        return self
+
+
 class Settings(BaseSettings):
     """All runtime settings.
 
@@ -146,8 +201,13 @@ class Settings(BaseSettings):
     ``MITAROKU_CONFIG`` (default ``config.yaml``). A missing file is ignored.
     """
 
+    # The outermost model decides whether errors repeat the input, and the input
+    # of the telegram block holds the bot token.
     model_config = SettingsConfigDict(
-        env_prefix='MITAROKU_', env_nested_delimiter='__', extra='forbid'
+        env_prefix='MITAROKU_',
+        env_nested_delimiter='__',
+        extra='forbid',
+        hide_input_in_errors=True,
     )
 
     secret_key: SecretStr
@@ -160,6 +220,7 @@ class Settings(BaseSettings):
     redis: RedisConfig = RedisConfig()
     providers: ProvidersConfig = ProvidersConfig()
     email: EmailConfig = EmailConfig()
+    telegram: TelegramConfig = TelegramConfig()
     public_url: str = ''
 
     @field_validator('public_url')
