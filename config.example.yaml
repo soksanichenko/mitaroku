@@ -8,8 +8,9 @@ allowed_hosts: [localhost, 127.0.0.1]
 # Behind a TLS proxy list the https origin(s), or every POST gets 403.
 csrf_trusted_origins: []  # e.g. ['https://mitaroku.example.com']
 huey_immediate: false
-# Public address of the site, used for the links in e-mails. Email stays off unless
-# both this and email.host are set.
+# Public address of the site, used for the links in e-mails and Telegram messages. Email
+# stays off unless both this and email.host are set; Telegram, unless this and both
+# telegram keys are set.
 public_url: ''  # e.g. 'https://mitaroku.example.com'
 
 auth:
@@ -43,6 +44,14 @@ email:
   starttls: true
   ssl: false  # true = implicit TLS (port 465); then starttls is ignored
   from_address: ''  # required once host is set, e.g. 'mitaroku@example.com'
+
+# The Telegram notification channel. Create the bot with @BotFather (/newbot). Set both
+# keys or neither; the channel also needs public_url. The bot must be dedicated to this
+# service: no webhook, no other program reading its updates, one running instance. The
+# worker polls it over outbound HTTPS only, so nginx needs no change.
+telegram:
+  bot_token: null  # the BotFather token, e.g. 123456789:AA...; empty = Telegram off
+  bot_username: ''  # the bot's username without @, e.g. 'mitaroku_bot'
 
 providers:
   tmdb_token: null  # TMDB API read access token; required to search or sync TMDB titles

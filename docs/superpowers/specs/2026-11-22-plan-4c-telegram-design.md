@@ -76,26 +76,30 @@ not change.
 
 ### Connecting
 
-- Settings > Notifications gets a "Telegram" block next to "Email". It has four states:
-  not connected, waiting for Start, connected (with the switch and a "Disconnect" button),
-  and stopped because the bot was blocked.
-- "Connect" is a POST. It issues a one-time token for that user (a new token replaces an
+- Settings > Notifications gets a "Telegram" block next to "Email". It has five states,
+  checked in this order: connected and paused (a chat, the switch on or off, with a
+  "Disconnect" button), waiting for Start (a live link token, no chat), stopped because
+  the bot was blocked, and not connected.
+- "Connect Telegram" is a POST. On an account that already has a chat it does nothing.
+  Otherwise it issues a one-time token for that user (a new token replaces an
   older one, 30 minutes of life) and shows an "Open in Telegram" link
-  `https://t.me/<bot_username>?start=<token>`. The token fits Telegram's `start` payload
+  `https://t.me/<bot_username>?start=<token>` in that response only (a reload hides it;
+  "Get a new link" issues another). The token fits Telegram's `start` payload
   (letters, digits, `_`, `-`, up to 64 characters). While the state is "waiting", the block
-  refreshes itself every few seconds (HTMX) until the link goes through.
+  asks a status URL every 3 seconds (HTMX); the answer is 204 until a chat exists, then
+  200 with `HX-Redirect` to Settings, so a reload never re-sends the POST.
 - The poll reads `/start <token>` from a private chat. A valid token connects that chat
   to the token's user, switches the channel on (`telegram_since` is set to that moment,
-  so nothing earlier is ever sent) and the bot answers "connected to <account>" in the
-  user's interface language ("Connected", without an account name: mitaroku users have
-no display name). The token is used up.
+  so nothing earlier is ever sent) and the bot answers "Connected. New mitaroku
+  notifications will arrive in this chat." in the user's interface language. The token
+  is used up.
 - A `/start` without a token, an unknown, used or expired token, and every other message
   get a short reply that says to connect from mitaroku Settings (in Russian when the
   Telegram `language_code` is `ru`, else English). They change nothing. Groups, channels
   and other chat types are ignored.
 - One chat belongs to one account: a chat that is already connected to another account is
-  refused, with a reply saying to disconnect it there first. Connecting again from the same
-  account replaces the chat.
+  refused, with a reply saying to disconnect it there first. An account that has a chat
+  moves to another one by "Disconnect" and a new connect.
 - The switch off clears `telegram_since`, on sets it, like email. "Disconnect" forgets the
   chat and switches the channel off.
 
@@ -150,8 +154,8 @@ no display name). The token is used up.
 `Delivery.Channel` gains `telegram`. `Profile` gains `telegram_enabled`, `telegram_since`
 (null), `telegram_chat_id` (a big integer, null, unique) and what the one-time token needs
 (its value or hash and its expiry; the builder chooses where it lives), plus a way to show
-"stopped because the bot was blocked". The poll's offset is kept where the builder finds
-simplest and safe across restarts.
+"stopped because the bot was blocked". The poll's offset is kept in Redis, with a lock that
+keeps runs from overlapping.
 
 Config (Pydantic, YAML with environment override): a `telegram` block as above. HTTP calls
 to Telegram go through the project's existing HTTP approach, with a timeout.

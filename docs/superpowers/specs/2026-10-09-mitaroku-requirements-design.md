@@ -64,13 +64,21 @@ for secrets, Docker, Ansible (repo created from `service-repo-template`).
   switched off; nothing created at or before it is ever mailed, so it is the opt-in
   guard), `notify_email` (the address the user entered and confirmed) and
   `pending_email` (an entered address that waits for its confirmation link).
+  The Telegram channel adds six: `telegram_enabled` (the switch, off by default),
+  `telegram_since` (set when the channel is switched on, cleared when it is switched
+  off; the opt-in guard, like `email_since`), `telegram_chat_id` (the connected private
+  chat, a big integer, null when none, unique so that one chat belongs to one account),
+  `telegram_link_hash` and `telegram_link_expires` (the SHA-256 hash and the expiry of
+  the one-time connect token; the token itself is never stored) and `telegram_blocked`
+  (set when the bot was blocked or the chat is gone, so that Settings can say so).
 - `Notification`: one row per user, kind, title and local day (unique `dedupe_key`),
   with a data-only `payload`, `created_at` and `read_at`. It is user data: read through
   the user-scoped manager and not registered in the admin.
-- `Delivery`: one row per notification and channel (unique per pair; only `email`
-  exists so far), with a `status` of pending, sent, failed, expired or skipped, the
+- `Delivery`: one row per notification and channel (unique per pair; `email` and
+  `telegram`), with a `status` of pending, sent, failed, expired or skipped, the
   number of `attempts`, `next_attempt_at`, `sent_at` and a data-only `last_error`
-  text (the exception class and a cut message, never the recipient address). It is
+  text (the exception class and a cut message, never the recipient address or the bot
+  token). It is
   user data: read through the user-scoped manager.
 
 All user-data queries go through a model manager that scopes them to the user.
@@ -140,8 +148,8 @@ Mechanics: dedupe through a unique key, grouping per title per day, one `Deliver
 row per channel with retries. The first sync records a baseline only. A removed
 date produces no notification. Providers give dates, not times.
 
-As built for the on-site channel (plan 4a; the email channel is plan 4b below, Telegram
-is plan 4c):
+As built for the on-site channel (plan 4a; the email channel is plan 4b and the Telegram
+channel plan 4c, both below):
 
 - A release is due at 09:00 in the user's time zone on its date, anime included
   (AniList's exact airing time is not stored). The zone is set in Settings.
@@ -168,10 +176,10 @@ is plan 4c):
   date that moves and returns to its original value on the same day leaves no
   notification: the row is deleted.
 - Read notifications are deleted after 90 days and all notifications after 180 days.
-- The digest of one scan pass is decided and built for email in plan 4b (below);
-  Telegram is plan 4c.
+- The digest of one scan pass is built for email (plan 4b) and for Telegram (plan 4c),
+  both below.
 
-As built for the email channel (plan 4b; Telegram is plan 4c):
+As built for the email channel (plan 4b):
 
 - Email is available only when the operator sets both `email.host` and `public_url`;
   otherwise the Email block is absent from Settings and nothing is sent. A host
@@ -198,6 +206,55 @@ As built for the email channel (plan 4b; Telegram is plan 4c):
   `email_since`, and neither needs a session. Unsubscribing also stops what is queued.
 - A notification that merges a later event after it was mailed is not mailed again:
   its `Delivery` is already `sent` and the pair is unique.
+- The sender is shared with Telegram (plan 4c): when the mail server cannot be reached
+  (SMTP disconnect or connect error, connection refused, timeout, DNS), the pass for
+  the channel ends there and the other users wait for the next pass. A refused login
+  or address still fails only that mail.
+
+As built for the Telegram channel (plan 4c):
+
+- Telegram is available only when the operator sets `telegram.bot_token`,
+  `telegram.bot_username` and `public_url`; one of the two telegram keys without the
+  other is a config error. Otherwise the Telegram block is absent from Settings and
+  nothing is polled or sent. The bot is dedicated to the service (no webhook, no second
+  consumer of `getUpdates`, one running instance).
+- Opt-in by a one-time link: "Connect Telegram" in Settings (a POST) issues a random
+  token (30 minutes, a new one replaces the old one, stored as a SHA-256 hash) and
+  shows `https://t.me/<bot>?start=<token>` once, in the response to that POST only.
+  Pressing Start in a private chat connects that chat to the account, switches the
+  channel on and sets `telegram_since`, so nothing older is sent. "Connect" on an
+  account that already has a chat changes nothing; moving to another chat is
+  "Disconnect", then connect. One chat belongs to one account; a chat that belongs to
+  another account is refused. The switch pauses and resumes (each switch-on sets
+  `telegram_since`); "Disconnect" forgets the chat and switches the channel off.
+- Telegram is read by polling, not by a webhook. The Huey task `poll_telegram_task`
+  runs every minute, takes a Redis lock so that runs do not overlap, calls `getUpdates`
+  with an offset kept in Redis and hands each update to the bot logic. A bare `/start`,
+  an unknown, used or expired token and any other private message get a short reply
+  that points to Settings (Russian when the sender's `language_code` is `ru`, else
+  English) and change nothing; groups and channels are ignored. There are no other bot
+  commands. The reply that confirms a connection uses the account's interface language.
+  A failed poll is logged without the token and never changes a user's state.
+- Settings shows one of five states: connected, paused (a chat, switched off), waiting
+  for Start (a live token, no chat; the block asks a status URL every 3 seconds and the
+  server answers with `HX-Redirect` to Settings once a chat exists), blocked, and idle.
+  They are checked in that order.
+- The sender runs for Telegram after email in the same pass (minutes 2, 17, 32 and 47)
+  and sends one message per user per pass, in the interface language, with the titles in
+  the metadata language and at most 50 items, newest first. The text is Telegram HTML,
+  cut at the last item that fits Telegram's 4096 characters; the rest becomes an "and N
+  more" line, and the last line links to the Notifications screen. Retries, expiry and
+  the skip of read notifications are the same as for email. A 429 is honoured: the next
+  attempt is not earlier than its `retry_after`.
+- A blocked bot or a deleted chat (403, or 400 "chat not found") switches the channel
+  off at once without a retry: the chat is forgotten, `telegram_blocked` is set, and
+  the queued deliveries become `skipped`. The Settings block says so; "Connect Telegram"
+  resumes it.
+- A connection-level failure (refused, timeout, DNS) ends the Telegram pass, like the
+  mail server's above.
+- The bot token appears only in the request URL. A log filter on the `httpx` logger
+  drops the records that mention the Bot API host, and error text stored in
+  `Delivery.last_error` has the token replaced by a placeholder.
 
 ## 8. Import and export
 
@@ -234,8 +291,10 @@ Fallback `local` mode (Django accounts) is switched by an environment variable.
 ## 10. Security
 
 User-data queries are scoped through a model manager. CSRF protection covers HTMX
-requests. Uploads have size and type limits and an import rate limit. A Telegram
-webhook, if used, is protected by a secret.
+requests. Uploads have size and type limits and an import rate limit. Telegram is read
+by polling (outbound HTTPS only), so no webhook exists and no public endpoint takes
+Telegram's calls; the bot token stays out of logs, errors and pages, and the connect
+link is a one-time token kept only as a hash.
 
 ## 11. Localisation
 
@@ -261,6 +320,5 @@ role from the `new-service-repo` and `new-nginx-service` skills.
 - Portal mode: nginx must let `/email/` through without the SSO check. The one-click
   unsubscribe is posted by the recipient's mail provider, which has no session; the
   confirmation page lives under the same prefix.
-- Telegram: webhook or polling.
 - Subdomain or subpath.
 - Verify the exact export format of each supported service.
