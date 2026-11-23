@@ -233,13 +233,50 @@ def test_the_status_is_204_while_waiting_and_refreshes_once_connected(
     client.post(URL, {'action': 'connect'}, **portal_headers)
     response = client.get(STATUS, **portal_headers)
     assert response.status_code == 204
+    assert 'HX-Redirect' not in response.headers
     assert 'HX-Refresh' not in response.headers
     assert 'no-store' in response['Cache-Control']
     connect_chat(alice)
     response = client.get(STATUS, **portal_headers)
     assert response.status_code == 200
-    assert response.headers['HX-Refresh'] == 'true'
+    assert response.headers['HX-Redirect'] == '/settings/'
+    assert 'HX-Refresh' not in response.headers
     assert 'no-store' in response['Cache-Control']
+
+
+def test_connect_on_a_connected_profile_is_a_no_op(client, portal_headers, alice, bot):
+    connect_chat(alice)
+    response = client.post(URL, {'action': 'connect'}, **portal_headers)
+    assert response.status_code == 302
+    assert response['Location'] == '/settings/'
+    profile = profile_of(alice)
+    assert profile.telegram_link_hash == ''
+    assert profile.telegram_link_expires is None
+    assert profile.telegram_chat_id == 555
+
+
+def test_the_happy_path_ends_on_a_get_not_on_a_replayed_post(
+    client, portal_headers, alice, bot
+):
+    from notifications.telegram_link import Outcome, connect
+
+    response = client.post(URL, {'action': 'connect'}, **portal_headers)
+    assert response.status_code == 200
+    token = LINK.search(response.content.decode()).group(1)
+    assert connect(token, 42, timezone.now())[0] is Outcome.CONNECTED
+    status = client.get(STATUS, **portal_headers)
+    assert status.status_code == 200
+    # A GET navigation leaves the POST-rendered page behind; a reload would re-POST.
+    assert status.headers['HX-Redirect'] == '/settings/'
+    assert 'HX-Refresh' not in status.headers
+    html = page(client, portal_headers)
+    assert 'name="action" value="disconnect"' in block(html)
+    assert 't.me' not in html
+    replay = client.post(URL, {'action': 'connect'}, **portal_headers)
+    assert replay.status_code == 302
+    profile = profile_of(alice)
+    assert profile.telegram_link_hash == ''
+    assert profile.telegram_chat_id == 42
 
 
 def test_the_status_needs_a_login(client, bot):
@@ -331,4 +368,4 @@ def test_local_accounts_mode_shows_the_block_too(client, bot):
     assert LINK.search(response.content.decode())
     assert client.get(STATUS).status_code == 204
     connect_chat(user)
-    assert client.get(STATUS).headers['HX-Refresh'] == 'true'
+    assert client.get(STATUS).headers['HX-Redirect'] == '/settings/'

@@ -9,6 +9,7 @@ from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
 )
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext
 from django.views.decorators.http import require_GET, require_POST
@@ -62,9 +63,16 @@ def telegram_context(
 
 
 def _connect(request: HttpRequest, profile: Profile) -> HttpResponse:
-    """Issue a link token and render the page with the link, uncacheable."""
-    from web.views.settings import _page_with
+    """Issue a link token and render the page with the link, uncacheable.
 
+    A profile that already has a chat gets nothing: no token is issued and the
+    user is sent back to the settings. Moving to another chat is a disconnect
+    first, then a connect.
+    """
+    from web.views.settings import _page_with, _saved
+
+    if profile.telegram_chat_id is not None:
+        return _saved(request)
     token = telegram_link.issue_link_token(request.user, timezone.now())
     response = _page_with(
         request, telegram_feedback=TelegramFeedback(link=telegram_link.link_url(token))
@@ -119,7 +127,8 @@ def settings_telegram(request: HttpRequest) -> HttpResponse:
     The hidden ``action`` field picks the form: ``connect``, ``toggle`` or
     ``disconnect``. Only the profile of the signed-in user changes. ``connect``
     answers with the page itself, because the one-time link must not outlive that
-    response; the other actions redirect.
+    response; the other actions redirect, and so does ``connect`` on a profile
+    that already has a chat (it issues nothing).
 
     Args:
         request: The POST request.
@@ -144,8 +153,10 @@ def settings_telegram_status(request: HttpRequest) -> HttpResponse:
         request: The GET request the block polls with.
 
     Returns:
-        204 while the profile of the user has no chat, 200 with ``HX-Refresh``
-        once it has one. A 404 when Telegram is not configured.
+        204 while the profile of the user has no chat, 200 with ``HX-Redirect``
+        to the settings once it has one. A redirect navigates with a GET; a
+        refresh would re-send the POST that rendered the waiting page. A 404
+        when Telegram is not configured.
     """
     if not telegram_configured():
         raise Http404
@@ -154,6 +165,6 @@ def settings_telegram_status(request: HttpRequest) -> HttpResponse:
     ).exists()
     response = HttpResponse(status=200 if connected else 204)
     if connected:
-        response['HX-Refresh'] = 'true'
+        response['HX-Redirect'] = reverse('settings')
     response['Cache-Control'] = 'no-store'
     return response

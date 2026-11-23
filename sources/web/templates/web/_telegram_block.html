@@ -1,7 +1,7 @@
 {% load i18n %}{% comment %}
 The Telegram block of the settings (web.views.telegram), shown only while the operator has
 configured the bot. While the state is "waiting" the body polls the status URL every few
-seconds; the status answers 204 until the chat is connected and then asks HTMX to reload.
+seconds; the status answers 204 until the chat is connected and then asks HTMX to go to the settings (a GET).
 The one-time link is in the context only for the response to the connect POST.
 {% endcomment %}
 {% if telegram_shown %}
